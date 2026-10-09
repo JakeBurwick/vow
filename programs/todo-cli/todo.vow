@@ -1,0 +1,7 @@
+// The Todo record, shared by storage.vow, format.vow and main.vow.
+struct Todo { id, title, due, done }
+
+// due is a time in ms (UTC midnight of the due date), as parseDate returns it
+fn make(id, title, due) { return Todo { id: id, title: title, due: due, done: false } }
+
+fn nextId(todos) { return fold(todos, 1, (n, t) => max(n, t.id + 1)) }

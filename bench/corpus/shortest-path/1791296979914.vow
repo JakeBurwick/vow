@@ -1,0 +1,82 @@
+fn buildGraph(edges) {
+  let graph = {}
+  for edge in edges {
+    let parts = split(edge, "-")
+    if len(parts) == 2 {
+      let a = parts[0]
+      let b = parts[1]
+      if not has(graph, a) {
+        graph[a] = []
+      }
+      if not has(graph, b) {
+        graph[b] = []
+      }
+      push(graph[a], b)
+      push(graph[b], a)
+    }
+  }
+  return graph
+}
+
+fn shortestPath(graph, start, goal) {
+  if start == goal {
+    return ok([start])
+  }
+
+  if not has(graph, start) or not has(graph, goal) {
+    return err("no path")
+  }
+
+  let queue = [[start]]
+  let visited = {}
+  visited[start] = true
+
+  while len(queue) > 0 {
+    let path = queue[0]
+    queue = slice(queue, 1, len(queue))
+    let current = path[len(path) - 1]
+
+    let neighbors = graph[current]
+    let sorted_neighbors = sort(neighbors)
+
+    for neighbor in sorted_neighbors {
+      if not has(visited, neighbor) {
+        let new_path = []
+        for node in path {
+          push(new_path, node)
+        }
+        push(new_path, neighbor)
+
+        if neighbor == goal {
+          return ok(new_path)
+        }
+
+        visited[neighbor] = true
+        push(queue, new_path)
+      }
+    }
+  }
+
+  return err("no path")
+}
+
+let args_list = args()
+if len(args_list) < 3 {
+  print("no path")
+  return
+}
+
+let edges = split(args_list[0], ",")
+let start = args_list[1]
+let goal = args_list[2]
+
+let graph = buildGraph(edges)
+
+match shortestPath(graph, start, goal) {
+  ok(path) => {
+    print(join(path, " -> "))
+  }
+  err(e) => {
+    print(e)
+  }
+}

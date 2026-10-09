@@ -1,0 +1,83 @@
+struct P { y, x }
+let p = P { y: 1, x: 2 }
+print(p)
+print(p == P { y: 1, x: 2 })
+print(p != P { y: 1, x: 3 })
+p.x = 10
+print(p.x)
+print(toJson(p))
+print([1, 2.5, 0.1 + 0.2, 1 / 3, 100000000000000000000000, 0 - 0])
+let m = {"a": 1, "b": 2, "a": 3}
+print(m)
+print(keys(m))
+m["z"] = 26
+print(m)
+print(has(m, "z"))
+print(get(m, "q"))
+print(get([1, 2], 5))
+print(get("abc", 1))
+print([ok(1), err("x")])
+print(contains([P { y: 1, x: 2 }], P { y: 1, x: 2 }))
+let nested = [[[[[[1]]]]], [[[[[2, 3]]]]]]
+print(nested)
+print({"k": [1, 2]})
+print("interp ${p.x} and ${[1, 2]} and ${m["a"]} and ${true}")
+print(`raw {braces}`)
+match parseJson(`{"a": [1, 2, {"b": null}], "c": "s"}`) {
+  ok(j) => {
+    print(j)
+    print(jsonType(j))
+    print(jsonKeys(j))
+    print(j["a"])
+    print(j["a"][2])
+    print(jsonType(j["a"][2]["b"]))
+    print(get(j, "zz"))
+    print(get(j["a"], 9))
+    match jsonStr(j["c"]) { ok(s) => print(s) err(e) => print(e) }
+    match jsonNum(j["c"]) { ok(s) => print(s) err(e) => print(e) }
+    print(len(jsonList(j["a"])))
+  }
+  err(e) => print(e)
+}
+print(sortBy([P { y: 3, x: 1 }, P { y: 1, x: 2 }, P { y: 2, x: 3 }], q => q.y))
+fn keyOf(s) { return len(s) }
+print(sortBy(["ccc", "a", "bb", "d"], keyOf))
+print(sort([3, 1, 2]))
+print(sort(["b", "a"]))
+print(reverse([1, 2, 3]))
+print(round(15.625, 2))
+print(fixed(212.3, 2))
+print(padLeft("7", 3, "0") + padRight("x", 3, "-"))
+print(repeat("ab", 3))
+print(slice([1, 2, 3, 4], 1, 3))
+print(slice("hello", 1, 3))
+print(split("a,b", ","))
+print(split("abc", ""))
+print(join(["a", "b"], "+"))
+print(replace("a-b-c", "-", "+"))
+print(upper("x") + lower("Y") + trim("  t  "))
+print(sum([1, 2, 3]))
+print(min(1, 2) + max(1, 2) + abs(0 - 5) + floor(2.7))
+print(indexOf("abc", "c"))
+print(indexOf("abc", "z"))
+print(startsWith("abc", "a"))
+print(escape("<a href='x'>&</a>"))
+print(html("x"))
+print(param("a=1&b=2", "b"))
+let stack = [1, 2]
+print(pop(stack))
+print(pop(stack))
+print(pop(stack))
+print(push([1], 2))
+print(str(1.5) + str(true) + str("s"))
+print(num(" 42 "))
+print(num("4x"))
+print(num(""))
+fn noop() { let q = 1 }
+fn useless(a) { return a }
+print(toJson(["a", "b"]))
+print(toJson({"k": P { y: 1, x: 2 }}))
+print(len("héllo"))
+print("é"[0])
+print(range(2, 5))
+print(range(5, 2))

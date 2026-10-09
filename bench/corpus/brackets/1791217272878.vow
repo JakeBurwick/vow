@@ -1,0 +1,65 @@
+fn main() {
+  let args_list = args()
+  let s = match get(args_list, 0) { ok(str) => str err(e) => "" }
+
+  let stack = []
+
+  for i in range(0, len(s)) {
+    let c = s[i]
+
+    if c == "(" or c == "[" or c == "{" {
+      push(stack, c)
+    } else if c == ")" {
+      match pop(stack) {
+        ok(top) => {
+          if top != "(" {
+            print("no")
+            return ok(true)
+          }
+        }
+        err(e) => {
+          print("no")
+          return ok(true)
+        }
+      }
+    } else if c == "]" {
+      match pop(stack) {
+        ok(top) => {
+          if top != "[" {
+            print("no")
+            return ok(true)
+          }
+        }
+        err(e) => {
+          print("no")
+          return ok(true)
+        }
+      }
+    } else if c == "}" {
+      match pop(stack) {
+        ok(top) => {
+          if top != "{" {
+            print("no")
+            return ok(true)
+          }
+        }
+        err(e) => {
+          print("no")
+          return ok(true)
+        }
+      }
+    }
+  }
+
+  if len(stack) == 0 {
+    print("yes")
+  } else {
+    print("no")
+  }
+  return ok(true)
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

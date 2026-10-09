@@ -1,0 +1,106 @@
+fn main() {
+  let args_list = args()
+  let old_csv = get(args_list, 0)?
+  let new_csv = get(args_list, 1)?
+
+  let old_lines = split(old_csv, "\n")
+  let new_lines = split(new_csv, "\n")
+
+  // Filter out blank lines
+  let old_data = filter(old_lines, line => len(trim(line)) > 0)
+  let new_data = filter(new_lines, line => len(trim(line)) > 0)
+
+  if len(old_data) == 0 or len(new_data) == 0 {
+    return err("invalid")
+  }
+
+  // Parse headers and rows
+  let old_header = split(old_data[0], ",")
+  let new_header = split(new_data[0], ",")
+
+  // Check if headers differ
+  if len(old_header) != len(new_header) {
+    print("error: headers differ")
+    return ok(true)
+  }
+
+  for i in range(0, len(old_header)) {
+    if old_header[i] != new_header[i] {
+      print("error: headers differ")
+      return ok(true)
+    }
+  }
+
+  // Build maps of key -> row
+  let old_map = {}
+  for i in range(1, len(old_data)) {
+    let row = split(old_data[i], ",")
+    if len(row) > 0 {
+      let key = row[0]
+      old_map[key] = row
+    }
+  }
+
+  let new_map = {}
+  for i in range(1, len(new_data)) {
+    let row = split(new_data[i], ",")
+    if len(row) > 0 {
+      let key = row[0]
+      new_map[key] = row
+    }
+  }
+
+  // Get all keys and sort
+  let all_keys = []
+  for k in keys(old_map) {
+    push(all_keys, k)
+  }
+  for k in keys(new_map) {
+    if not contains(all_keys, k) {
+      push(all_keys, k)
+    }
+  }
+  all_keys = sort(all_keys)
+
+  let changes = []
+
+  for key in all_keys {
+    let in_old = has(old_map, key)
+    let in_new = has(new_map, key)
+
+    if not in_old and in_new {
+      push(changes, "+ ${key}")
+    } else if in_old and not in_new {
+      push(changes, "- ${key}")
+    } else if in_old and in_new {
+      let old_row = old_map[key]
+      let new_row = new_map[key]
+
+      // Check each column after the key (column 0)
+      for col_idx in range(1, len(old_header)) {
+        let old_val = match get(old_row, col_idx) { ok(v) => v err(_) => "" }
+        let new_val = match get(new_row, col_idx) { ok(v) => v err(_) => "" }
+
+        if old_val != new_val {
+          let col_name = old_header[col_idx]
+          push(changes, "~ ${key}: ${col_name} ${old_val} -> ${new_val}")
+        }
+      }
+    }
+  }
+
+  if len(changes) == 0 {
+    print("no changes")
+  } else {
+    for change in changes {
+      print(change)
+    }
+  }
+
+  return ok(true)
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

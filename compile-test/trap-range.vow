@@ -1,0 +1,7 @@
+fn big(n) {
+  let t = 0
+  for i in range(0, n) { t = t + i }
+  return t
+}
+print(big(10))
+print(big(2000000))

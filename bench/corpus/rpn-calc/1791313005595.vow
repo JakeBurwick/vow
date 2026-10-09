@@ -1,0 +1,47 @@
+fn evaluateRPN(expr) {
+  let tokens = split(expr, " ")
+  let stack = []
+
+  for token in tokens {
+    if token == "" {
+      continue
+    }
+
+    if token == "+" or token == "-" or token == "*" or token == "/" {
+      if len(stack) < 2 {
+        return err("error")
+      }
+
+      let b = pop(stack)?
+      let a = pop(stack)?
+
+      if token == "+" {
+        push(stack, a + b)
+      } else if token == "-" {
+        push(stack, a - b)
+      } else if token == "*" {
+        push(stack, a * b)
+      } else if token == "/" {
+        if b == 0 {
+          return err("error")
+        }
+        push(stack, a / b)
+      }
+    } else {
+      let n = num(token)?
+      push(stack, n)
+    }
+  }
+
+  if len(stack) == 1 {
+    return ok(stack[0])
+  } else {
+    return err("error")
+  }
+}
+
+let expr = args()[0]
+match evaluateRPN(expr) {
+  ok(result) => print(str(result))
+  err(_) => print("error")
+}

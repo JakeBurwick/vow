@@ -1,0 +1,20 @@
+// Vow has no null and no exceptions. Anything that can fail returns a Result:
+// ok(value) or err(message), and the checker makes you handle both.
+match num("42") {
+  ok(n) => print("parsed ${n}")
+  err(e) => print("not a number: ${e}")
+}
+
+match num("forty-two") {
+  ok(n) => print("parsed ${n}")
+  err(e) => print("not a number")
+}
+
+// Inside a fn, ? unwraps ok or returns the err to the caller.
+fn addStrings(a, b) {
+  let x = num(a)?
+  let y = num(b)?
+  return ok(x + y)
+}
+print(addStrings("2", "3"))
+print(addStrings("2", "oops"))

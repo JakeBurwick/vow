@@ -1,0 +1,19 @@
+fn readLen(p) uses fs {
+  return match readFile(p) {
+    ok(t) => len(t)
+    err(e) => 0 - 1
+  }
+}
+fn apply(f, x) { return f(x) }
+let paths = ["/nonexistent/a", "/nonexistent/b"]
+let lens = sortBy(paths, readLen)
+print(lens)
+print(apply(s => s + "!", "hi"))
+match writeFile("/tmp/vow-compile-test-y.txt", "zz") {
+  ok(v) => print(v)
+  err(e) => print(e)
+}
+match readFile("/tmp/vow-compile-test-y.txt") {
+  ok(t) => print(t)
+  err(e) => print(e)
+}

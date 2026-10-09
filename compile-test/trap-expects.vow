@@ -1,0 +1,13 @@
+fn withdraw(bal, amt)
+  expects amt > 0 and amt <= bal
+  ensures result >= 0
+{ return bal - amt }
+fn run(xs) {
+  let total = 100
+  for a in xs {
+    total = withdraw(total, a)
+    print(total)
+  }
+  return total
+}
+print(run([10, 20, 500]))

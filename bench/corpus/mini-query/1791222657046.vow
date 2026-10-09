@@ -1,0 +1,297 @@
+struct Row {
+  values
+}
+
+fn isNum(s) {
+  return match num(s) {
+    ok(n) => true
+    err(e) => false
+  }
+}
+
+fn parseNum(s) {
+  return match num(s) {
+    ok(n) => n
+    err(e) => 0
+  }
+}
+
+fn compare(v1, v2, op) {
+  let n1 = isNum(v1)
+  let n2 = isNum(v2)
+
+  if n1 and n2 {
+    let num1 = parseNum(v1)
+    let num2 = parseNum(v2)
+    if op == "=" { return num1 == num2 }
+    if op == "!=" { return num1 != num2 }
+    if op == "<" { return num1 < num2 }
+    if op == ">" { return num1 > num2 }
+    if op == "<=" { return num1 <= num2 }
+    if op == ">=" { return num1 >= num2 }
+    return false
+  } else {
+    if op == "=" { return v1 == v2 }
+    if op == "!=" { return v1 != v2 }
+    return false
+  }
+}
+
+fn main() {
+  let args_list = args()
+  if len(args_list) < 2 {
+    print("error: bad query")
+    return ok(true)
+  }
+
+  let csv_input = args_list[0]
+  let query_input = args_list[1]
+
+  let rows_str = split(csv_input, "\n")
+  if len(rows_str) == 0 {
+    print("error: bad query")
+    return ok(true)
+  }
+
+  let header = split(rows_str[0], ",")
+  let data_rows = []
+
+  for i in range(1, len(rows_str)) {
+    if rows_str[i] != "" {
+      let fields = split(rows_str[i], ",")
+      let row = Row { values: fields }
+      push(data_rows, row)
+    }
+  }
+
+  let select_cols = []
+  let where_col = ""
+  let where_op = ""
+  let where_val = ""
+  let order_col = ""
+  let order_desc = false
+  let limit_n = 0 - 1
+
+  let parts = split(query_input, " ")
+  let i = 0
+
+  if i >= len(parts) or parts[i] != "SELECT" {
+    print("error: bad query")
+    return ok(true)
+  }
+  i = i + 1
+
+  if i >= len(parts) {
+    print("error: bad query")
+    return ok(true)
+  }
+
+  select_cols = split(parts[i], ",")
+  i = i + 1
+
+  while i < len(parts) {
+    let keyword = parts[i]
+
+    if keyword == "WHERE" {
+      i = i + 1
+      if i + 2 >= len(parts) {
+        print("error: bad query")
+        return ok(true)
+      }
+      where_col = parts[i]
+      where_op = parts[i + 1]
+      where_val = parts[i + 2]
+      i = i + 3
+    } else if keyword == "ORDER" {
+      i = i + 1
+      if i >= len(parts) or parts[i] != "BY" {
+        print("error: bad query")
+        return ok(true)
+      }
+      i = i + 1
+      if i >= len(parts) {
+        print("error: bad query")
+        return ok(true)
+      }
+      order_col = parts[i]
+      i = i + 1
+      if i < len(parts) and parts[i] == "DESC" {
+        order_desc = true
+        i = i + 1
+      }
+    } else if keyword == "LIMIT" {
+      i = i + 1
+      if i >= len(parts) {
+        print("error: bad query")
+        return ok(true)
+      }
+      match num(parts[i]) {
+        ok(n) => {
+          limit_n = n
+          i = i + 1
+        }
+        err(e) => {
+          print("error: bad query")
+          return ok(true)
+        }
+      }
+    } else {
+      print("error: bad query")
+      return ok(true)
+    }
+  }
+
+  for col in select_cols {
+    let found = false
+    for hcol in header {
+      if hcol == col {
+        found = true
+        break
+      }
+    }
+    if not found {
+      print("error: unknown column " + col)
+      return ok(true)
+    }
+  }
+
+  if where_col != "" {
+    let found = false
+    for hcol in header {
+      if hcol == where_col {
+        found = true
+        break
+      }
+    }
+    if not found {
+      print("error: unknown column " + where_col)
+      return ok(true)
+    }
+  }
+
+  if order_col != "" {
+    let found = false
+    for hcol in header {
+      if hcol == order_col {
+        found = true
+        break
+      }
+    }
+    if not found {
+      print("error: unknown column " + order_col)
+      return ok(true)
+    }
+  }
+
+  let filtered_rows = []
+
+  for row in data_rows {
+    let include = true
+
+    if where_col != "" {
+      let col_idx = 0 - 1
+      for j in range(0, len(header)) {
+        if header[j] == where_col {
+          col_idx = j
+          break
+        }
+      }
+
+      if col_idx >= 0 and col_idx < len(row.values) {
+        let cell_val = row.values[col_idx]
+        let is_num_op = where_op != "=" and where_op != "!="
+
+        if is_num_op and not isNum(cell_val) {
+          print("error: bad comparison")
+          return ok(true)
+        }
+
+        let cond = compare(cell_val, where_val, where_op)
+        if not cond {
+          include = false
+        }
+      } else {
+        include = false
+      }
+    }
+
+    if include {
+      push(filtered_rows, row)
+    }
+  }
+
+  if order_col != "" {
+    let order_idx = 0 - 1
+    for j in range(0, len(header)) {
+      if header[j] == order_col {
+        order_idx = j
+        break
+      }
+    }
+
+    let all_numeric = true
+    for row in filtered_rows {
+      if order_idx >= 0 and order_idx < len(row.values) {
+        if not isNum(row.values[order_idx]) {
+          all_numeric = false
+          break
+        }
+      }
+    }
+
+    if all_numeric {
+      filtered_rows = sortBy(filtered_rows, row =>
+        if order_idx >= 0 and order_idx < len(row.values) {
+          parseNum(row.values[order_idx])
+        } else {
+          0
+        }
+      )
+    } else {
+      filtered_rows = sortBy(filtered_rows, row =>
+        if order_idx >= 0 and order_idx < len(row.values) {
+          row.values[order_idx]
+        } else {
+          ""
+        }
+      )
+    }
+
+    if order_desc {
+      filtered_rows = reverse(filtered_rows)
+    }
+  }
+
+  let final_rows = filtered_rows
+  if limit_n >= 0 and len(final_rows) > limit_n {
+    final_rows = slice(final_rows, 0, limit_n)
+  }
+
+  print(join(select_cols, ","))
+
+  for row in final_rows {
+    let output_vals = []
+    for col in select_cols {
+      let col_idx = 0 - 1
+      for j in range(0, len(header)) {
+        if header[j] == col {
+          col_idx = j
+          break
+        }
+      }
+      if col_idx >= 0 and col_idx < len(row.values) {
+        push(output_vals, row.values[col_idx])
+      } else {
+        push(output_vals, "")
+      }
+    }
+    print(join(output_vals, ","))
+  }
+
+  return ok(true)
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

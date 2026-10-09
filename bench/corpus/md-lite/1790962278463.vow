@@ -1,0 +1,149 @@
+fn htmlEscape(text) {
+  let t1 = replace(text, "&", "&amp;")
+  let t2 = replace(t1, "<", "&lt;")
+  let t3 = replace(t2, ">", "&gt;")
+  return t3
+}
+
+fn applyInlineFormatting(text) {
+  let escaped = htmlEscape(text)
+  let withCode = applyCodeFormatting(escaped)
+  let withBold = applyBoldFormatting(withCode)
+  return withBold
+}
+
+fn applyCodeFormatting(text) {
+  let result = ""
+  let i = 0
+
+  while i < len(text) {
+    let remaining = slice(text, i, len(text))
+    let codeIdx = indexOf(remaining, "`")
+    match codeIdx {
+      ok(idx) => {
+        result = result + slice(remaining, 0, idx)
+        let afterCode = slice(remaining, idx + 1, len(remaining))
+        let closeIdx = indexOf(afterCode, "`")
+        match closeIdx {
+          ok(cIdx) => {
+            let codeContent = slice(afterCode, 0, cIdx)
+            result = result + "<code>" + codeContent + "</code>"
+            i = i + idx + 1 + cIdx + 1
+          }
+          err(e) => {
+            result = result + "`" + afterCode
+            i = len(text)
+          }
+        }
+      }
+      err(e) => {
+        result = result + remaining
+        i = len(text)
+      }
+    }
+  }
+  return result
+}
+
+fn applyBoldFormatting(text) {
+  let result = ""
+  let i = 0
+
+  while i < len(text) {
+    let remaining = slice(text, i, len(text))
+    let boldIdx = indexOf(remaining, "**")
+    match boldIdx {
+      ok(idx) => {
+        result = result + slice(remaining, 0, idx)
+        let afterBold = slice(remaining, idx + 2, len(remaining))
+        let closeIdx = indexOf(afterBold, "**")
+        match closeIdx {
+          ok(bIdx) => {
+            let boldContent = slice(afterBold, 0, bIdx)
+            result = result + "<strong>" + boldContent + "</strong>"
+            i = i + idx + 2 + bIdx + 2
+          }
+          err(e) => {
+            result = result + "**" + afterBold
+            i = len(text)
+          }
+        }
+      }
+      err(e) => {
+        result = result + remaining
+        i = len(text)
+      }
+    }
+  }
+  return result
+}
+
+fn isBlank(line) {
+  return trim(line) == ""
+}
+
+fn isHeading(line) {
+  return startsWith(line, "# ") or startsWith(line, "## ") or startsWith(line, "### ")
+}
+
+fn isListItem(line) {
+  return startsWith(line, "- ")
+}
+
+fn processMarkdown(input) {
+  let lines = lines(input)
+  let result = []
+  let i = 0
+
+  while i < len(lines) {
+    let line = lines[i]
+
+    if isBlank(line) {
+      i = i + 1
+      continue
+    }
+
+    if startsWith(line, "### ") {
+      let content = slice(line, 4, len(line))
+      push(result, "<h3>" + applyInlineFormatting(content) + "</h3>")
+      i = i + 1
+    } else if startsWith(line, "## ") {
+      let content = slice(line, 3, len(line))
+      push(result, "<h2>" + applyInlineFormatting(content) + "</h2>")
+      i = i + 1
+    } else if startsWith(line, "# ") {
+      let content = slice(line, 2, len(line))
+      push(result, "<h1>" + applyInlineFormatting(content) + "</h1>")
+      i = i + 1
+    } else if isListItem(line) {
+      let items = []
+      while i < len(lines) and isListItem(lines[i]) {
+        let item = slice(lines[i], 2, len(lines[i]))
+        push(items, applyInlineFormatting(item))
+        i = i + 1
+      }
+      let listHtml = "<ul>"
+      for item in items {
+        listHtml = listHtml + "<li>" + item + "</li>"
+      }
+      listHtml = listHtml + "</ul>"
+      push(result, listHtml)
+    } else {
+      let paraLines = []
+      while i < len(lines) and not isBlank(lines[i]) and not isHeading(lines[i]) and not isListItem(lines[i]) {
+        push(paraLines, trim(lines[i]))
+        i = i + 1
+      }
+      let paraContent = join(paraLines, " ")
+      push(result, "<p>" + applyInlineFormatting(paraContent) + "</p>")
+    }
+  }
+
+  return result
+}
+
+let input = args()[0]
+let blocks = processMarkdown(input)
+for block in blocks {
+  print(block)
+}

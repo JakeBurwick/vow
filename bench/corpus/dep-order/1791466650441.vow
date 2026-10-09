@@ -1,0 +1,136 @@
+fn main() {
+  let input = args()[0]
+  let entries = split(input, ";")
+
+  // Parse entries and build graph
+  let deps = {}        // name -> list of dependencies
+  let allPackages = {} // name -> true (just for tracking)
+
+  for entry in entries {
+    if len(trim(entry)) == 0 {
+      continue  // Skip empty entries
+    }
+
+    let parts = split(entry, ":")
+    if len(parts) != 2 {
+      print("error: bad entry ${entry}")
+      return
+    }
+
+    let name = parts[0]
+    let depStr = parts[1]
+
+    // Validate name: lowercase letters only
+    if len(name) == 0 {
+      print("error: bad entry ${entry}")
+      return
+    }
+
+    for c in split(name, "") {
+      if not (c >= "a" and c <= "z") {
+        print("error: bad entry ${entry}")
+        return
+      }
+    }
+
+    // Parse dependencies
+    let pkgDeps = []
+    if len(depStr) > 0 {
+      let depList = split(depStr, ",")
+      for dep in depList {
+        // Validate dependency names
+        for c in split(dep, "") {
+          if not (c >= "a" and c <= "z") {
+            print("error: bad entry ${entry}")
+            return
+          }
+        }
+        push(pkgDeps, dep)
+      }
+    }
+
+    allPackages[name] = true
+    if not has(deps, name) {
+      deps[name] = pkgDeps
+    } else {
+      // Union of dependencies
+      let existing = deps[name]
+      for dep in pkgDeps {
+        if not contains(existing, dep) {
+          push(existing, dep)
+        }
+      }
+    }
+  }
+
+  // Add packages that appear only as dependencies
+  for name in keys(deps) {
+    let pkgDeps = deps[name]
+    for dep in pkgDeps {
+      if not has(deps, dep) {
+        deps[dep] = []
+      }
+      allPackages[dep] = true
+    }
+  }
+
+  // Topological sort with cycle detection
+  let inDegree = {}
+  let allNames = keys(deps)
+
+  for pkg in allNames {
+    inDegree[pkg] = 0
+  }
+
+  for pkg in allNames {
+    let pkgDeps = deps[pkg]
+    for dep in pkgDeps {
+      inDegree[pkg] = inDegree[pkg] + 1
+    }
+  }
+
+  // Find all packages with in-degree 0
+  let queue = []
+  for pkg in allNames {
+    if inDegree[pkg] == 0 {
+      push(queue, pkg)
+    }
+  }
+  queue = sort(queue)  // Start with alphabetically sorted queue
+
+  let result = []
+  let processed = 0
+
+  while len(queue) > 0 {
+    // Pop alphabetically smallest
+    queue = sort(queue)
+    let current = queue[0]
+    let newQueue = []
+    for i in range(1, len(queue)) {
+      push(newQueue, queue[i])
+    }
+    queue = newQueue
+
+    push(result, current)
+    processed = processed + 1
+
+    // Reduce in-degree of packages that depend on current
+    for pkg in allNames {
+      let pkgDeps = deps[pkg]
+      if contains(pkgDeps, current) {
+        inDegree[pkg] = inDegree[pkg] - 1
+        if inDegree[pkg] == 0 {
+          push(queue, pkg)
+        }
+      }
+    }
+  }
+
+  if processed != len(allNames) {
+    print("error: cycle")
+  } else {
+    print(join(result, " "))
+  }
+}
+
+main()

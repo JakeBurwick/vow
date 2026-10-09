@@ -1,0 +1,208 @@
+// Template processor: {{name}}, {{#if name}}...{{/if}}, {{#each list}}...{{/each}}
+
+struct Context {
+  data
+}
+
+fn isTruthy(v) {
+  let t = jsonType(v)
+  if t == "null" { return false }
+  if t == "bool" {
+    match jsonBool(v) {
+      ok(b) => return b
+      err(_) => return false
+    }
+  }
+  if t == "number" {
+    match jsonNum(v) {
+      ok(n) => return not (n == 0)
+      err(_) => return false
+    }
+  }
+  if t == "string" {
+    match jsonStr(v) {
+      ok(s) => return not (s == "")
+      err(_) => return false
+    }
+  }
+  if t == "array" {
+    let items = jsonList(v)
+    return len(items) > 0
+  }
+  if t == "object" {
+    let ks = jsonKeys(v)
+    return len(ks) > 0
+  }
+  return false
+}
+
+fn valueToString(v) {
+  let t = jsonType(v)
+  if t == "null" { return ok("") }
+  if t == "bool" {
+    match jsonBool(v) {
+      ok(b) => return ok(match b { true => "true" false => "false" })
+      err(_) => return ok("")
+    }
+  }
+  if t == "number" {
+    match jsonNum(v) {
+      ok(n) => return ok(str(n))
+      err(_) => return ok("")
+    }
+  }
+  if t == "string" {
+    match jsonStr(v) {
+      ok(s) => return ok(s)
+      err(_) => return ok("")
+    }
+  }
+  return err("not printable")
+}
+
+fn lookupValue(ctx, current, path) {
+  let current_t = jsonType(current)
+  if current_t == "object" {
+    match get(current, path) {
+      ok(v) => return ok(v)
+      err(_) => {}
+    }
+  }
+  let t = jsonType(ctx.data)
+  if t == "object" {
+    match get(ctx.data, path) {
+      ok(v) => return ok(v)
+      err(_) => return err("not found")
+    }
+  }
+  return err("not found")
+}
+
+fn processTemplate(template, ctx, current) {
+  let pos = 0
+  let result = ""
+  while pos < len(template) {
+    if pos + 1 < len(template) and template[pos] == "{" and template[pos + 1] == "{" {
+      let endPos = indexOf(slice(template, pos + 2, len(template)), "}}")
+      match endPos {
+        ok(ep) => {
+          let tagContent = slice(template, pos + 2, pos + 2 + ep)
+          let afterTag = pos + 4 + ep
+          let trimmedTag = trim(tagContent)
+          if startsWith(trimmedTag, "#if ") {
+            let ifName = trim(slice(trimmedTag, 4, len(trimmedTag)))
+            let endIfPos = indexOf(slice(template, afterTag, len(template)), "{{/if}}")
+            match endIfPos {
+              ok(eip) => {
+                let ifBody = slice(template, afterTag, afterTag + eip)
+                let afterIf = afterTag + eip + 7
+                match lookupValue(ctx, current, ifName) {
+                  ok(val) => {
+                    if isTruthy(val) {
+                      let innerResult = processTemplate(ifBody, ctx, current)
+                      match innerResult {
+                        ok(inner) => result = result + inner
+                        err(e) => return err(e)
+                      }
+                    }
+                  }
+                  err(_) => {}
+                }
+                pos = afterIf
+              }
+              err(_) => return err("unclosed if")
+            }
+          } else if startsWith(trimmedTag, "#each ") {
+            let eachName = trim(slice(trimmedTag, 6, len(trimmedTag)))
+            let endEachPos = indexOf(slice(template, afterTag, len(template)), "{{/each}}")
+            match endEachPos {
+              ok(eep) => {
+                let eachBody = slice(template, afterTag, afterTag + eep)
+                let afterEach = afterTag + eep + 9
+                match lookupValue(ctx, current, eachName) {
+                  ok(val) => {
+                    let t = jsonType(val)
+                    if t == "array" {
+                      let items = jsonList(val)
+                      for item in items {
+                        let innerResult = processTemplate(eachBody, ctx, item)
+                        match innerResult {
+                          ok(inner) => result = result + inner
+                          err(e) => return err(e)
+                        }
+                      }
+                    } else if t != "null" {
+                      return err("not a list: " + eachName)
+                    }
+                  }
+                  err(_) => {}
+                }
+                pos = afterEach
+              }
+              err(_) => return err("unclosed each")
+            }
+          } else if trimmedTag == "." {
+            match valueToString(current) {
+              ok(s) => result = result + s
+              err(e) => return err(e)
+            }
+            pos = afterTag
+          } else if startsWith(trimmedTag, "/if") or startsWith(trimmedTag, "/each") {
+            return err("unexpected /" + slice(trimmedTag, 1, len(trimmedTag)))
+          } else {
+            match lookupValue(ctx, current, trimmedTag) {
+              ok(val) => {
+                match valueToString(val) {
+                  ok(s) => result = result + s
+                  err(e) => return err(e)
+                }
+              }
+              err(_) => {}
+            }
+            pos = afterTag
+          }
+        }
+        err(_) => {
+          result = result + template[pos]
+          pos = pos + 1
+        }
+      }
+    } else {
+      result = result + template[pos]
+      pos = pos + 1
+    }
+  }
+  return ok(result)
+}
+
+fn main() {
+  let args_list = args()
+  if len(args_list) < 2 {
+    print("error: bad data")
+    return
+  }
+  let template = args_list[0]
+  let dataStr = args_list[1]
+  match parseJson(dataStr) {
+    ok(data) => {
+      let t = jsonType(data)
+      if t != "object" {
+        print("error: bad data")
+        return
+      }
+      let ctx = Context { data: data }
+      match parseJson("{}") {
+        ok(emptyJson) => {
+          match processTemplate(template, ctx, emptyJson) {
+            ok(result) => print(result)
+            err(e) => print("error: " + e)
+          }
+        }
+        err(_) => print("error: bad data")
+      }
+    }
+    err(_) => print("error: bad data")
+  }
+}
+
+main()

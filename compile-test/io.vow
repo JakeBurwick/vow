@@ -1,0 +1,36 @@
+fn load(path) uses fs {
+  let t = readFile(path)?
+  return ok(len(lines(t)))
+}
+fn save(path, text) uses fs {
+  return writeFile(path, text)
+}
+fn both(path) uses fs {
+  let w = save(path, "a\nb\nc\n")?
+  return load(path)
+}
+match both("/tmp/vow-compile-test-x.txt") {
+  ok(n) => print("lines: " + str(n))
+  err(e) => print(e)
+}
+match load("/definitely/not/here.txt") {
+  ok(n) => print(n)
+  err(e) => print(e)
+}
+fn home() uses env {
+  return env("HOME_DIR")
+}
+match home() {
+  ok(h) => print("home " + h)
+  err(e) => print(e)
+}
+fn fetch(u) uses net {
+  return httpGet(u)
+}
+match fetch("http://example.invalid/") {
+  ok(b) => print(b)
+  err(e) => print("net err")
+}
+let counts = sortBy(["x", "yy"], s => len(s))
+print(counts)
+for a in args() { print("arg " + a) }

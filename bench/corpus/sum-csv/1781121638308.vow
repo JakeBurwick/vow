@@ -1,0 +1,28 @@
+fn parsePiece(p) {
+  let r = match num(p) {
+    ok(n) => ok(n)
+    err(e) => err("bad input: " + p)
+  }
+  return r
+}
+
+fn sumCsv(input) {
+  let pieces = split(input, ",")
+  let total = 0
+  for p in pieces {
+    let n = parsePiece(p)?
+    total = total + n
+  }
+  return ok(total)
+}
+
+fn run() {
+  let a = args()
+  let input = get(a, 0)?
+  return sumCsv(input)
+}
+
+match run() {
+  ok(total) => print(total)
+  err(msg) => print(msg)
+}

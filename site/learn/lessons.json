@@ -1,0 +1,116 @@
+[
+ {
+  "n": 1,
+  "title": "Hello, Vow",
+  "intro": "Start with output and variables. You will print values, store them with let, and drop them into text with ${name}. Plain braces in a string stay as written, which makes templates and JSON easy to type.",
+  "file": "01-hello.vow",
+  "code": "// Every Vow program runs top to bottom. print shows a value.\nprint(\"Hello, Vow!\")\n\nlet name = \"Ada\"\nlet year = 2026\n// ${...} puts a value inside a string\nprint(\"Hi ${name}, welcome to ${year}.\")\n\n// Plain braces are just text, handy for templates and JSON\nprint(\"{ this stays as written }\")\n"
+ },
+ {
+  "n": 2,
+  "title": "Functions without type noise",
+  "intro": "Vow infers every type, so you never write one. A function that never says return gives back its last line, and every function works on any type that fits. Small unnamed functions look like x => x * 2.",
+  "file": "02-functions.vow",
+  "code": "// Types are inferred: you never write them.\nfn area(w, h) {\n  return w * h\n}\nprint(area(3, 4))\n\n// A fn that never says return gives back its last line.\nfn greet(name) {\n  \"Hello, ${name}\"\n}\nprint(greet(\"Grace\"))\n\n// Functions work on any type that fits (generics, automatically).\nfn first(xs) { return xs[0] }\nprint(first([10, 20, 30]))\nprint(first([\"a\", \"b\"]))\n\n// Lambdas are small unnamed functions.\nlet double = x => x * 2\nprint(double(21))\n"
+ },
+ {
+  "n": 3,
+  "title": "Lists, maps and loops",
+  "intro": "Loop over lists with for, or reach for the built-in fold, map, filter and sort. Maps use string keys, and keys(m) lists them in the order you added them.",
+  "file": "03-collections.vow",
+  "code": "let scores = [72, 95, 88, 61]\n\n// Loops\nlet total = 0\nfor s in scores {\n  total = total + s\n}\nprint(\"total: ${total}\")\n\n// The same with the standard library\nprint(fold(scores, 0, (acc, s) => acc + s))\nprint(map(scores, s => s + 5))\nprint(filter(scores, s => s >= 80))\nprint(sort(scores))\n\n// Maps have string keys\nlet ages = {\"ada\": 36, \"alan\": 41}\nages[\"grace\"] = 85\nfor name in keys(ages) {\n  print(\"${name} is ${ages[name]}\")\n}\n"
+ },
+ {
+  "n": 4,
+  "title": "No nulls, no exceptions",
+  "intro": "Anything that can fail returns a Result: ok(value) or err(message). match handles both cases, and Vow refuses to run a program that ignores one. Inside a function, ? unwraps ok or hands the err back to the caller.",
+  "file": "04-results.vow",
+  "code": "// Vow has no null and no exceptions. Anything that can fail returns a Result:\n// ok(value) or err(message), and the checker makes you handle both.\nmatch num(\"42\") {\n  ok(n) => print(\"parsed ${n}\")\n  err(e) => print(\"not a number: ${e}\")\n}\n\nmatch num(\"forty-two\") {\n  ok(n) => print(\"parsed ${n}\")\n  err(e) => print(\"not a number\")\n}\n\n// Inside a fn, ? unwraps ok or returns the err to the caller.\nfn addStrings(a, b) {\n  let x = num(a)?\n  let y = num(b)?\n  return ok(x + y)\n}\nprint(addStrings(\"2\", \"3\"))\nprint(addStrings(\"2\", \"oops\"))\n"
+ },
+ {
+  "n": 5,
+  "title": "Structs and matching",
+  "intro": "A struct is a record with named fields. Here you sort a cart by price with sortBy, then use match on plain values, with _ catching everything else.",
+  "file": "05-structs.vow",
+  "code": "struct Item { name, price, qty }\n\nlet cart = [\n  Item { name: \"pen\", price: 1.5, qty: 4 },\n  Item { name: \"book\", price: 12, qty: 1 },\n  Item { name: \"mug\", price: 8, qty: 2 }\n]\n\nfor it in sortBy(cart, it => it.price) {\n  print(\"${it.name}: ${it.price * it.qty}\")\n}\n\n// match also compares plain values; _ catches everything else\nfn label(qty) {\n  match qty {\n    1 => \"single\"\n    2 => \"pair\"\n    _ => \"bulk\"\n  }\n}\nprint(label(cart[0].qty))\n"
+ },
+ {
+  "n": 6,
+  "title": "Text and patterns",
+  "intro": "words splits on any whitespace. Regular expressions go in backtick strings, so nothing needs escaping, and matches, find, findAll and replaceAll cover the usual jobs.",
+  "file": "06-text.vow",
+  "code": "let text = \"The quick  brown fox\\tjumps over the lazy dog\"\n\n// words splits on any whitespace\nlet ws = words(text)\nprint(len(ws))\n\n// Regex patterns go in backtick strings (no escaping needed)\nprint(matches(\"2026-10-08\", `^\\d{4}-\\d{2}-\\d{2}$`))\nprint(findAll(\"call 555-0100 or 555-0199\", `\\d{3}-\\d{4}`))\nmatch find(\"user=ada\", `(\\w+)=(\\w+)`) {\n  ok(m) => print(\"key ${m[1]}, value ${m[2]}\")\n  err(e) => print(e)\n}\nprint(replaceAll(\"a-b-c\", `-`, \" + \"))\nprint(upper(ws[1]))\n"
+ },
+ {
+  "n": 7,
+  "title": "Working with JSON",
+  "intro": "parseJson returns a Result, so bad input is handled up front. field reads a key and gives null instead of crashing when it is missing, jsonList walks arrays, and toJson turns Vow values back into JSON text.",
+  "file": "07-json.vow",
+  "code": "let raw = `{\"name\": \"Ada\", \"langs\": [\"vow\", \"ts\"], \"admin\": true}`\n\nmatch parseJson(raw) {\n  ok(user) => {\n    print(field(user, \"name\"))\n    for lang in jsonList(field(user, \"langs\")) {\n      print(\"knows ${lang}\")\n    }\n    if truthy(field(user, \"admin\")) { print(\"is an admin\") }\n    // a missing field is a json null, not a crash\n    print(isNull(field(user, \"email\")))\n  }\n  err(e) => print(\"bad JSON: ${e}\")\n}\n\n// toJson turns Vow values (structs, maps, lists) into JSON text\nstruct Summary { ok, count }\nprint(toJson(Summary { ok: true, count: 3 }))\n"
+ },
+ {
+  "n": 8,
+  "title": "Contracts",
+  "intro": "expects says what callers must guarantee and ensures says what a function promises back. Vow proves some broken calls wrong before the program runs, and at runtime a broken contract stops the program and says whether the bug is in the caller or the function. The last call in this lesson fails on purpose so you can see that message.",
+  "file": "08-contracts.vow",
+  "code": "// expects: what callers must guarantee. ensures: what the fn promises back.\nfn safeSqrtFloor(n) expects n >= 0 ensures result >= 0 {\n  return floor(sqrt(n))\n}\nprint(safeSqrtFloor(17))\n\n// Breaking a contract stops the program and blames the right side.\nfn withdraw(balance, amount) expects amount <= balance {\n  return balance - amount\n}\nprint(withdraw(100, 30))\n\n// Vow even proves some broken calls before running: try uncommenting this line.\n// print(withdraw(100, 500))\n\n// When the bad value only shows up at runtime, the contract catches it then,\n// and the error says the bug is in the CALLER, not in withdraw.\nmatch num(\"500\") {\n  ok(amount) => print(withdraw(100, amount))\n  err(e) => print(e)\n}\n"
+ },
+ {
+  "n": 9,
+  "title": "Capabilities",
+  "intro": "A function that touches the network, files or environment has to say so with uses net, uses fs or uses env. Reading a signature tells you exactly what that code can reach. In the playground, network calls always fail safely.",
+  "file": "09-capabilities.vow",
+  "code": "// A fn that touches the network, files or environment must say so with uses.\n// Anyone reading the signature knows exactly what it can reach.\nfn fetchQuote(symbol) uses net {\n  return httpGet(\"https://example.com/quote?s=${symbol}\")\n}\n\nfn average(xs) {\n  return sum(xs) / len(xs)\n}\n\nprint(average([3, 4, 5]))\n// In the browser playground network calls return an err; in the CLI they run.\nmatch fetchQuote(\"ACN\") {\n  ok(body) => print(\"got ${len(body)} bytes\")\n  err(e) => print(\"request failed (in the playground, network is always off)\")\n}\n"
+ },
+ {
+  "n": 10,
+  "title": "Modules",
+  "intro": "Split a program across files with import \"./shapes.vow\" as shapes, then call shapes.area(r). A module holds functions and structs, and names starting with _ stay private. Modules run in the command-line tool, not in the browser playground.",
+  "file": "10-modules/main.vow",
+  "code": "// Run with: node cli.js site/learn/10-modules/main.vow\nimport \"./shapes.vow\" as shapes\n\nlet rooms = [shapes.Rect { w: 3, h: 4 }, shapes.Rect { w: 5, h: 2 }]\nfor r in rooms {\n  print(shapes.describe(r))\n}\nprint(\"total area: ${fold(rooms, 0, (acc, r) => acc + shapes.area(r))}\")\n",
+  "files": {
+   "main.vow": "// Run with: node cli.js site/learn/10-modules/main.vow\nimport \"./shapes.vow\" as shapes\n\nlet rooms = [shapes.Rect { w: 3, h: 4 }, shapes.Rect { w: 5, h: 2 }]\nfor r in rooms {\n  print(shapes.describe(r))\n}\nprint(\"total area: ${fold(rooms, 0, (acc, r) => acc + shapes.area(r))}\")\n",
+   "shapes.vow": "// A module holds fns and structs. Names starting with _ stay private.\nstruct Rect { w, h }\n\nfn area(r) { r.w * r.h }\n\nfn describe(r) {\n  \"${r.w} x ${r.h} rect, area ${area(r)}\"\n}\n\nfn _secret() { 42 }\n"
+  },
+  "cliOnly": true
+ },
+ {
+  "n": 11,
+  "title": "Running Vow on your computer",
+  "intro": "You need Node.js 20 or newer. Clone the repository, then run node cli.js program.vow. Vow compiles to JavaScript, so programs run fast, and the flags below check code, limit what it can touch, and make randomness repeatable.",
+  "cliOnly": true,
+  "commands": [
+   [
+    "node cli.js hello.vow",
+    "run a program (compiled to JavaScript)"
+   ],
+   [
+    "node cli.js --check hello.vow",
+    "type-check without running"
+   ],
+   [
+    "node cli.js --sandbox --allow fs=./data app.vow",
+    "only let the program touch ./data, checked before it runs"
+   ],
+   [
+    "node cli.js --sandbox --allow net=api.example.com app.vow",
+    "only let it call one host"
+   ],
+   [
+    "node cli.js --seed 7 game.vow",
+    "make random numbers repeatable"
+   ],
+   [
+    "node cli.js --interp hello.vow",
+    "use the interpreter instead of the compiler"
+   ]
+  ]
+ },
+ {
+  "n": 12,
+  "title": "Project: a grade report",
+  "intro": "This program puts the earlier lessons together. It parses CSV text into structs, skips a bad row with a Result instead of crashing, averages the scores, assigns letter grades and prints a sorted table.",
+  "file": "12-project.vow",
+  "code": "// Project: a class grade report from CSV text.\nstruct Student { name, scores }\n\nlet csv = `name,hw1,hw2,exam\nada,95,88,91\nalan,72,,80\ngrace,100,97,99\nlinus,abc,60,70`\n\nfn parseRow(line) {\n  let cells = split(line, \",\")\n  let scores = []\n  for c in slice(cells, 1, len(cells)) {\n    if c == \"\" { continue }\n    push(scores, num(c)?)\n  }\n  return ok(Student { name: cells[0], scores: scores })\n}\n\nfn letter(avg) {\n  if avg >= 90 { \"A\" } else if avg >= 80 { \"B\" } else if avg >= 70 { \"C\" } else { \"F\" }\n}\n\nlet rows = slice(lines(csv), 1, len(lines(csv)))\nlet students = []\nfor line in rows {\n  match parseRow(line) {\n    ok(s) => push(students, s)\n    err(e) => print(\"skipping a bad row: ${e}\")\n  }\n}\n\nfor s in sortBy(students, s => 0 - sum(s.scores) / len(s.scores)) {\n  let avg = round(sum(s.scores) / len(s.scores), 1)\n  print(\"${padRight(s.name, 6, \" \")} ${avg}  ${letter(avg)}\")\n}\n"
+ }
+]

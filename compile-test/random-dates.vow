@@ -1,0 +1,18 @@
+fn roll(n) {
+  let out = []
+  for i in range(0, n) { push(out, randomInt(1, 6)) }
+  return out
+}
+let dice = roll(8)
+print(dice, sum(dice))
+let shuffled = sortBy(["a", "b", "c", "d"], x => random())
+print(shuffled)
+fn due(start, days) {
+  let ms = parseDate(start)?
+  return ok(isoDate(ms + days * 86400000))
+}
+match due("2024-12-30", 3) {
+  ok(d) => print(d)
+  err(e) => print(e)
+}
+print(randomInt(9, 2))

@@ -1,0 +1,57 @@
+let input = args()[0]
+let tokens = split(input, " ")
+let stack = []
+
+for token in tokens {
+  if token == "+" or token == "-" or token == "*" or token == "/" {
+    if len(stack) < 2 {
+      print("error")
+      return
+    }
+    match pop(stack) {
+      ok(b) => {
+        match pop(stack) {
+          ok(a) => {
+            if token == "/" {
+              if b == 0 {
+                print("error")
+                return
+              }
+              push(stack, a / b)
+            } else if token == "+" {
+              push(stack, a + b)
+            } else if token == "-" {
+              push(stack, a - b)
+            } else if token == "*" {
+              push(stack, a * b)
+            }
+          }
+          err(e) => {
+            print("error")
+            return
+          }
+        }
+      }
+      err(e) => {
+        print("error")
+        return
+      }
+    }
+  } else {
+    match num(token) {
+      ok(n) => {
+        push(stack, n)
+      }
+      err(e) => {
+        print("error")
+        return
+      }
+    }
+  }
+}
+
+if len(stack) == 1 {
+  print(str(stack[0]))
+} else {
+  print("error")
+}

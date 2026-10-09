@@ -1,0 +1,163 @@
+// dep-order: topological sort with cycle detection
+
+fn main() {
+  let args_list = args()
+  if len(args_list) == 0 {
+    return
+  }
+
+  let input = args_list[0]
+  let entries = split(input, ";")
+
+  // Parse all entries and build dependency map
+  let allDeps = {}  // package -> list of dependencies
+  let allPackages = {}  // set of all package names
+
+  for entry in entries {
+    let trimmed = trim(entry)
+
+    // Skip empty entries
+    if trimmed == "" {
+      continue
+    }
+
+    // Check for exactly one colon
+    let colonCount = 0
+    for i in range(0, len(trimmed)) {
+      if trimmed[i] == ":" {
+        colonCount = colonCount + 1
+      }
+    }
+
+    if colonCount != 1 {
+      print("error: bad entry ${entry}")
+      return
+    }
+
+    // Split by colon
+    let parts = split(trimmed, ":")
+    let name = parts[0]
+    let depsStr = parts[1]
+
+    // Validate name is non-empty and lowercase letters only
+    if len(name) == 0 {
+      print("error: bad entry ${entry}")
+      return
+    }
+
+    for i in range(0, len(name)) {
+      let c = name[i]
+      if not (c >= "a" and c <= "z") {
+        print("error: bad entry ${entry}")
+        return
+      }
+    }
+
+    // Parse dependencies
+    let deps = []
+    if depsStr != "" {
+      deps = split(depsStr, ",")
+
+      // Validate each dependency
+      for dep in deps {
+        if len(dep) == 0 {
+          print("error: bad entry ${entry}")
+          return
+        }
+        for i in range(0, len(dep)) {
+          let c = dep[i]
+          if not (c >= "a" and c <= "z") {
+            print("error: bad entry ${entry}")
+            return
+          }
+        }
+      }
+    }
+
+    // Add package
+    allPackages[name] = true
+
+    // Merge dependencies
+    if has(allDeps, name) {
+      let existing = allDeps[name]
+      for dep in deps {
+        if not contains(existing, dep) {
+          push(existing, dep)
+        }
+      }
+    } else {
+      allDeps[name] = deps
+    }
+  }
+
+  // Add implicit packages (dependencies with no entry)
+  for pkg in keys(allDeps) {
+    let deps = allDeps[pkg]
+    for dep in deps {
+      if not has(allPackages, dep) {
+        allPackages[dep] = true
+        allDeps[dep] = []
+      }
+    }
+  }
+
+  // Topological sort using Kahn's algorithm
+  let inDegree = {}
+
+  // Initialize in-degrees
+  for pkg in keys(allPackages) {
+    inDegree[pkg] = 0
+  }
+
+  // Count dependencies for each package
+  for pkg in keys(allDeps) {
+    inDegree[pkg] = len(allDeps[pkg])
+  }
+
+  // Find all packages with in-degree 0
+  let queue = []
+  for pkg in keys(allPackages) {
+    if inDegree[pkg] == 0 {
+      push(queue, pkg)
+    }
+  }
+  queue = sort(queue)
+
+  // Process packages
+  let result = []
+  let visited = 0
+
+  while len(queue) > 0 {
+    // Sort queue alphabetically and take first
+    queue = sort(queue)
+    let current = queue[0]
+    let newQueue = []
+    for i in range(1, len(queue)) {
+      push(newQueue, queue[i])
+    }
+    queue = newQueue
+
+    push(result, current)
+    visited = visited + 1
+
+    // Find packages that depend on current and reduce their in-degree
+    for pkg in keys(allPackages) {
+      let deps = allDeps[pkg]
+      if contains(deps, current) {
+        inDegree[pkg] = inDegree[pkg] - 1
+        if inDegree[pkg] == 0 {
+          push(queue, pkg)
+        }
+      }
+    }
+  }
+
+  // Check if we processed all packages (cycle detection)
+  if visited != len(keys(allPackages)) {
+    print("error: cycle")
+  } else {
+    print(join(result, " "))
+  }
+}
+
+main()

@@ -1,0 +1,20 @@
+struct Row { name, qty }
+let rows = [Row { name: "pen", qty: 3 }, Row { name: "ink", qty: 0 }, Row { name: "pen", qty: 3 }]
+print(map(rows, r => r.name), filter(rows, r => r.qty > 0), count(rows, r => r.qty == 3))
+print(any(rows, r => r.qty == 0), all(rows, r => r.qty > 0), uniq(rows))
+print(fold(rows, "", (acc, r) => acc + r.name))
+let calls = 0
+let found = any([1, 2, 3, 4], x => {
+  calls = calls + 1
+  x == 2
+})
+print(found, calls)
+print(words(" a  b\tc\n"), splitOn("k=v; x = y", `\s*[;=]\s*`), findAll("a1b22", `\d+`))
+print(replaceAll("aaa", `a`, "$&$&"), sig(98765, 2), sig(0 - 0.0045678, 3), isInt(1000000 * 1000000 + 0.5))
+match find("v=12", `(\w)=(\d+)`) {
+  ok(m) => print(m[1], m[2])
+  err(e) => print(e)
+}
+print(values({"b": [1], "a": [2, 3]}))
+fn deep(n) { return map([n], x => if x > 0 { deep(x - 1)[0] + 1 } else { 0 }) }
+print(deep(5))

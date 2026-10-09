@@ -1,0 +1,11 @@
+let parts = split(args()[0], ",")
+let first = match num(trim(parts[0])) { ok(v) => v err(e) => 0 }
+let mx = first
+let mn = first
+for p in parts {
+  let n = match num(trim(p)) { ok(v) => v err(e) => 0 }
+  if n > mx { mx = n }
+  if n < mn { mn = n }
+}
+print("max: ${mx}")
+print("min: ${mn}")

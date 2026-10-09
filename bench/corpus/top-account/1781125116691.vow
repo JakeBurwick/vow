@@ -1,0 +1,32 @@
+fn main() {
+  let inputs = args()
+  if len(inputs) == 0 {
+    return err("no input provided")
+  }
+
+  let input = inputs[0]
+  let pairs = split(input, ",")
+
+  let maxName = ""
+  let maxAmount = -1
+
+  for pair in pairs {
+    let parts = split(pair, ":")
+    let name = parts[0]
+    let amountStr = parts[1]
+    let amount = num(amountStr)?
+
+    if amount > maxAmount {
+      maxName = name
+      maxAmount = amount
+    }
+  }
+
+  print("${maxName} ${maxAmount}")
+  return ok(true)
+}
+
+match main() {
+  ok(_) => true
+  err(e) => false
+}

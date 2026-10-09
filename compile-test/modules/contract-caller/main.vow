@@ -1,0 +1,5 @@
+import "./bank.vow" as bank
+let b = bank.open(10)
+print(bank.withdraw(b, 4))
+let amounts = [3, 0 - 2]
+for amt in amounts { print(bank.withdraw(b, amt)) }

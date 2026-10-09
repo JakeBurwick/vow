@@ -1,0 +1,51 @@
+// todo-cli: a small multi-file Vow program.
+//   node cli.js programs/todo-cli/main.vow <file> list
+//   node cli.js programs/todo-cli/main.vow <file> add <title> <YYYY-MM-DD>
+//   node cli.js programs/todo-cli/main.vow <file> done <id>
+// Sandboxed, it can only touch its data folder:
+//   node cli.js --sandbox --allow fs=programs/todo-cli/data programs/todo-cli/main.vow programs/todo-cli/data/todos.txt list
+import "./todo.vow" as todo
+import "./storage.vow" as storage
+import "./format.vow" as format
+
+fn today() {
+  let p = dateParts(now())
+  return match parseDate("${p.year}-${padLeft(str(p.month), 2, "0")}-${padLeft(str(p.day), 2, "0")}") {
+    ok(ms) => ms
+    err(e) => now()
+  }
+}
+
+fn run(a) uses fs {
+  if len(a) < 2 { return err("usage: main.vow <file> list | add <title> <YYYY-MM-DD> | done <id>") }
+  let path = a[0]
+  let todos = storage.load(path)?
+  let cmd = a[1]
+  if cmd == "list" { return ok(format.listing(todos, today())) }
+  if cmd == "add" {
+    if len(a) != 4 { return err("add needs a title and a due date: add \"Buy milk\" 2026-10-12") }
+    let due = parseDate(a[3])?
+    let t = todo.make(todo.nextId(todos), a[2], due)
+    push(todos, t)
+    storage.save(path, todos)?
+    return ok("added: ${format.line(t, today())}")
+  }
+  if cmd == "done" {
+    if len(a) != 3 { return err("done needs an id: done 2") }
+    let id = int(a[2])?
+    for t in todos {
+      if t.id == id {
+        t.done = true
+        storage.save(path, todos)?
+        return ok("done: ${t.title}")
+      }
+    }
+    return err("no todo with id ${id}")
+  }
+  return err("unknown command \"${cmd}\" (list, add, done)")
+}
+
+match run(args()) {
+  ok(msg) => print(msg)
+  err(e) => print("error: ${e}")
+}

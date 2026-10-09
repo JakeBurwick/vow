@@ -1,0 +1,148 @@
+struct Token { kind, value }
+
+fn tokenize(input) {
+  let tokens = []
+  let chars = split(input, "")
+  let i = 0
+  while i < len(chars) {
+    let ch = chars[i]
+    if ch == " " {
+      i = i + 1
+    } else if ch == "+" or ch == "-" or ch == "*" or ch == "/" or ch == "(" or ch == ")" {
+      push(tokens, Token { kind: ch, value: ch })
+      i = i + 1
+    } else if ch >= "0" and ch <= "9" {
+      let numStr = ""
+      while i < len(chars) and chars[i] >= "0" and chars[i] <= "9" {
+        numStr = numStr + chars[i]
+        i = i + 1
+      }
+      push(tokens, Token { kind: "num", value: numStr })
+    } else {
+      return err("syntax error")
+    }
+  }
+  return ok(tokens)
+}
+
+fn parseExpression(tokens, pos)
+{
+  let result = parseTerm(tokens, pos)?
+  let val = result[0]
+  let p = result[1]
+
+  while p < len(tokens) {
+    let tok = tokens[p]
+    if tok.kind == "+" {
+      let next = parseTerm(tokens, p + 1)?
+      val = val + next[0]
+      p = next[1]
+    } else if tok.kind == "-" {
+      let next = parseTerm(tokens, p + 1)?
+      val = val - next[0]
+      p = next[1]
+    } else {
+      break
+    }
+  }
+
+  return ok([val, p])
+}
+
+fn parseTerm(tokens, pos)
+{
+  let result = parseFactor(tokens, pos)?
+  let val = result[0]
+  let p = result[1]
+
+  while p < len(tokens) {
+    let tok = tokens[p]
+    if tok.kind == "*" {
+      let next = parseFactor(tokens, p + 1)?
+      val = val * next[0]
+      p = next[1]
+    } else if tok.kind == "/" {
+      let next = parseFactor(tokens, p + 1)?
+      let divisor = next[0]
+      if divisor == 0 {
+        return err("division by zero")
+      }
+      val = val / divisor
+      p = next[1]
+    } else {
+      break
+    }
+  }
+
+  return ok([val, p])
+}
+
+fn parseFactor(tokens, pos)
+{
+  if pos >= len(tokens) {
+    return err("syntax error")
+  }
+
+  let tok = tokens[pos]
+
+  if tok.kind == "(" {
+    let result = parseExpression(tokens, pos + 1)?
+    let val = result[0]
+    let p = result[1]
+
+    if p >= len(tokens) or tokens[p].kind != ")" {
+      return err("syntax error")
+    }
+
+    return ok([val, p + 1])
+  } else if tok.kind == "num" {
+    let numVal = num(tok.value)
+    match numVal {
+      ok(v) => return ok([v, pos + 1])
+      err(e) => return err("syntax error")
+    }
+  } else {
+    return err("syntax error")
+  }
+}
+
+fn main() {
+  let args_list = args()
+
+  if len(args_list) == 0 {
+    print("syntax error")
+    return
+  }
+
+  let expr = args_list[0]
+
+  if len(expr) == 0 {
+    print("syntax error")
+    return
+  }
+
+  match tokenize(expr) {
+    ok(tokens) => {
+      if len(tokens) == 0 {
+        print("syntax error")
+      } else {
+        match parseExpression(tokens, 0) {
+          ok(result) => {
+            let val = result[0]
+            let finalPos = result[1]
+
+            if finalPos == len(tokens) {
+              print(val)
+            } else {
+              print("syntax error")
+            }
+          }
+          err(e) => print(e)
+        }
+      }
+    }
+    err(e) => print(e)
+  }
+}
+
+main()

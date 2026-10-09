@@ -1,0 +1,2 @@
+fn area(r) { return _sq(r) }
+fn _sq(r) { return r * r }

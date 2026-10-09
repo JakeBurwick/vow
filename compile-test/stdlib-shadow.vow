@@ -1,0 +1,26 @@
+fn map(xs, f) {
+  let out = []
+  for x in reverse(xs) { push(out, f(x)) }
+  return out
+}
+fn count(xs) { return len(xs) * 100 }
+fn matches(open, close) { return open == "(" and close == ")" }
+print(map([1, 2, 3], x => x + 1), count([1, 2]), matches("(", ")"))
+let words = split("a b", " ")
+print(words)
+let values = [3, 4]
+print(values, sum(values))
+let filter = (xs) => len(xs)
+print(filter([1, 2, 3]))
+fn outer(k) {
+  fn fold(n) {
+    if n == 0 { return k }
+    return fold(n - 1) + 1
+  }
+  return fold(3)
+}
+print(outer(10))
+let any = any([1, 2], x => x > 1)
+print(any)
+let all = [1]
+print(all)

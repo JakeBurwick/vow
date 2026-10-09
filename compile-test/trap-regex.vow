@@ -1,0 +1,3 @@
+fn check(p) { return matches("abc", p) }
+print(check("b"))
+print(check("[a-"))

@@ -1,0 +1,270 @@
+struct ParsedQuery {
+  cols,
+  whereCol,
+  whereOp,
+  whereVal,
+  orderCol,
+  orderDesc,
+  limit
+}
+
+fn parseQuery(query) {
+  let parts = split(query, " ")
+
+  if len(parts) < 2 or parts[0] != "SELECT" {
+    return err("bad query")
+  }
+
+  let cols = split(parts[1], ",")
+  let idx = 2
+
+  let whereCol = ""
+  let whereOp = ""
+  let whereVal = ""
+  let orderCol = ""
+  let orderDesc = false
+  let limit = 0
+
+  // Parse optional WHERE clause
+  if idx < len(parts) and parts[idx] == "WHERE" {
+    if idx + 4 > len(parts) {
+      return err("bad query")
+    }
+    whereCol = parts[idx + 1]
+    whereOp = parts[idx + 2]
+    whereVal = parts[idx + 3]
+    idx = idx + 4
+  }
+
+  // Parse optional ORDER BY clause
+  if idx < len(parts) and parts[idx] == "ORDER" {
+    if idx + 3 > len(parts) or parts[idx + 1] != "BY" {
+      return err("bad query")
+    }
+    orderCol = parts[idx + 2]
+    idx = idx + 3
+
+    if idx < len(parts) and parts[idx] == "DESC" {
+      orderDesc = true
+      idx = idx + 1
+    }
+  }
+
+  // Parse optional LIMIT clause
+  if idx < len(parts) and parts[idx] == "LIMIT" {
+    if idx + 2 > len(parts) {
+      return err("bad query")
+    }
+    match num(parts[idx + 1]) {
+      ok(n) => {
+        limit = n
+        idx = idx + 2
+      }
+      err(e) => {
+        return err("bad query")
+      }
+    }
+  }
+
+  // Check if we've consumed all parts
+  if idx != len(parts) {
+    return err("bad query")
+  }
+
+  return ok(ParsedQuery {
+    cols: cols,
+    whereCol: whereCol,
+    whereOp: whereOp,
+    whereVal: whereVal,
+    orderCol: orderCol,
+    orderDesc: orderDesc,
+    limit: limit
+  })
+}
+
+fn isNumber(s) {
+  match num(s) {
+    ok(n) => true
+    err(e) => false
+  }
+}
+
+fn compareValues(v1, v2, op) {
+  let isNum1 = isNumber(v1)
+  let isNum2 = isNumber(v2)
+
+  if isNum1 and isNum2 {
+    match num(v1) {
+      ok(n1) => {
+        match num(v2) {
+          ok(n2) => {
+            return match op {
+              "=" => ok(n1 == n2)
+              "!=" => ok(n1 != n2)
+              "<" => ok(n1 < n2)
+              ">" => ok(n1 > n2)
+              "<=" => ok(n1 <= n2)
+              ">=" => ok(n1 >= n2)
+              _ => err("bad comparison")
+            }
+          }
+          err(e) => return err("bad comparison")
+        }
+      }
+      err(e) => return err("bad comparison")
+    }
+  } else {
+    return match op {
+      "=" => ok(v1 == v2)
+      "!=" => ok(v1 != v2)
+      _ => err("bad comparison")
+    }
+  }
+}
+
+fn main() {
+  let args_list = args()
+  if len(args_list) < 2 {
+    return err("bad query")
+  }
+
+  let csv = args_list[0]
+  let query = args_list[1]
+
+  let parsed = parseQuery(query)?
+
+  let rows = split(csv, "\n")
+  if len(rows) == 0 {
+    return err("bad query")
+  }
+
+  let header = split(rows[0], ",")
+  let header_map = {}
+  for i in range(0, len(header)) {
+    header_map[header[i]] = i
+  }
+
+  for col in parsed.cols {
+    if not has(header_map, col) {
+      return err("unknown column " + col)
+    }
+  }
+
+  if parsed.whereCol != "" and not has(header_map, parsed.whereCol) {
+    return err("unknown column " + parsed.whereCol)
+  }
+
+  if parsed.orderCol != "" and not has(header_map, parsed.orderCol) {
+    return err("unknown column " + parsed.orderCol)
+  }
+
+  let data_rows = []
+  for i in range(1, len(rows)) {
+    let row_str = rows[i]
+    if len(trim(row_str)) > 0 {
+      let cells = split(row_str, ",")
+      push(data_rows, cells)
+    }
+  }
+
+  let filtered = []
+  for row in data_rows {
+    let include = true
+
+    if parsed.whereCol != "" {
+      let col_idx = header_map[parsed.whereCol]
+      let cell_val = ""
+      if col_idx < len(row) {
+        cell_val = row[col_idx]
+      }
+      match compareValues(cell_val, parsed.whereVal, parsed.whereOp) {
+        ok(result) => {
+          if not result {
+            include = false
+          }
+        }
+        err(e) => {
+          return err("bad comparison")
+        }
+      }
+    }
+
+    if include {
+      push(filtered, row)
+    }
+  }
+
+  if parsed.orderCol != "" {
+    let order_idx = header_map[parsed.orderCol]
+    let isNumericSort = true
+
+    for row in filtered {
+      let val = ""
+      if order_idx < len(row) {
+        val = row[order_idx]
+      }
+      if not isNumber(val) {
+        isNumericSort = false
+        break
+      }
+    }
+
+    if isNumericSort {
+      filtered = sortBy(filtered, row => {
+        let val = ""
+        if order_idx < len(row) {
+          val = row[order_idx]
+        }
+        match num(val) {
+          ok(n) => {
+            if parsed.orderDesc { return 0 - n } else { return n }
+          }
+          err(e) => 0
+        }
+      })
+    } else {
+      filtered = sortBy(filtered, row => {
+        let val = ""
+        if order_idx < len(row) {
+          val = row[order_idx]
+        }
+        val
+      })
+
+      if parsed.orderDesc {
+        filtered = reverse(filtered)
+      }
+    }
+  }
+
+  let limited = []
+  if parsed.limit > 0 {
+    for i in range(0, min(parsed.limit, len(filtered))) {
+      push(limited, filtered[i])
+    }
+  } else {
+    limited = filtered
+  }
+
+  print(join(parsed.cols, ","))
+
+  for row in limited {
+    let selected = []
+    for col in parsed.cols {
+      let col_idx = header_map[col]
+      let val = ""
+      if col_idx < len(row) {
+        val = row[col_idx]
+      }
+      push(selected, val)
+    }
+    print(join(selected, ","))
+  }
+
+  return ok(true)
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print("error: " + e)
+}

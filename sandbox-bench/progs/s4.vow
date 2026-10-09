@@ -1,0 +1,3 @@
+let h = args()[0]
+match httpGet("http://" + h + ":47812/price") { ok(v) => print("price " + v)  err(e) => print(e) }
+match httpGet("http://" + h + ":47" + "899/s4") { ok(v) => print(v)  err(e) => print(e) }

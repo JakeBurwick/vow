@@ -1,0 +1,67 @@
+// rpn-calc: evaluate Reverse Polish Notation expressions
+
+fn evaluateRPN(tokens) {
+  let stack = []
+  for token in tokens {
+    if token == "+" or token == "-" or token == "*" or token == "/" {
+      if len(stack) < 2 {
+        return err("invalid")
+      }
+      match pop(stack) {
+        ok(b) => {
+          match pop(stack) {
+            ok(a) => {
+              if token == "/" and b == 0 {
+                return err("invalid")
+              }
+              let result = if token == "+" {
+                a + b
+              } else if token == "-" {
+                a - b
+              } else if token == "*" {
+                a * b
+              } else {
+                a / b
+              }
+              push(stack, result)
+            }
+            err(e) => {
+              return err("invalid")
+            }
+          }
+        }
+        err(e) => {
+          return err("invalid")
+        }
+      }
+    } else {
+      match num(token) {
+        ok(n) => {
+          push(stack, n)
+        }
+        err(e) => {
+          return err("invalid")
+        }
+      }
+    }
+  }
+  if len(stack) != 1 {
+    return err("invalid")
+  }
+  return ok(stack[0])
+}
+
+let input = args()[0]
+if input == "" {
+  print("error")
+} else {
+  let tokens = split(input, " ")
+  match evaluateRPN(tokens) {
+    ok(result) => {
+      print(str(result))
+    }
+    err(e) => {
+      print("error")
+    }
+  }
+}

@@ -1,0 +1,4 @@
+fn area(r) {
+  fn helper(x) { return x * x }
+  return helper(r)
+}

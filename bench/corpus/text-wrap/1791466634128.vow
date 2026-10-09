@@ -1,0 +1,59 @@
+fn main() {
+  let args_list = args()
+  let text = get(args_list, 0)?
+  let width_str = get(args_list, 1)?
+
+  // Validate width
+  match int(width_str) {
+    ok(w) => {
+      if w <= 0 {
+        print("error: bad width")
+        return ok(true)
+      }
+
+      // Get words by splitting on whitespace
+      let word_list = words(text)
+
+      if len(word_list) == 0 {
+        return ok(true)
+      }
+
+      let line_num = 1
+      let current_line = ""
+
+      for word in word_list {
+        if current_line == "" {
+          // First word on the line
+          current_line = word
+        } else {
+          // Try to add word to current line
+          let potential = current_line + " " + word
+          if len(potential) <= w {
+            current_line = potential
+          } else {
+            // Line is full, print it and start new line
+            print("${line_num}: ${current_line}")
+            line_num = line_num + 1
+            current_line = word
+          }
+        }
+      }
+
+      // Print final line
+      if current_line != "" {
+        print("${line_num}: ${current_line}")
+      }
+
+      return ok(true)
+    }
+    err(e) => {
+      print("error: bad width")
+      return ok(true)
+    }
+  }
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

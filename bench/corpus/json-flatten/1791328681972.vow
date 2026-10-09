@@ -1,0 +1,124 @@
+fn flattenToJsonStr(j, prefix, result) {
+  let t = jsonType(j)
+
+  if t == "object" {
+    let keys = sort(jsonKeys(j))
+    for k in keys {
+      match get(j, k) {
+        ok(v) => {
+          let newPrefix = if prefix == "" { k } else { prefix + "." + k }
+          match processValue(v, newPrefix, result) {
+            ok(_) => {}
+            err(e) => return err(e)
+          }
+        }
+        err(e) => return err(e)
+      }
+    }
+  } else if t == "array" {
+    let items = jsonList(j)
+    for i in range(0, len(items)) {
+      let v = items[i]
+      let newPrefix = prefix + "[" + str(i) + "]"
+      match processValue(v, newPrefix, result) {
+        ok(_) => {}
+        err(e) => return err(e)
+      }
+    }
+  }
+
+  return ok(true)
+}
+
+fn processValue(v, path, result) {
+  let t = jsonType(v)
+
+  if t == "object" or t == "array" {
+    let keys = jsonKeys(v)
+    let items = jsonList(v)
+    if len(keys) == 0 and len(items) == 0 {
+      if t == "object" {
+        push(result, "\"" + jsonEscape(path) + "\":{}")
+      } else {
+        push(result, "\"" + jsonEscape(path) + "\":[]")
+      }
+      return ok(true)
+    } else {
+      return flattenToJsonStr(v, path, result)
+    }
+  } else {
+    let valueStr = valueToString(v)
+    push(result, "\"" + jsonEscape(path) + "\":" + valueStr)
+    return ok(true)
+  }
+}
+
+fn jsonEscape(s) {
+  let result = ""
+  for i in range(0, len(s)) {
+    let c = s[i]
+    if c == "\"" {
+      result = result + "\\\""
+    } else if c == "\\" {
+      result = result + "\\\\"
+    } else {
+      result = result + c
+    }
+  }
+  return result
+}
+
+fn valueToString(v) {
+  let t = jsonType(v)
+  if t == "string" {
+    match jsonStr(v) {
+      ok(s) => return "\"" + jsonEscape(s) + "\""
+      err(e) => return "null"
+    }
+  } else if t == "number" {
+    match jsonNum(v) {
+      ok(n) => return str(n)
+      err(e) => return "null"
+    }
+  } else if t == "bool" {
+    match jsonBool(v) {
+      ok(b) => {
+        if b { return "true" } else { return "false" }
+      }
+      err(e) => return "null"
+    }
+  } else if t == "null" {
+    return "null"
+  } else {
+    return "null"
+  }
+}
+
+fn main() {
+  let input = args()[0]
+  match parseJson(input) {
+    ok(j) => {
+      let t = jsonType(j)
+      if t != "object" and t != "array" {
+        print("{\"error\":\"not a container\"}")
+      } else {
+        let keys = jsonKeys(j)
+        let items = jsonList(j)
+        if len(keys) == 0 and len(items) == 0 {
+          print("{}")
+        } else {
+          let entries = []
+          match flattenToJsonStr(j, "", entries) {
+            ok(_) => {
+              print("{" + join(entries, ",") + "}")
+            }
+            err(e) => print("{\"error\":\"" + e + "\"}")
+          }
+        }
+      }
+    }
+    err(e) => print("{\"error\":\"bad json\"}")
+  }
+}
+
+main()

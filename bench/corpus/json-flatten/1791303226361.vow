@@ -1,0 +1,107 @@
+fn escape_json_string(s) {
+  let result = ""
+  let i = 0
+  while i < len(s) {
+    let c = s[i]
+    if c == "\"" {
+      result = result + "\\\""
+    } else if c == "\\" {
+      result = result + "\\\\"
+    } else {
+      result = result + c
+    }
+    i = i + 1
+  }
+  return result
+}
+
+fn flatten_json(json_val, path) {
+  let result = []
+  let json_type = jsonType(json_val)
+
+  if json_type == "object" {
+    let keys = jsonKeys(json_val)
+    keys = sort(keys)
+    if len(keys) == 0 {
+      push(result, [path, "{}"])
+    } else {
+      for key in keys {
+        let child = get(json_val, key)?
+        let new_path = if path == "" { key } else { path + "." + key }
+        let child_results = flatten_json(child, new_path)?
+        for item in child_results {
+          push(result, item)
+        }
+      }
+    }
+  } else if json_type == "array" {
+    let items = jsonList(json_val)
+    if len(items) == 0 {
+      push(result, [path, "[]"])
+    } else {
+      for i in range(0, len(items)) {
+        let child = items[i]
+        let new_path = path + "[" + str(i) + "]"
+        let child_results = flatten_json(child, new_path)?
+        for item in child_results {
+          push(result, item)
+        }
+      }
+    }
+  } else if json_type == "string" {
+    let s = jsonStr(json_val)?
+    let escaped = escape_json_string(s)
+    push(result, [path, "\"" + escaped + "\""])
+  } else if json_type == "number" {
+    let n = jsonNum(json_val)?
+    let n_str = str(n)
+    push(result, [path, n_str])
+  } else if json_type == "bool" {
+    let b = jsonBool(json_val)?
+    let b_str = if b { "true" } else { "false" }
+    push(result, [path, b_str])
+  } else if json_type == "null" {
+    push(result, [path, "null"])
+  }
+
+  return ok(result)
+}
+
+fn main() {
+  let args_list = args()
+  let json_str = args_list[0]
+
+  match parseJson(json_str) {
+    ok(j) => {
+      let json_type = jsonType(j)
+      if json_type != "object" and json_type != "array" {
+        print("{\"error\":\"not a container\"}")
+        return
+      }
+
+      let items = jsonList(j)
+      let keys = jsonKeys(j)
+      if (json_type == "array" and len(items) == 0) or (json_type == "object" and len(keys) == 0) {
+        print("{}")
+        return
+      }
+
+      match flatten_json(j, "") {
+        ok(entries) => {
+          let parts = []
+          for entry in entries {
+            let path = entry[0]
+            let value = entry[1]
+            let escaped_path = escape_json_string(path)
+            push(parts, "\"" + escaped_path + "\":" + value)
+          }
+          print("{" + join(parts, ",") + "}")
+        }
+        err(e) => print("{\"error\":\"bad json\"}")
+      }
+    }
+    err(e) => print("{\"error\":\"bad json\"}")
+  }
+}
+
+main()

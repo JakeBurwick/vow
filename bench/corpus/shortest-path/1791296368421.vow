@@ -1,0 +1,108 @@
+fn main() {
+  let args_list = args()
+
+  if len(args_list) < 3 {
+    print("no path")
+    return
+  }
+
+  let edges_str = args_list[0]
+  let start = args_list[1]
+  let goal = args_list[2]
+
+  if start == goal {
+    print(start)
+    return
+  }
+
+  // Parse edges and build graph
+  let edges_list = split(edges_str, ",")
+  let graph = {}
+
+  for edge in edges_list {
+    let parts = split(edge, "-")
+    if len(parts) == 2 {
+      let a = parts[0]
+      let b = parts[1]
+
+      // Add a -> b
+      if has(graph, a) {
+        push(graph[a], b)
+      } else {
+        graph[a] = [b]
+      }
+
+      // Add b -> a (undirected)
+      if has(graph, b) {
+        push(graph[b], a)
+      } else {
+        graph[b] = [a]
+      }
+    }
+  }
+
+  // Check if start and goal nodes exist
+  if not has(graph, start) or not has(graph, goal) {
+    print("no path")
+    return
+  }
+
+  // BFS to find shortest paths and track all parents at same distance
+  let visited = {}
+  let dist = {}
+  let queue = []
+  let parent_map = {}
+
+  push(queue, start)
+  visited[start] = true
+  dist[start] = 0
+  parent_map[start] = []
+
+  while len(queue) > 0 {
+    let current = queue[0]
+    let new_queue = []
+    for i in range(1, len(queue)) {
+      push(new_queue, queue[i])
+    }
+    queue = new_queue
+
+    if has(graph, current) {
+      let neighbors = graph[current]
+      for neighbor in neighbors {
+        let new_dist = dist[current] + 1
+        if not has(visited, neighbor) {
+          visited[neighbor] = true
+          dist[neighbor] = new_dist
+          parent_map[neighbor] = [current]
+          push(queue, neighbor)
+        } else if dist[neighbor] == new_dist {
+          // Same shortest distance; add as alternative parent
+          push(parent_map[neighbor], current)
+        }
+      }
+    }
+  }
+
+  if not has(visited, goal) {
+    print("no path")
+    return
+  }
+
+  // Find alphabetically smallest path by greedily choosing smallest parent
+  fn findSmallestPath(node, start_node, parent_map_inner) {
+    if node == start_node {
+      return [start_node]
+    }
+    let node_parents = parent_map_inner[node]
+    let sorted_parents = sort(node_parents)
+    let best_parent = sorted_parents[0]
+    let parent_path = findSmallestPath(best_parent, start_node, parent_map_inner)
+    push(parent_path, node)
+    return parent_path
+  }
+
+  let path = findSmallestPath(goal, start, parent_map)
+  print(join(path, " -> "))
+}
+
+main()

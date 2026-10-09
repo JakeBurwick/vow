@@ -1,0 +1,39 @@
+// Reads and writes the todo list as a text file, one todo per line:
+//   id|done|due-date|title      e.g.  3|no|2026-10-12|Buy milk
+// The only file in this program that touches the filesystem (uses fs).
+import "./todo.vow" as todo
+
+fn load(path) uses fs {
+  let text = match readFile(path) {
+    ok(t) => t
+    err(e) => {
+      if not contains(e, "ENOENT") { return err(e) }   // denied, a folder, ...: report it
+      ""                                                // no file yet: an empty list
+    }
+  }
+  let out = []
+  let lineNo = 0
+  for line in lines(text) {
+    lineNo = lineNo + 1
+    if trim(line) == "" { continue }
+    match _parseLine(line) {
+      ok(t) => push(out, t)
+      err(e) => return err("${path} line ${lineNo}: ${e}")
+    }
+  }
+  return ok(out)
+}
+
+fn save(path, todos) uses fs {
+  let rows = map(todos, t => "${t.id}|${if t.done { "yes" } else { "no" }}|${slice(isoDate(t.due), 0, 10)}|${t.title}")
+  return writeFile(path, join(rows, "\n") + "\n")
+}
+
+fn _parseLine(line) {
+  let parts = split(line, "|")
+  if len(parts) < 4 { return err("expected id|done|due|title, got \"${line}\"") }
+  let id = int(parts[0])?
+  let due = parseDate(parts[2])?
+  let title = join(slice(parts, 3, len(parts)), "|")
+  return ok(todo.Todo { id: id, title: title, due: due, done: parts[1] == "yes" })
+}

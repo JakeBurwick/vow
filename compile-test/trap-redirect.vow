@@ -1,0 +1,2 @@
+let paths = ["/ok", "//evil.com"]
+for p in paths { print(redirect(p)) }

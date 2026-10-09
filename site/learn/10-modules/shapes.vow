@@ -1,0 +1,10 @@
+// A module holds fns and structs. Names starting with _ stay private.
+struct Rect { w, h }
+
+fn area(r) { r.w * r.h }
+
+fn describe(r) {
+  "${r.w} x ${r.h} rect, area ${area(r)}"
+}
+
+fn _secret() { 42 }

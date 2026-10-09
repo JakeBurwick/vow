@@ -1,0 +1,59 @@
+// bank-ledger: process semicolon-separated banking commands from the first CLI arg
+
+let argv = args()
+let input = match get(argv, 0) { ok(s) => s err(e) => "" }
+
+// names never contain ";" so use it as a sentinel key to pin the map type
+let accounts = {";": 0}
+let failed = false
+
+for c in split(input, ";") {
+  if not failed and c != "" {
+    let parts = split(c, " ")
+    let op = match get(parts, 0) { ok(s) => s err(e) => "" }
+    let name = match get(parts, 1) { ok(s) => s err(e) => "" }
+    let amtStr = match get(parts, 2) { ok(s) => s err(e) => "0" }
+    let amt = match num(amtStr) { ok(n) => n err(e) => 0 }
+
+    if op == "open" {
+      if has(accounts, name) {
+        print("error")
+        failed = true
+      } else {
+        accounts[name] = amt
+      }
+    }
+
+    if op == "deposit" {
+      if has(accounts, name) {
+        accounts[name] = accounts[name] + amt
+      } else {
+        print("error")
+        failed = true
+      }
+    }
+
+    if op == "withdraw" {
+      if has(accounts, name) {
+        if amt <= accounts[name] {
+          accounts[name] = accounts[name] - amt
+        } else {
+          print("error")
+          failed = true
+        }
+      } else {
+        print("error")
+        failed = true
+      }
+    }
+
+    if op == "balance" {
+      if has(accounts, name) {
+        print("${name} ${accounts[name]}")
+      } else {
+        print("error")
+        failed = true
+      }
+    }
+  }
+}

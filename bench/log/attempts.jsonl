@@ -1,0 +1,670 @@
+{"ts":"2026-06-10T19:52:30.912Z","task":"json-name","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T19:52:46.385Z","task":"top-account","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T19:58:27.601Z","task":"json-name","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:00:24.869Z","task":"sum-csv","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:00:38.307Z","task":"sum-csv","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:06:35.901Z","task":"rpn-calc","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:06:40.683Z","task":"json-users","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:06:43.230Z","task":"rpn-calc","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:06:57.670Z","task":"json-users","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:18:34.388Z","mode":"scratch","task":"json-name","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:19:12.337Z","mode":"repair","repair":"typo-var","task":"grade","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:19:12.909Z","mode":"repair","repair":"typo-var","task":"grade","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:19:22.888Z","mode":"repair","repair":"missing-key","task":"json-name","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:19:26.511Z","mode":"repair","repair":"missing-key","task":"json-name","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:19:27.201Z","mode":"repair","repair":"empty-pop","task":"brackets","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:19:37.559Z","mode":"repair","repair":"empty-pop","task":"brackets","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:31:29.069Z","tag":"haiku","mode":"repair","repair":"typo-var","task":"grade","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:31:51.910Z","tag":"haiku","mode":"repair","repair":"typo-var","task":"grade","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:31:58.731Z","tag":"haiku","mode":"repair","repair":"type-init","task":"sum-csv","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:32:01.033Z","tag":"haiku","mode":"repair","repair":"type-init","task":"sum-csv","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:32:08.628Z","tag":"haiku","mode":"repair","repair":"off-by-one","task":"fizzbuzz-n","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:32:10.303Z","tag":"haiku","mode":"repair","repair":"off-by-one","task":"fizzbuzz-n","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:32:15.317Z","tag":"haiku","mode":"repair","repair":"missing-key","task":"json-name","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:32:16.338Z","tag":"haiku","mode":"repair","repair":"missing-key","task":"json-name","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:32:24.745Z","tag":"haiku","mode":"repair","repair":"empty-pop","task":"brackets","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output","wrong-output","wrong-output","wrong-output"]}
+{"ts":"2026-06-10T20:32:25.651Z","tag":"haiku","mode":"repair","repair":"empty-pop","task":"brackets","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:32:29.827Z","tag":"haiku","mode":"repair","repair":"empty-pop","task":"brackets","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:36:52.363Z","tag":"haiku","mode":"repair","repair":"multi-rpn","task":"rpn-calc","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output","wrong-output"]}
+{"ts":"2026-06-10T20:36:55.260Z","tag":"haiku","mode":"repair","repair":"multi-rpn","task":"rpn-calc","lang":"python","ok":false,"failKinds":["wrong-output","wrong-output","wrong-output"]}
+{"ts":"2026-06-10T20:36:58.306Z","tag":"haiku","mode":"repair","repair":"multi-rpn","task":"rpn-calc","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:36:59.364Z","tag":"haiku","mode":"repair","repair":"multi-rpn","task":"rpn-calc","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:37:04.494Z","tag":"haiku","mode":"repair","repair":"multi-users","task":"json-users","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output","wrong-output"]}
+{"ts":"2026-06-10T20:37:05.938Z","tag":"haiku","mode":"repair","repair":"multi-users","task":"json-users","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:37:09.583Z","tag":"haiku","mode":"repair","repair":"multi-users","task":"json-users","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-10T20:37:16.278Z","tag":"haiku","mode":"repair","repair":"multi-users","task":"json-users","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:49:09.068Z","mode":"scratch","task":"reverse-words","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:49:09.098Z","mode":"scratch","task":"word-freq","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:49:09.200Z","mode":"scratch","task":"json-sum","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:49:09.289Z","mode":"scratch","task":"json-sum","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:49:09.302Z","mode":"scratch","task":"max-min","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:49:09.393Z","mode":"scratch","task":"max-min","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:49:09.609Z","mode":"scratch","task":"word-freq","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:49:13.252Z","mode":"scratch","task":"reverse-words","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:57:11.435Z","tag":"haiku","mode":"repair","repair":"multi-freq","task":"word-freq","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output","wrong-output","wrong-output"]}
+{"ts":"2026-06-10T20:57:11.970Z","tag":"haiku","mode":"repair","repair":"multi-freq","task":"word-freq","lang":"python","ok":false,"failKinds":["wrong-output","wrong-output","wrong-output","wrong-output"]}
+{"ts":"2026-06-10T20:57:18.305Z","tag":"haiku","mode":"repair","repair":"multi-rpn","task":"rpn-calc","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output","wrong-output"]}
+{"ts":"2026-06-10T20:57:18.739Z","tag":"haiku","mode":"repair","repair":"multi-freq","task":"word-freq","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:57:19.628Z","tag":"haiku","mode":"repair","repair":"multi-freq","task":"word-freq","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:57:23.667Z","tag":"haiku","mode":"repair","repair":"multi-rpn","task":"rpn-calc","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:57:25.779Z","tag":"haiku","mode":"repair","repair":"multi-rpn","task":"rpn-calc","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:57:28.363Z","tag":"haiku","mode":"repair","repair":"multi-users","task":"json-users","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:57:29.980Z","tag":"haiku","mode":"repair","repair":"multi-users","task":"json-users","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:58:12.721Z","tag":"haiku","mode":"scratch","task":"rpn-calc","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-10T20:58:12.970Z","tag":"haiku","mode":"scratch","task":"rpn-calc","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:58:19.863Z","tag":"haiku","mode":"scratch","task":"rpn-calc","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-10T20:58:20.055Z","tag":"haiku","mode":"scratch","task":"json-users","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:58:20.261Z","tag":"haiku","mode":"scratch","task":"json-users","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-10T20:58:24.101Z","tag":"haiku","mode":"scratch","task":"brackets","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-10T20:58:24.247Z","tag":"haiku","mode":"scratch","task":"brackets","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:58:27.257Z","tag":"haiku","mode":"scratch","task":"rpn-calc","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-10T20:58:28.961Z","tag":"haiku","mode":"scratch","task":"json-users","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-10T20:58:30.371Z","tag":"haiku","mode":"scratch","task":"top-account","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:58:31.193Z","tag":"haiku","mode":"scratch","task":"top-account","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-10T20:58:34.437Z","tag":"haiku","mode":"scratch","task":"rpn-calc","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-10T20:58:36.690Z","tag":"haiku","mode":"scratch","task":"top-account","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:58:36.879Z","tag":"haiku","mode":"scratch","task":"json-users","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:58:43.078Z","tag":"haiku","mode":"scratch","task":"rpn-calc","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-10T20:58:50.593Z","tag":"haiku","mode":"scratch","task":"brackets","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-10T20:58:52.229Z","tag":"haiku","mode":"scratch","task":"rpn-calc","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T20:58:59.333Z","tag":"haiku","mode":"scratch","task":"brackets","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-10T20:59:05.461Z","tag":"haiku","mode":"scratch","task":"brackets","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-10T20:59:11.298Z","tag":"haiku","mode":"scratch","task":"brackets","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-10T20:59:18.444Z","tag":"haiku","mode":"scratch","task":"brackets","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-10T20:59:24.562Z","tag":"haiku","mode":"scratch","task":"brackets","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-10T20:59:30.106Z","tag":"haiku","mode":"scratch","task":"brackets","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-10T20:59:34.778Z","tag":"haiku","mode":"scratch","task":"brackets","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T21:00:33.163Z","tag":"haiku","mode":"scratch","task":"json-users","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T21:00:33.521Z","tag":"haiku","mode":"scratch","task":"json-users","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-10T21:00:36.077Z","tag":"haiku","mode":"scratch","task":"rpn-calc","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-10T21:00:37.740Z","tag":"haiku","mode":"scratch","task":"brackets","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T21:00:38.530Z","tag":"haiku","mode":"scratch","task":"brackets","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-10T21:00:42.705Z","tag":"haiku","mode":"scratch","task":"rpn-calc","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T21:00:43.736Z","tag":"haiku","mode":"scratch","task":"brackets","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-10T21:00:43.929Z","tag":"haiku","mode":"scratch","task":"top-account","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T21:00:44.151Z","tag":"haiku","mode":"scratch","task":"rpn-calc","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-10T21:00:48.525Z","tag":"haiku","mode":"scratch","task":"brackets","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-10T21:00:50.860Z","tag":"haiku","mode":"scratch","task":"rpn-calc","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-10T21:00:50.898Z","tag":"haiku","mode":"scratch","task":"top-account","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T21:00:55.179Z","tag":"haiku","mode":"scratch","task":"brackets","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-10T21:00:57.762Z","tag":"haiku","mode":"scratch","task":"rpn-calc","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output","wrong-output","wrong-output","wrong-output","wrong-output","wrong-output","wrong-output"]}
+{"ts":"2026-06-10T21:01:01.268Z","tag":"haiku","mode":"scratch","task":"brackets","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-10T21:01:05.835Z","tag":"haiku","mode":"scratch","task":"rpn-calc","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T21:01:06.659Z","tag":"haiku","mode":"scratch","task":"brackets","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-10T21:01:13.287Z","tag":"haiku","mode":"scratch","task":"brackets","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-10T21:01:20.002Z","tag":"haiku","mode":"scratch","task":"brackets","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T21:01:30.757Z","tag":"haiku","mode":"scratch","task":"json-users","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-10T21:01:37.947Z","tag":"haiku","mode":"scratch","task":"json-users","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-10T21:01:44.525Z","tag":"haiku","mode":"scratch","task":"json-users","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T21:24:31.474Z","mode":"scratch","task":"bank-ledger","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T21:51:08.979Z","mode":"scratch","task":"bank-ledger","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T21:53:33.684Z","tag":"haiku","mode":"scratch","task":"bank-ledger","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-06-10T21:53:33.844Z","tag":"haiku","mode":"scratch","task":"bank-ledger","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-06-11T02:05:20.484Z","tag":"haiku-postfix","mode":"scratch","task":"brackets","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-11T02:05:21.448Z","tag":"haiku-postfix","mode":"scratch","task":"brackets","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-11T02:05:21.465Z","tag":"haiku-postfix","mode":"scratch","task":"rpn-calc","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-11T02:05:21.464Z","tag":"haiku-postfix","mode":"scratch","task":"rpn-calc","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-11T02:05:24.409Z","tag":"haiku-postfix","mode":"scratch","task":"rpn-calc","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output","wrong-output","wrong-output","wrong-output","wrong-output","wrong-output","wrong-output"]}
+{"ts":"2026-06-11T02:05:24.625Z","tag":"haiku-postfix","mode":"scratch","task":"rpn-calc","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-11T02:05:27.249Z","tag":"haiku-postfix","mode":"scratch","task":"brackets","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-11T02:05:28.266Z","tag":"haiku-postfix","mode":"scratch","task":"brackets","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-11T02:05:30.688Z","tag":"haiku-postfix","mode":"scratch","task":"rpn-calc","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-11T02:05:32.665Z","tag":"haiku-postfix","mode":"scratch","task":"brackets","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-11T02:05:32.899Z","tag":"haiku-postfix","mode":"scratch","task":"brackets","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-06-11T02:05:36.532Z","tag":"haiku-postfix","mode":"scratch","task":"rpn-calc","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-06-11T02:05:37.404Z","tag":"haiku-postfix","mode":"scratch","task":"rpn-calc","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-11T02:05:38.995Z","tag":"haiku-postfix","mode":"scratch","task":"brackets","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-11T02:05:43.237Z","tag":"haiku-postfix","mode":"scratch","task":"rpn-calc","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-06-11T02:05:46.012Z","tag":"haiku-postfix","mode":"scratch","task":"brackets","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-11T02:05:51.505Z","tag":"haiku-postfix","mode":"scratch","task":"brackets","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-11T02:05:56.441Z","tag":"haiku-postfix","mode":"scratch","task":"brackets","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-11T02:06:01.296Z","tag":"haiku-postfix","mode":"scratch","task":"brackets","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-11T02:06:06.469Z","tag":"haiku-postfix","mode":"scratch","task":"brackets","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-06-11T11:57:05.984Z","tag":"haiku","mode":"scratch","task":"brackets","lang":"python","ok":false,"failKinds":["wrong-output","wrong-output","wrong-output"]}
+{"ts":"2026-06-11T11:57:07.365Z","tag":"haiku","mode":"scratch","task":"brackets","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-11T11:57:13.139Z","tag":"haiku","mode":"scratch","task":"brackets","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-06-11T11:57:13.710Z","tag":"haiku","mode":"scratch","task":"rpn-calc","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output","wrong-output","wrong-output","wrong-output","wrong-output","wrong-output","wrong-output"]}
+{"ts":"2026-06-11T11:57:14.136Z","tag":"haiku","mode":"scratch","task":"rpn-calc","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-06-11T11:57:14.144Z","tag":"haiku","mode":"scratch","task":"brackets","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-06-11T11:57:21.274Z","tag":"haiku","mode":"scratch","task":"rpn-calc","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output","wrong-output","wrong-output","wrong-output","wrong-output","wrong-output","wrong-output"]}
+{"ts":"2026-06-11T11:57:22.021Z","tag":"haiku","mode":"scratch","task":"brackets","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-06-11T11:57:43.615Z","tag":"haiku","mode":"scratch","task":"rpn-calc","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-01T20:58:38.861Z","tag":"haiku","mode":"scratch","task":"pairs-json","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-10-01T20:58:39.314Z","tag":"haiku","mode":"scratch","task":"config-report","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-10-01T20:58:42.424Z","tag":"haiku","mode":"scratch","task":"pairs-json","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-10-01T20:58:59.448Z","tag":"haiku","mode":"scratch","task":"pairs-json","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-10-01T20:58:59.454Z","tag":"haiku","mode":"scratch","task":"config-report","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-10-01T20:59:04.282Z","tag":"haiku","mode":"scratch","task":"config-report","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-01T20:59:08.047Z","tag":"haiku","mode":"scratch","task":"pairs-json","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-10-01T20:59:15.488Z","tag":"haiku","mode":"scratch","task":"pairs-json","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output","wrong-output","wrong-output","wrong-output"]}
+{"ts":"2026-10-01T20:59:27.541Z","tag":"haiku","mode":"scratch","task":"pairs-json","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-01T21:01:00.092Z","tag":"haiku-postfix","mode":"scratch","task":"pairs-json","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-10-01T21:01:17.589Z","tag":"haiku-postfix","mode":"scratch","task":"pairs-json","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-10-01T21:01:23.154Z","tag":"haiku-postfix","mode":"scratch","task":"pairs-json","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-10-01T21:01:32.415Z","tag":"haiku-postfix","mode":"scratch","task":"pairs-json","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-01T21:05:52.889Z","tag":"haiku","mode":"scratch","task":"calc-expr","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-10-01T21:06:03.710Z","tag":"haiku","mode":"scratch","task":"log-summary","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-10-01T21:06:11.270Z","tag":"haiku","mode":"scratch","task":"log-summary","lang":"vow","ok":false,"failKinds":["wrong-output"]}
+{"ts":"2026-10-01T21:06:15.186Z","tag":"haiku","mode":"scratch","task":"calc-expr","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-10-01T21:06:21.551Z","tag":"haiku","mode":"scratch","task":"log-summary","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-01T21:06:25.421Z","tag":"haiku","mode":"scratch","task":"calc-expr","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-01T21:06:43.033Z","tag":"haiku","mode":"scratch","task":"order-totals","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-10-01T21:06:52.453Z","tag":"haiku","mode":"scratch","task":"order-totals","lang":"vow","ok":false,"failKinds":["wrong-output"]}
+{"ts":"2026-10-01T21:07:12.177Z","tag":"haiku","mode":"scratch","task":"order-totals","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-01T21:08:57.917Z","tag":"haiku","mode":"scratch","task":"log-summary","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-10-01T21:09:01.685Z","tag":"haiku","mode":"scratch","task":"order-totals","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-10-01T21:09:09.186Z","tag":"haiku","mode":"scratch","task":"calc-expr","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-10-01T21:20:22.427Z","tag":"sonnet","mode":"scratch","task":"mini-query","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-01T21:20:36.048Z","tag":"haiku","mode":"scratch","task":"mini-query","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-10-01T21:20:54.128Z","tag":"haiku","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-10-01T21:21:27.107Z","tag":"haiku","mode":"scratch","task":"mini-query","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-01T21:38:59.676Z","tag":"haiku","mode":"scratch","task":"shortest-path","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-10-01T21:39:02.033Z","tag":"haiku","mode":"scratch","task":"inventory","lang":"python","ok":false,"failKinds":["wrong-output","wrong-output","wrong-output","wrong-output","wrong-output"]}
+{"ts":"2026-10-01T21:39:10.593Z","tag":"haiku","mode":"scratch","task":"inventory","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-10-01T21:39:11.251Z","tag":"haiku","mode":"scratch","task":"inventory","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-10-01T21:39:39.097Z","tag":"haiku","mode":"scratch","task":"inventory","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-10-01T21:39:45.508Z","tag":"haiku","mode":"scratch","task":"shortest-path","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-10-01T21:39:58.773Z","tag":"haiku","mode":"scratch","task":"inventory","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output","wrong-output","wrong-output","wrong-output","wrong-output"]}
+{"ts":"2026-10-01T21:40:01.282Z","mode":"scratch","task":"inventory","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output","wrong-output","wrong-output","wrong-output","wrong-output"]}
+{"ts":"2026-10-01T21:40:29.715Z","tag":"haiku","mode":"scratch","task":"inventory","lang":"vow","ok":false,"failKinds":["wrong-output"]}
+{"ts":"2026-10-01T21:40:42.625Z","tag":"haiku","mode":"scratch","task":"shortest-path","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-10-01T21:40:53.686Z","tag":"haiku","mode":"scratch","task":"inventory","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-01T21:41:14.258Z","tag":"haiku","mode":"scratch","task":"shortest-path","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-10-01T21:47:08.441Z","tag":"haiku","mode":"scratch","task":"shortest-path","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-10-01T21:49:26.008Z","tag":"haiku","mode":"scratch","task":"shortest-path","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-10-01T21:49:53.866Z","tag":"haiku","mode":"scratch","task":"shortest-path","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-10-01T21:49:55.917Z","tag":"haiku-postfix","mode":"scratch","task":"inventory","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-01T21:50:10.797Z","tag":"haiku","mode":"scratch","task":"shortest-path","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-02T01:34:00.873Z","tag":"haiku-postfix","mode":"scratch","task":"shortest-path","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-10-02T01:34:43.409Z","tag":"haiku-postfix","mode":"scratch","task":"shortest-path","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-02T01:36:24.670Z","tag":"haiku-v10","mode":"scratch","task":"log-summary","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-02T01:36:30.673Z","tag":"haiku-v10","mode":"scratch","task":"shortest-path","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-02T01:36:38.621Z","tag":"haiku-v10","mode":"scratch","task":"calc-expr","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-10-02T01:36:45.502Z","tag":"haiku-v10","mode":"scratch","task":"calc-expr","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-10-02T01:36:53.854Z","tag":"haiku-v10","mode":"scratch","task":"calc-expr","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-02T01:37:16.222Z","tag":"haiku-v10","mode":"scratch","task":"inventory","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-02T01:37:35.314Z","tag":"haiku-v10","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-10-02T01:37:38.431Z","tag":"haiku-v10","mode":"scratch","task":"order-totals","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-10-02T01:37:46.173Z","tag":"haiku-v10","mode":"scratch","task":"order-totals","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output","wrong-output"]}
+{"ts":"2026-10-02T01:37:52.648Z","tag":"haiku-v10","mode":"scratch","task":"order-totals","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-02T01:38:21.541Z","tag":"haiku-v10","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-10-02T01:38:31.906Z","tag":"haiku-v10","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"]}
+{"ts":"2026-10-02T01:38:44.462Z","tag":"haiku-v10","mode":"scratch","task":"mini-query","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-02T02:46:18.690Z","tag":"haiku-cil","mode":"scratch","task":"calc-expr","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-02T02:46:57.740Z","tag":"haiku-cil","mode":"scratch","task":"order-totals","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"[{\\\"item\\\":\\\"pear\\\",\\\"qty\\\":1,\\\"price\\\":2},{\\\"item\\\":\\\"apple\\\",\\\"qty\\\":2,\\\"pri"}
+{"ts":"2026-10-02T02:47:42.560Z","tag":"haiku-cil","mode":"scratch","task":"order-totals","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-02T02:48:31.624Z","tag":"haiku-cil","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output"],"firstError":"wrong output for [\"name,age\\nb,2\\na,10\\nc,2\",\"SELECT name,age ORDER BY age\"]"}
+{"ts":"2026-10-02T02:49:24.052Z","tag":"haiku-cil","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"name,age\\nb,2\\na,10\\nc,2\",\"SELECT name,age ORDER BY age\"]"}
+{"ts":"2026-10-02T02:50:41.712Z","tag":"haiku-cil","mode":"scratch","task":"mini-query","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-02T13:31:10.602Z","tag":"haiku-cil","mode":"scratch","task":"web-guestbook","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-02T13:31:11.206Z","tag":"haiku-cil","mode":"scratch","task":"web-todo","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-02T17:31:04.832Z","tag":"haiku","mode":"scratch","task":"md-lite","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-10-02T17:31:18.462Z","tag":"haiku-cil","mode":"scratch","task":"md-lite","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-02T17:31:26.950Z","tag":"haiku","mode":"scratch","task":"md-lite","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-02T20:01:57.443Z","tag":"haiku","mode":"scratch","task":"json-flatten","lang":"python","ok":true,"failKinds":[]}
+{"ts":"2026-10-02T20:02:29.055Z","tag":"haiku","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ SyntaxError: \"{\" in a string starts interpolation"}
+{"ts":"2026-10-02T20:02:36.884Z","tag":"haiku","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: sort() takes a list, but this is a Result<list<str>, str>"}
+{"ts":"2026-10-02T20:02:49.107Z","tag":"haiku","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"[{\\\"a\\\":1},[],{},\\\"s\\\"]\"]"}
+{"ts":"2026-10-02T20:03:05.396Z","tag":"haiku","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"{}\"]"}
+{"ts":"2026-10-02T20:03:22.617Z","tag":"haiku","mode":"scratch","task":"json-flatten","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-02T20:04:05.138Z","tag":"haiku-cil","mode":"scratch","task":"json-flatten","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-02T20:10:24.236Z","tag":"haiku-v11","mode":"scratch","task":"pairs-json","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-02T20:10:31.535Z","tag":"haiku-v11","mode":"scratch","task":"order-totals","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: 'return' inside a match arm that produces a value"}
+{"ts":"2026-10-02T20:10:51.701Z","tag":"haiku-v11","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: sort() takes a list, but this is a Result<list<str>, str>"}
+{"ts":"2026-10-02T20:10:52.543Z","tag":"haiku-v11","mode":"scratch","task":"order-totals","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: 'j' would change type from map<str, a> to json"}
+{"ts":"2026-10-02T20:10:59.719Z","tag":"haiku-v11","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: 'return' inside a match arm that produces a value"}
+{"ts":"2026-10-02T20:11:07.487Z","tag":"haiku-v11","mode":"scratch","task":"order-totals","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: 'return' outside of a function"}
+{"ts":"2026-10-02T20:11:27.497Z","tag":"haiku-v11","mode":"scratch","task":"order-totals","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-02T20:11:31.360Z","tag":"haiku-v11","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"[{\\\"a\\\":1},[],{},\\\"s\\\"]\"]"}
+{"ts":"2026-10-02T20:11:45.079Z","tag":"haiku-v11","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"{}\"]"}
+{"ts":"2026-10-02T20:11:55.196Z","tag":"haiku-v11","mode":"scratch","task":"json-flatten","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-02T20:20:22.150Z","tag":"haiku","mode":"scratch","task":"brackets","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-02T20:20:23.732Z","tag":"haiku","mode":"scratch","task":"shortest-path","lang":"ts","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"\u001b[0m\u001b[1m\u001b[31merror\u001b[0m: Uncaught (in promise) TypeError: Cannot read properties of undefined (reading 'length')"}
+{"ts":"2026-10-02T20:20:25.407Z","tag":"haiku","mode":"scratch","task":"order-totals","lang":"ts","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"\u001b[0m\u001b[1m\u001b[31merror\u001b[0m: Module not found \"https://deno.land/std@0.208.0/json/parse.ts\"."}
+{"ts":"2026-10-02T20:20:29.752Z","tag":"haiku","mode":"scratch","task":"rpn-calc","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-02T20:20:29.830Z","tag":"haiku","mode":"scratch","task":"order-totals","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-02T20:20:34.786Z","tag":"haiku","mode":"scratch","task":"shortest-path","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-02T20:20:48.395Z","tag":"haiku","mode":"scratch","task":"json-flatten","lang":"ts","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"{}\"]"}
+{"ts":"2026-10-02T20:20:49.671Z","tag":"haiku","mode":"scratch","task":"mini-query","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-02T20:21:01.445Z","tag":"haiku","mode":"scratch","task":"json-flatten","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T16:18:44.720Z","tag":"haiku-fewshot","mode":"scratch","task":"shortest-path","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T16:18:45.328Z","tag":"haiku-fewshot","mode":"scratch","task":"order-totals","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T16:18:49.765Z","tag":"haiku-fewshot","mode":"scratch","task":"rpn-calc","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T16:18:58.452Z","tag":"haiku-fewshot","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ SyntaxError: match arms must be ok(...) or err(...), found the string \"string\""}
+{"ts":"2026-10-05T16:19:07.344Z","tag":"haiku-fewshot","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: 'return' inside a match arm that produces a value"}
+{"ts":"2026-10-05T16:19:12.901Z","tag":"haiku-fewshot","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"{}\"]"}
+{"ts":"2026-10-05T16:19:27.810Z","tag":"haiku-fewshot","mode":"scratch","task":"json-flatten","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T16:19:39.638Z","tag":"haiku-fewshot","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: 'and' needs bool operands, but this side is a unit"}
+{"ts":"2026-10-05T16:19:56.409Z","tag":"haiku-fewshot","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"name,age\\nb,2\",\"PICK name\"]"}
+{"ts":"2026-10-05T16:20:13.262Z","tag":"haiku-fewshot","mode":"scratch","task":"mini-query","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T16:21:12.877Z","tag":"haiku-fewshot","mode":"scratch","task":"brackets","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T16:21:27.270Z","tag":"haiku-fewshot","mode":"scratch","task":"order-totals","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: match works on Result values, but this is a str"}
+{"ts":"2026-10-05T16:21:36.881Z","tag":"haiku-fewshot","mode":"scratch","task":"shortest-path","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic"],"firstError":"✗ RuntimeError: the program ran too long and was stopped"}
+{"ts":"2026-10-05T16:21:48.542Z","tag":"haiku-fewshot","mode":"scratch","task":"rpn-calc","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T16:21:53.271Z","tag":"haiku-fewshot","mode":"scratch","task":"order-totals","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T16:22:09.749Z","tag":"haiku-fewshot","mode":"scratch","task":"shortest-path","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T16:22:32.018Z","tag":"haiku-fewshot","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: sortBy() keys must be nums or strs, but this key is a unit"}
+{"ts":"2026-10-05T16:22:42.436Z","tag":"haiku-fewshot","mode":"scratch","task":"mini-query","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T16:22:53.653Z","tag":"haiku-fewshot","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: match works on Result values, but this is a str"}
+{"ts":"2026-10-05T16:23:30.455Z","tag":"haiku-fewshot","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"{}\"]"}
+{"ts":"2026-10-05T16:23:51.072Z","tag":"haiku-fewshot","mode":"scratch","task":"json-flatten","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T16:47:26.862Z","tag":"h2h-vow","mode":"scratch","task":"brackets","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: 'return' outside of a function"}
+{"ts":"2026-10-05T16:47:32.053Z","tag":"h2h-vow","mode":"scratch","task":"shortest-path","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T16:47:36.709Z","tag":"h2h-vow","mode":"scratch","task":"brackets","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T16:50:12.828Z","tag":"h2h-vow","mode":"scratch","task":"order-totals","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: 'return' outside of a function"}
+{"ts":"2026-10-05T17:33:06.257Z","tag":"h2h-vow","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: len() works on lists and strs, but this is a Result<list<str>, str>"}
+{"ts":"2026-10-05T17:33:07.120Z","tag":"h2h-vow","mode":"scratch","task":"order-totals","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T17:33:12.990Z","tag":"h2h-vow","mode":"scratch","task":"rpn-calc","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T17:34:52.302Z","tag":"h2h-vow","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: len() works on lists and strs, not maps"}
+{"ts":"2026-10-05T17:34:58.001Z","tag":"h2h-vow","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"{}\"]"}
+{"ts":"2026-10-05T17:35:22.840Z","tag":"h2h-vow","mode":"scratch","task":"json-flatten","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T17:35:29.763Z","tag":"h2h-vow","mode":"scratch","task":"mini-query","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T17:36:14.522Z","tag":"h2h-ts","mode":"scratch","task":"brackets","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T17:36:16.457Z","tag":"h2h-ts","mode":"scratch","task":"order-totals","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T17:36:20.533Z","tag":"h2h-ts","mode":"scratch","task":"shortest-path","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T17:36:22.994Z","tag":"h2h-ts","mode":"scratch","task":"rpn-calc","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T17:36:32.578Z","tag":"h2h-ts","mode":"scratch","task":"json-flatten","lang":"ts","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"{}\"]"}
+{"ts":"2026-10-05T17:36:36.085Z","tag":"h2h-ts","mode":"scratch","task":"mini-query","lang":"ts","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"name,age,city\\nada,36,london\\nbob,25,paris\\ncy,41,rome\",\"SELECT city,name WHER"}
+{"ts":"2026-10-05T17:36:38.505Z","tag":"h2h-ts","mode":"scratch","task":"json-flatten","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T17:36:44.812Z","tag":"h2h-ts","mode":"scratch","task":"mini-query","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T17:37:34.925Z","tag":"h2h-vow","mode":"scratch","task":"brackets","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: '?' needs fn checkBrackets to return a Result"}
+{"ts":"2026-10-05T17:37:46.725Z","tag":"h2h-vow","mode":"scratch","task":"brackets","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T17:37:58.649Z","tag":"h2h-vow","mode":"scratch","task":"rpn-calc","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: 'return' inside a match arm that produces a value"}
+{"ts":"2026-10-05T17:38:07.928Z","tag":"h2h-vow","mode":"scratch","task":"rpn-calc","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T17:38:20.628Z","tag":"h2h-vow","mode":"scratch","task":"order-totals","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: 'return' inside a match arm that produces a value"}
+{"ts":"2026-10-05T17:38:21.629Z","tag":"h2h-vow","mode":"scratch","task":"shortest-path","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"s-m,m-t,s-k,k-t,s-t\",\"s\",\"t\"]"}
+{"ts":"2026-10-05T17:38:51.925Z","tag":"h2h-vow","mode":"scratch","task":"shortest-path","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T17:39:15.921Z","tag":"h2h-vow","mode":"scratch","task":"order-totals","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: 'return' inside a match arm that produces a value"}
+{"ts":"2026-10-05T17:39:33.401Z","tag":"h2h-vow","mode":"scratch","task":"order-totals","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T17:39:40.454Z","tag":"h2h-vow","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: sort() takes a list, but this is a Result<list<str>, str>"}
+{"ts":"2026-10-05T17:39:52.296Z","tag":"h2h-vow","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"{}\"]"}
+{"ts":"2026-10-05T17:40:09.948Z","tag":"h2h-vow","mode":"scratch","task":"json-flatten","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T17:40:39.737Z","tag":"h2h-vow","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ SyntaxError: unexpected 'cmp' after the end of a statement"}
+{"ts":"2026-10-05T17:41:17.967Z","tag":"h2h-vow","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: fn compareValues might finish without returning a value"}
+{"ts":"2026-10-05T17:41:33.066Z","tag":"h2h-vow","mode":"scratch","task":"mini-query","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T17:42:14.704Z","tag":"h2h-ts","mode":"scratch","task":"brackets","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T17:42:18.149Z","tag":"h2h-ts","mode":"scratch","task":"order-totals","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T17:42:21.466Z","tag":"h2h-ts","mode":"scratch","task":"rpn-calc","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T17:42:35.646Z","tag":"h2h-ts","mode":"scratch","task":"mini-query","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T17:42:57.018Z","tag":"h2h-ts","mode":"scratch","task":"shortest-path","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T17:43:29.988Z","tag":"h2h-ts","mode":"scratch","task":"json-flatten","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T17:48:19.444Z","tag":"h2h-vow-v2","mode":"scratch","task":"brackets","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T17:48:27.533Z","tag":"h2h-vow-v2","mode":"scratch","task":"shortest-path","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ SyntaxError: map keys must be strings"}
+{"ts":"2026-10-05T17:48:30.179Z","tag":"h2h-vow-v2","mode":"scratch","task":"order-totals","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T17:48:31.079Z","tag":"h2h-vow-v2","mode":"scratch","task":"rpn-calc","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T17:48:52.377Z","tag":"h2h-vow-v2","mode":"scratch","task":"shortest-path","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T17:48:52.483Z","tag":"h2h-vow-v2","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ SyntaxError: unexpected 'return' after the end of a statement"}
+{"ts":"2026-10-05T17:49:07.962Z","tag":"h2h-vow-v2","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: sort() takes a list, but this is a Result<list<str>, str>"}
+{"ts":"2026-10-05T17:50:28.345Z","tag":"h2h-vow-v2","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: num() parses a str, but this is already a num"}
+{"ts":"2026-10-05T17:50:30.584Z","tag":"h2h-vow-v2","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: this has no value to store"}
+{"ts":"2026-10-05T17:50:35.046Z","tag":"h2h-vow-v2","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output"],"firstError":"wrong output for [\"{\\\"say \\\\\\\"hi\\\\\\\"\\\":\\\"back\\\\\\\\slash\\\",\\\"q\\\":\\\"a\\\\\\\"b\\\"}\"]"}
+{"ts":"2026-10-05T17:50:43.634Z","tag":"h2h-vow-v2","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: this has no value to store"}
+{"ts":"2026-10-05T17:50:49.522Z","tag":"h2h-vow-v2","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: sortBy() keys must be nums or strs, but this key is a unit"}
+{"ts":"2026-10-05T17:50:52.971Z","tag":"h2h-vow-v2","mode":"scratch","task":"json-flatten","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T17:50:57.046Z","tag":"h2h-vow-v2","mode":"scratch","task":"mini-query","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T18:10:35.491Z","tag":"h2h-vow-v3","mode":"scratch","task":"brackets","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T18:10:38.801Z","tag":"h2h-vow-v3","mode":"scratch","task":"shortest-path","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"home-park,park-shop,home-cafe,cafe-shop\",\"home\",\"shop\"]"}
+{"ts":"2026-10-05T18:10:46.988Z","tag":"h2h-vow-v3","mode":"scratch","task":"order-totals","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: '?' unwraps a Result, but this is a str"}
+{"ts":"2026-10-05T18:10:51.986Z","tag":"h2h-vow-v3","mode":"scratch","task":"rpn-calc","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T18:10:57.521Z","tag":"h2h-vow-v3","mode":"scratch","task":"order-totals","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T18:11:03.866Z","tag":"h2h-vow-v3","mode":"scratch","task":"shortest-path","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"s-m,m-t,s-k,k-t,s-t\",\"s\",\"t\"]"}
+{"ts":"2026-10-05T18:11:39.972Z","tag":"h2h-vow-v3","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ SyntaxError: functions must be declared at the top level"}
+{"ts":"2026-10-05T18:11:41.298Z","tag":"h2h-vow-v3","mode":"scratch","task":"shortest-path","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic"],"firstError":"✗ RuntimeError: the program ran too long and was stopped"}
+{"ts":"2026-10-05T18:11:58.909Z","tag":"h2h-vow-v3","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: sortBy() keys must be nums or strs, but this key is a unit"}
+{"ts":"2026-10-05T18:12:07.148Z","tag":"h2h-vow-v3","mode":"scratch","task":"shortest-path","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T18:12:23.865Z","tag":"h2h-vow-v3","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: sort() takes a list, but this is a Result<list<str>, str>"}
+{"ts":"2026-10-05T18:12:27.136Z","tag":"h2h-vow-v3","mode":"scratch","task":"mini-query","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-05T18:12:41.006Z","tag":"h2h-vow-v3","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output","wrong-output","wrong-output"],"firstError":"wrong output for [\"{\\\"b\\\":1,\\\"a\\\":{\\\"y\\\":true,\\\"x\\\":null}}\"]"}
+{"ts":"2026-10-05T18:13:01.271Z","tag":"h2h-vow-v3","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output","wrong-output","wrong-output"],"firstError":"wrong output for [\"{\\\"b\\\":1,\\\"a\\\":{\\\"y\\\":true,\\\"x\\\":null}}\"]"}
+{"ts":"2026-10-05T18:13:22.521Z","tag":"h2h-vow-v3","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"{}\"]"}
+{"ts":"2026-10-05T18:13:44.020Z","tag":"h2h-vow-v3","mode":"scratch","task":"json-flatten","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T11:41:06.383Z","tag":"h2h-vow-ex8","mode":"scratch","task":"brackets","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T11:41:17.138Z","tag":"h2h-vow-ex8","mode":"scratch","task":"rpn-calc","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T11:41:18.663Z","tag":"h2h-vow-ex8","mode":"scratch","task":"order-totals","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T11:41:48.688Z","tag":"h2h-vow-ex8","mode":"scratch","task":"shortest-path","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T11:42:15.376Z","tag":"h2h-vow-ex8","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic"],"firstError":"✗ RuntimeError: index -1 is out of range"}
+{"ts":"2026-10-06T11:42:33.597Z","tag":"h2h-vow-ex8","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output"],"firstError":"wrong output for [\"name,age,city\\nada,36,london\\nbob,25,paris\\ncy,41,rome\",\"SELECT name ORDER BY "}
+{"ts":"2026-10-06T11:42:39.005Z","tag":"h2h-vow-ex8","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: sort() takes a list, but this is a Result<list<str>, str>"}
+{"ts":"2026-10-06T11:42:55.800Z","tag":"h2h-vow-ex8","mode":"scratch","task":"mini-query","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T11:42:59.833Z","tag":"h2h-vow-ex8","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: comparing a json with a str"}
+{"ts":"2026-10-06T11:43:20.151Z","tag":"h2h-vow-ex8","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: comparing a json with a str"}
+{"ts":"2026-10-06T11:43:38.348Z","tag":"h2h-vow-ex8","mode":"scratch","task":"json-flatten","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T12:35:13.590Z","tag":"h2h-vow-v5","mode":"scratch","task":"brackets","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T12:35:16.307Z","tag":"h2h-vow-v5","mode":"scratch","task":"shortest-path","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ SyntaxError: map keys must be strings"}
+{"ts":"2026-10-06T12:35:16.413Z","tag":"h2h-vow-v5","mode":"scratch","task":"order-totals","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"[{\\\"item\\\":\\\"a\\\",\\\"price\\\":5}]\"]"}
+{"ts":"2026-10-06T12:35:22.320Z","tag":"h2h-vow-v5","mode":"scratch","task":"shortest-path","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T12:35:22.521Z","tag":"h2h-vow-v5","mode":"scratch","task":"rpn-calc","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T12:35:28.295Z","tag":"h2h-vow-v5","mode":"scratch","task":"order-totals","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T12:35:40.660Z","tag":"h2h-vow-v5","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: this Result is ignored"}
+{"ts":"2026-10-06T12:35:57.134Z","tag":"h2h-vow-v5","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ SyntaxError: functions must be declared at the top level"}
+{"ts":"2026-10-06T12:35:57.869Z","tag":"h2h-vow-v5","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: this Result is ignored"}
+{"ts":"2026-10-06T12:36:17.575Z","tag":"h2h-vow-v5","mode":"scratch","task":"json-flatten","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T12:36:21.564Z","tag":"h2h-vow-v5","mode":"scratch","task":"mini-query","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T14:18:48.569Z","tag":"h2h-vow-v6","mode":"scratch","task":"brackets","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T14:19:00.802Z","tag":"h2h-vow-v6","mode":"scratch","task":"rpn-calc","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T14:19:05.949Z","tag":"h2h-vow-v6","mode":"scratch","task":"order-totals","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T14:19:28.420Z","tag":"h2h-vow-v6","mode":"scratch","task":"shortest-path","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T14:19:57.288Z","tag":"h2h-vow-v6","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"name,age,city\\nada,36,london\\nbob,25,paris\\ncy,41,rome\",\"SELECT city,name WHER"}
+{"ts":"2026-10-06T14:20:27.260Z","tag":"h2h-vow-v6","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ SyntaxError: unknown character '\\'"}
+{"ts":"2026-10-06T14:20:48.582Z","tag":"h2h-vow-v6","mode":"scratch","task":"json-flatten","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T14:20:54.244Z","tag":"h2h-vow-v6","mode":"scratch","task":"mini-query","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T14:23:46.071Z","tag":"h2h-vow-v6","mode":"scratch","task":"brackets","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T14:23:50.409Z","tag":"h2h-vow-v6","mode":"scratch","task":"order-totals","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T14:23:57.905Z","tag":"h2h-vow-v6","mode":"scratch","task":"rpn-calc","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T14:24:17.455Z","tag":"h2h-vow-v6","mode":"scratch","task":"shortest-path","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ SyntaxError: map keys must be strings"}
+{"ts":"2026-10-06T14:24:24.434Z","tag":"h2h-vow-v6","mode":"scratch","task":"shortest-path","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T14:24:57.898Z","tag":"h2h-vow-v6","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: this has no value to store"}
+{"ts":"2026-10-06T14:25:00.726Z","tag":"h2h-vow-v6","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"{}\"]"}
+{"ts":"2026-10-06T14:25:25.609Z","tag":"h2h-vow-v6","mode":"scratch","task":"json-flatten","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T14:25:59.527Z","tag":"h2h-vow-v6","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: this has no value to store"}
+{"ts":"2026-10-06T14:26:26.353Z","tag":"h2h-vow-v6","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: fn (lambda) returns two different types"}
+{"ts":"2026-10-06T14:26:37.190Z","tag":"h2h-vow-v6","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output","wrong-output"],"firstError":"wrong output for [\"name,age,city\\nada,36,london\\nbob,25,paris\\ncy,41,rome\",\"SELECT name ORDER BY "}
+{"ts":"2026-10-06T14:27:18.292Z","tag":"h2h-vow-v6","mode":"scratch","task":"mini-query","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T14:28:04.354Z","tag":"h2h-ts","mode":"scratch","task":"order-totals","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T14:28:06.223Z","tag":"h2h-ts","mode":"scratch","task":"brackets","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T14:28:09.267Z","tag":"h2h-ts","mode":"scratch","task":"shortest-path","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T14:28:15.407Z","tag":"h2h-ts","mode":"scratch","task":"rpn-calc","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T14:28:25.200Z","tag":"h2h-ts","mode":"scratch","task":"json-flatten","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T14:28:39.805Z","tag":"h2h-ts","mode":"scratch","task":"mini-query","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T14:29:25.518Z","tag":"h2h-vow-v6","mode":"scratch","task":"brackets","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T14:29:30.258Z","tag":"h2h-vow-v6","mode":"scratch","task":"order-totals","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T14:29:35.898Z","tag":"h2h-vow-v6","mode":"scratch","task":"rpn-calc","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: round takes 2 arguments, but got 1"}
+{"ts":"2026-10-06T14:29:39.910Z","tag":"h2h-vow-v6","mode":"scratch","task":"shortest-path","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T14:29:46.086Z","tag":"h2h-vow-v6","mode":"scratch","task":"rpn-calc","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T14:29:54.984Z","tag":"h2h-vow-v6","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: this has no value to store"}
+{"ts":"2026-10-06T14:30:22.179Z","tag":"h2h-vow-v6","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ RuntimeError: the program ran too long and was stopped"}
+{"ts":"2026-10-06T14:30:28.033Z","tag":"h2h-vow-v6","mode":"scratch","task":"json-flatten","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T14:30:30.558Z","tag":"h2h-vow-v6","mode":"scratch","task":"mini-query","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T15:38:53.811Z","tag":"mq-probe","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"name,age\\nb,2\",\"SELECT name WHERE name > b\"]","failedCopy":"failed/mini-query/1791301133811.vow"}
+{"ts":"2026-10-06T15:38:58.791Z","tag":"mq-probe","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: fn (lambda) returns two different types","failedCopy":"failed/mini-query/1791301138790.vow"}
+{"ts":"2026-10-06T15:39:14.491Z","tag":"mq-probe","mode":"scratch","task":"mini-query","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T15:39:19.704Z","tag":"mq-probe","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"name,age\\nb,2\",\"SELECT name WHERE name > b\"]","failedCopy":"failed/mini-query/1791301159703.vow"}
+{"ts":"2026-10-06T15:40:02.552Z","tag":"mq-probe","mode":"scratch","task":"mini-query","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T15:40:26.195Z","tag":"mq-probe","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: this list mixes list<str> and list<map<str, str>>","failedCopy":"failed/mini-query/1791301226195.vow"}
+{"ts":"2026-10-06T15:40:57.211Z","tag":"mq-probe","mode":"scratch","task":"mini-query","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T15:50:35.823Z","tag":"h2h-vow-v7","mode":"scratch","task":"order-totals","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T15:50:41.226Z","tag":"h2h-vow-v7","mode":"scratch","task":"shortest-path","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T15:50:53.842Z","tag":"h2h-vow-v7","mode":"scratch","task":"brackets","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T15:50:56.243Z","tag":"h2h-vow-v7","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ EffectError: fn main declares 'fs' but never uses it","failedCopy":"failed/json-flatten/1791301856243.vow"}
+{"ts":"2026-10-06T15:51:02.014Z","tag":"h2h-vow-v7","mode":"scratch","task":"json-flatten","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T15:51:02.387Z","tag":"h2h-vow-v7","mode":"scratch","task":"rpn-calc","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: 'return' inside the else branch, which produces a value","failedCopy":"failed/rpn-calc/1791301862387.vow"}
+{"ts":"2026-10-06T15:51:06.241Z","tag":"h2h-vow-v7","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: this has no value to store","failedCopy":"failed/mini-query/1791301866241.vow"}
+{"ts":"2026-10-06T15:51:13.514Z","tag":"h2h-vow-v7","mode":"scratch","task":"rpn-calc","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T15:51:20.828Z","tag":"h2h-vow-v7","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: this lambda returns two different types","failedCopy":"failed/mini-query/1791301880828.vow"}
+{"ts":"2026-10-06T15:51:40.406Z","tag":"h2h-vow-v7","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"name,age\\nb,2\",\"SELECT name WHERE name > b\"]","failedCopy":"failed/mini-query/1791301900404.vow"}
+{"ts":"2026-10-06T15:52:00.902Z","tag":"h2h-vow-v7","mode":"scratch","task":"mini-query","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T15:55:47.134Z","tag":"h2h-vow-v7","mode":"scratch","task":"brackets","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T15:55:53.946Z","tag":"h2h-vow-v7","mode":"scratch","task":"order-totals","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T15:55:54.101Z","tag":"h2h-vow-v7","mode":"scratch","task":"shortest-path","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T15:55:57.025Z","tag":"h2h-vow-v7","mode":"scratch","task":"rpn-calc","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T15:56:08.720Z","tag":"h2h-vow-v7","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"{}\"]","failedCopy":"failed/json-flatten/1791302168719.vow"}
+{"ts":"2026-10-06T15:56:29.362Z","tag":"h2h-vow-v7","mode":"scratch","task":"json-flatten","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T15:57:21.193Z","tag":"h2h-vow-v7","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: this has no value to store","failedCopy":"failed/mini-query/1791302241193.vow"}
+{"ts":"2026-10-06T15:57:37.498Z","tag":"h2h-vow-v7","mode":"scratch","task":"mini-query","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T15:58:16.368Z","tag":"h2h-vow-v7","mode":"scratch","task":"brackets","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: this Result is ignored","failedCopy":"failed/brackets/1791302296368.vow"}
+{"ts":"2026-10-06T15:58:22.464Z","tag":"h2h-vow-v7","mode":"scratch","task":"shortest-path","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T15:58:24.272Z","tag":"h2h-vow-v7","mode":"scratch","task":"order-totals","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T15:58:27.380Z","tag":"h2h-vow-v7","mode":"scratch","task":"brackets","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T15:58:35.668Z","tag":"h2h-vow-v7","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: this element holds str, but you're storing a json","failedCopy":"failed/json-flatten/1791302315668.vow"}
+{"ts":"2026-10-06T15:58:36.960Z","tag":"h2h-vow-v7","mode":"scratch","task":"rpn-calc","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T15:58:48.265Z","tag":"h2h-vow-v7","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: fn compareValues might finish without returning a value","failedCopy":"failed/mini-query/1791302328264.vow"}
+{"ts":"2026-10-06T15:58:51.545Z","tag":"h2h-vow-v7","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"{}\"]","failedCopy":"failed/json-flatten/1791302331545.vow"}
+{"ts":"2026-10-06T15:59:08.890Z","tag":"h2h-vow-v7","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"[{\\\"a\\\":1},[],{},\\\"s\\\"]\"]","failedCopy":"failed/json-flatten/1791302348889.vow"}
+{"ts":"2026-10-06T15:59:18.816Z","tag":"h2h-vow-v7","mode":"scratch","task":"mini-query","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T15:59:21.926Z","tag":"h2h-vow-v7","mode":"scratch","task":"json-flatten","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T16:11:55.621Z","tag":"h2h-vow-v8","mode":"scratch","task":"brackets","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T16:12:04.323Z","tag":"h2h-vow-v8","mode":"scratch","task":"order-totals","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T16:12:05.194Z","tag":"h2h-vow-v8","mode":"scratch","task":"rpn-calc","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T16:12:35.320Z","tag":"h2h-vow-v8","mode":"scratch","task":"shortest-path","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T16:13:27.100Z","tag":"h2h-vow-v8","mode":"scratch","task":"mini-query","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T16:13:46.359Z","tag":"h2h-vow-v8","mode":"scratch","task":"json-flatten","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T16:14:37.310Z","tag":"h2h-vow-v8","mode":"scratch","task":"shortest-path","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ SyntaxError: map keys must be strings","failedCopy":"failed/shortest-path/1791303277309.vow"}
+{"ts":"2026-10-06T16:14:45.792Z","tag":"h2h-vow-v8","mode":"scratch","task":"brackets","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T16:14:48.843Z","tag":"h2h-vow-v8","mode":"scratch","task":"shortest-path","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T16:14:52.219Z","tag":"h2h-vow-v8","mode":"scratch","task":"order-totals","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T16:15:03.544Z","tag":"h2h-vow-v8","mode":"scratch","task":"json-flatten","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T16:15:06.699Z","tag":"h2h-vow-v8","mode":"scratch","task":"rpn-calc","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T16:16:10.349Z","tag":"h2h-vow-v8","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: fn compareValues might finish without returning a value","failedCopy":"failed/mini-query/1791303370349.vow"}
+{"ts":"2026-10-06T16:16:44.858Z","tag":"h2h-vow-v8","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: this lambda might finish without returning a value","failedCopy":"failed/mini-query/1791303404858.vow"}
+{"ts":"2026-10-06T16:17:03.560Z","tag":"h2h-vow-v8","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: sortBy() keys must be nums or strs, but this key is a unit","failedCopy":"failed/mini-query/1791303423560.vow"}
+{"ts":"2026-10-06T16:17:26.911Z","tag":"h2h-vow-v8","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: sortBy() keys must be nums or strs, but this key is a unit","failedCopy":"failed/mini-query/1791303446911.vow"}
+{"ts":"2026-10-06T16:17:38.493Z","tag":"h2h-vow-v8","mode":"scratch","task":"mini-query","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T16:18:26.057Z","tag":"h2h-vow-v8","mode":"scratch","task":"order-totals","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T16:18:27.113Z","tag":"h2h-vow-v8","mode":"scratch","task":"brackets","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T16:18:35.972Z","tag":"h2h-vow-v8","mode":"scratch","task":"rpn-calc","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T16:18:37.359Z","tag":"h2h-vow-v8","mode":"scratch","task":"shortest-path","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T16:19:03.390Z","tag":"h2h-vow-v8","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ SyntaxError: expected ')' but found ','","failedCopy":"failed/mini-query/1791303543390.vow"}
+{"ts":"2026-10-06T16:19:11.884Z","tag":"h2h-vow-v8","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"{}\"]","failedCopy":"failed/json-flatten/1791303551883.vow"}
+{"ts":"2026-10-06T16:19:25.733Z","tag":"h2h-vow-v8","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: this list mixes list<str> and str","failedCopy":"failed/mini-query/1791303565733.vow"}
+{"ts":"2026-10-06T16:19:38.974Z","tag":"h2h-vow-v8","mode":"scratch","task":"json-flatten","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T16:19:56.069Z","tag":"h2h-vow-v8","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: argument 2 of indexOf2 should be list<a>, but this is a str","failedCopy":"failed/mini-query/1791303596068.vow"}
+{"ts":"2026-10-06T16:20:16.578Z","tag":"h2h-vow-v8","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: min takes 2 arguments, but got 1","failedCopy":"failed/mini-query/1791303616578.vow"}
+{"ts":"2026-10-06T16:20:45.511Z","tag":"h2h-vow-v8","mode":"scratch","task":"mini-query","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T16:51:53.380Z","tag":"h2h-vow-v9","mode":"scratch","task":"brackets","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: '?' only works inside a function","failedCopy":"failed/brackets/1791305513380.vow"}
+{"ts":"2026-10-06T16:52:01.374Z","tag":"h2h-vow-v9","mode":"scratch","task":"brackets","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T16:52:09.833Z","tag":"h2h-vow-v9","mode":"scratch","task":"order-totals","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T16:52:11.598Z","tag":"h2h-vow-v9","mode":"scratch","task":"shortest-path","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T16:52:27.011Z","tag":"h2h-vow-v9","mode":"scratch","task":"rpn-calc","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T16:53:08.323Z","tag":"h2h-vow-v9","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ SyntaxError: unexpected ',' after the end of a statement","failedCopy":"failed/mini-query/1791305588323.vow"}
+{"ts":"2026-10-06T16:53:09.764Z","tag":"h2h-vow-v9","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"{}\"]","failedCopy":"failed/json-flatten/1791305589764.vow"}
+{"ts":"2026-10-06T16:53:23.965Z","tag":"h2h-vow-v9","mode":"scratch","task":"mini-query","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T16:53:36.616Z","tag":"h2h-vow-v9","mode":"scratch","task":"json-flatten","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T16:54:21.742Z","tag":"h2h-vow-v9","mode":"scratch","task":"brackets","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T16:54:21.938Z","tag":"h2h-vow-v9","mode":"scratch","task":"order-totals","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T16:54:37.367Z","tag":"h2h-vow-v9","mode":"scratch","task":"rpn-calc","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T16:54:58.555Z","tag":"h2h-vow-v9","mode":"scratch","task":"shortest-path","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T16:55:00.521Z","tag":"h2h-vow-v9","mode":"scratch","task":"mini-query","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T18:56:19.339Z","tag":"h2h-vow-v9","mode":"scratch","task":"brackets","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T18:56:24.785Z","tag":"h2h-vow-v9","mode":"scratch","task":"shortest-path","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ SyntaxError: map keys must be strings","failedCopy":"failed/shortest-path/1791312984784.vow"}
+{"ts":"2026-10-06T18:56:41.648Z","tag":"h2h-vow-v9","mode":"scratch","task":"shortest-path","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T18:56:43.112Z","tag":"h2h-vow-v9","mode":"scratch","task":"order-totals","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T18:56:45.594Z","tag":"h2h-vow-v9","mode":"scratch","task":"rpn-calc","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T18:56:55.827Z","tag":"h2h-vow-v9","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ SyntaxError: map keys must be strings","failedCopy":"failed/json-flatten/1791313015827.vow"}
+{"ts":"2026-10-06T18:57:10.011Z","tag":"h2h-vow-v9","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"{}\"]","failedCopy":"failed/json-flatten/1791313030011.vow"}
+{"ts":"2026-10-06T18:57:21.262Z","tag":"h2h-vow-v9","mode":"scratch","task":"json-flatten","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T21:59:48.947Z","tag":"h2h-vow-v9","mode":"scratch","task":"mini-query","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: for loops walk over lists, but this is a Result<a, str>","failedCopy":"failed/mini-query/1791323988946.vow"}
+{"ts":"2026-10-06T23:16:30.712Z","tag":"h2h-vow-v9","mode":"scratch","task":"mini-query","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-06T23:17:19.448Z","tag":"h2h-vow-v9","mode":"scratch","task":"json-flatten","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output","wrong-output","wrong-output","wrong-output"],"firstError":"wrong output for [\"{\\\"b\\\":1,\\\"a\\\":{\\\"y\\\":true,\\\"x\\\":null}}\"]","failedCopy":"failed/json-flatten/1791328639447.vow"}
+{"ts":"2026-10-06T23:18:01.971Z","tag":"h2h-vow-v9","mode":"scratch","task":"json-flatten","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T13:34:51.443Z","tag":"ho-ts","mode":"scratch","task":"interval-merge","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T13:34:55.099Z","tag":"ho-vow","mode":"scratch","task":"csv-diff","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ SyntaxError: map keys must be strings","failedCopy":"failed/csv-diff/1791380095099.vow"}
+{"ts":"2026-10-07T13:35:04.396Z","tag":"ho-ts","mode":"scratch","task":"roman","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T13:35:11.550Z","tag":"ho-vow","mode":"scratch","task":"csv-diff","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T13:35:22.079Z","tag":"ho-vow","mode":"scratch","task":"text-wrap","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T13:35:27.359Z","tag":"ho-vow","mode":"scratch","task":"interval-merge","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T13:35:41.162Z","tag":"ho-ts","mode":"scratch","task":"csv-diff","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T13:35:45.642Z","tag":"ho-vow","mode":"scratch","task":"roman","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T13:35:48.297Z","tag":"ho-ts","mode":"scratch","task":"text-wrap","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T13:36:06.717Z","tag":"ho-vow","mode":"scratch","task":"interval-merge","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T13:36:27.432Z","tag":"ho-vow","mode":"scratch","task":"csv-diff","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T13:36:31.846Z","tag":"ho-ts","mode":"scratch","task":"interval-merge","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T13:36:35.707Z","tag":"ho-vow","mode":"scratch","task":"text-wrap","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T13:36:41.340Z","tag":"ho-vow","mode":"scratch","task":"roman","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T13:36:48.213Z","tag":"ho-ts","mode":"scratch","task":"roman","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T13:37:16.254Z","tag":"ho-ts","mode":"scratch","task":"csv-diff","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T13:37:24.283Z","tag":"ho-ts","mode":"scratch","task":"text-wrap","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T13:37:41.750Z","tag":"ho-vow","mode":"scratch","task":"csv-diff","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T13:37:49.888Z","tag":"ho-vow","mode":"scratch","task":"text-wrap","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T13:37:56.517Z","tag":"ho-ts","mode":"scratch","task":"interval-merge","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T13:38:00.755Z","tag":"ho-vow","mode":"scratch","task":"interval-merge","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T13:38:14.698Z","tag":"ho-ts","mode":"scratch","task":"roman","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T13:38:27.610Z","tag":"ho-ts","mode":"scratch","task":"csv-diff","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T13:38:31.529Z","tag":"ho-vow","mode":"scratch","task":"roman","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T13:38:34.919Z","tag":"ho-ts","mode":"scratch","task":"text-wrap","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T13:48:06.806Z","tag":"hard-vow","mode":"scratch","task":"dep-order","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ SyntaxError: nested fn visit calls itself and uses visited, has_cycle, packages, sorted from fn main","failedCopy":"failed/dep-order/1791380886806.vow"}
+{"ts":"2026-10-07T13:48:12.799Z","tag":"hard-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: trim() takes a str, but this is a list<str>","failedCopy":"failed/template/1791380892798.vow"}
+{"ts":"2026-10-07T13:48:21.075Z","tag":"hard-vow","mode":"scratch","task":"dep-order","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T13:48:33.770Z","tag":"hard-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: trim() takes a str, but this is a list<str>","failedCopy":"failed/template/1791380913770.vow"}
+{"ts":"2026-10-07T13:48:44.008Z","tag":"hard-vow","mode":"scratch","task":"calc-vars","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output"],"firstError":"wrong output for [\"x = 2\\ny = x * (3 + 4)\\nz = y / 4 - -1\"]","failedCopy":"failed/calc-vars/1791380924008.vow"}
+{"ts":"2026-10-07T13:48:52.047Z","tag":"hard-vow","mode":"scratch","task":"calc-vars","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T13:49:04.448Z","tag":"hard-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output"],"firstError":"wrong output for [\"{{#each xs}}[{{.}}]{{/each}}\",\"{\\\"xs\\\":[1,\\\"two\\\",3.5]}\"]","failedCopy":"failed/template/1791380944447.vow"}
+{"ts":"2026-10-07T14:09:48.796Z","tag":"hard-vow","mode":"scratch","task":"template","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T14:10:04.100Z","tag":"hard-vow","mode":"scratch","task":"ini-config","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T14:10:10.585Z","tag":"hard-vow","mode":"scratch","task":"template","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T14:10:10.647Z","tag":"hard-vow","mode":"scratch","task":"ini-config","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T14:15:27.376Z","tag":"hard-ts","mode":"scratch","task":"dep-order","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T14:16:18.892Z","tag":"hard-ts","mode":"scratch","task":"template","lang":"ts","ok":false,"failKinds":["wrong-output","wrong-output","wrong-output","wrong-output"],"firstError":"wrong output for [\"{{#each xs}}[{{.}}]{{/each}}\",\"{\\\"xs\\\":[1,\\\"two\\\",3.5]}\"]","failedCopy":"failed/template/1791382578891.ts"}
+{"ts":"2026-10-07T14:16:21.420Z","tag":"hard-ts","mode":"scratch","task":"calc-vars","lang":"ts","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"r = 2.5 * 4\\ns = -r + 0.25\"]","failedCopy":"failed/calc-vars/1791382581420.ts"}
+{"ts":"2026-10-07T14:16:40.427Z","tag":"hard-ts","mode":"scratch","task":"template","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T14:16:44.686Z","tag":"hard-ts","mode":"scratch","task":"calc-vars","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T14:16:49.289Z","tag":"hard-ts","mode":"scratch","task":"ini-config","lang":"ts","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"[Bad]\\nk=1\",\"bad.k\"]","failedCopy":"failed/ini-config/1791382609289.ts"}
+{"ts":"2026-10-07T14:16:59.101Z","tag":"hard-ts","mode":"scratch","task":"ini-config","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T14:17:46.001Z","tag":"hard-vow","mode":"scratch","task":"dep-order","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T14:17:56.212Z","tag":"hard-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ SyntaxError: \"{\" in a string starts interpolation","failedCopy":"failed/template/1791382676212.vow"}
+{"ts":"2026-10-07T14:18:43.164Z","tag":"hard-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: trim() takes a str, but this is a list<str>","failedCopy":"failed/template/1791382723164.vow"}
+{"ts":"2026-10-07T14:19:06.095Z","tag":"hard-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: trim() takes a str, but this is a list<str>","failedCopy":"failed/template/1791382746095.vow"}
+{"ts":"2026-10-07T14:19:38.048Z","tag":"hard-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output","wrong-output","wrong-output"],"firstError":"wrong output for [\"{{#if vip}}VIP {{/if}}{{name}}\",\"{\\\"name\\\":\\\"Bo\\\",\\\"vip\\\":false}\"]","failedCopy":"failed/template/1791382778048.vow"}
+{"ts":"2026-10-07T14:19:59.167Z","tag":"hard-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output","wrong-output","wrong-output"],"firstError":"wrong output for [\"{{#if vip}}VIP {{/if}}{{name}}\",\"{\\\"name\\\":\\\"Bo\\\",\\\"vip\\\":false}\"]","failedCopy":"failed/template/1791382799167.vow"}
+{"ts":"2026-10-07T14:20:23.152Z","tag":"hard-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output","wrong-output","wrong-output"],"firstError":"wrong output for [\"{{#if vip}}VIP {{/if}}{{name}}\",\"{\\\"name\\\":\\\"Bo\\\",\\\"vip\\\":false}\"]","failedCopy":"failed/template/1791382823152.vow"}
+{"ts":"2026-10-07T14:20:49.589Z","tag":"hard-vow","mode":"scratch","task":"template","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T14:21:02.799Z","tag":"hard-vow","mode":"scratch","task":"ini-config","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T14:21:05.531Z","tag":"hard-vow","mode":"scratch","task":"template","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T14:21:05.590Z","tag":"hard-vow","mode":"scratch","task":"ini-config","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T14:21:52.218Z","tag":"hard-ts","mode":"scratch","task":"template","lang":"ts","ok":false,"failKinds":["wrong-output","wrong-output"],"firstError":"wrong output for [\"{{#each xs}}[{{.}}]{{/each}}\",\"{\\\"xs\\\":[1,\\\"two\\\",3.5]}\"]","failedCopy":"failed/template/1791382912217.ts"}
+{"ts":"2026-10-07T14:22:14.224Z","tag":"hard-vow","mode":"scratch","task":"calc-vars","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T14:22:53.990Z","tag":"hard-ts","mode":"scratch","task":"template","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T14:23:07.117Z","tag":"hard-ts","mode":"scratch","task":"ini-config","lang":"ts","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"[Bad]\\nk=1\",\"bad.k\"]","failedCopy":"failed/ini-config/1791382987117.ts"}
+{"ts":"2026-10-07T14:23:14.080Z","tag":"hard-ts","mode":"scratch","task":"ini-config","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T14:23:15.173Z","tag":"hard-ts","mode":"scratch","task":"dep-order","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T14:23:54.086Z","tag":"hard-vow","mode":"scratch","task":"dep-order","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ SyntaxError: nested fn dfs calls itself and uses visited, recStack, graph from fn hasCycle","failedCopy":"failed/dep-order/1791383034085.vow"}
+{"ts":"2026-10-07T14:24:00.947Z","tag":"hard-ts","mode":"scratch","task":"calc-vars","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T14:24:07.611Z","tag":"hard-vow","mode":"scratch","task":"dep-order","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output","wrong-output","wrong-output","wrong-output"],"firstError":"wrong output for [\"app:lib,util;lib:util;util:\"]","failedCopy":"failed/dep-order/1791383047611.vow"}
+{"ts":"2026-10-07T14:24:42.250Z","tag":"hard-vow","mode":"scratch","task":"dep-order","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output"],"firstError":"wrong output for [\"app:lib,util;lib:util;util:\"]","failedCopy":"failed/dep-order/1791383082249.vow"}
+{"ts":"2026-10-07T14:25:09.965Z","tag":"hard-vow","mode":"scratch","task":"dep-order","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T14:25:32.615Z","tag":"hard-vow","mode":"scratch","task":"calc-vars","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output"],"firstError":"wrong output for [\"a = 1 / 3\"]","failedCopy":"failed/calc-vars/1791383132615.vow"}
+{"ts":"2026-10-07T14:25:58.272Z","tag":"hard-vow","mode":"scratch","task":"calc-vars","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T14:26:37.394Z","tag":"hard-ts","mode":"scratch","task":"dep-order","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T14:26:54.835Z","tag":"hard-ts","mode":"scratch","task":"calc-vars","lang":"ts","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"r = 2.5 * 4\\ns = -r + 0.25\"]","failedCopy":"failed/calc-vars/1791383214834.ts"}
+{"ts":"2026-10-07T14:27:07.662Z","tag":"hard-ts","mode":"scratch","task":"calc-vars","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T14:27:30.542Z","tag":"hard-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output","wrong-output","wrong-output","wrong-output","wrong-output","wrong-output","wrong-output","wrong-output"],"firstError":"wrong output for [\"Hi {{name}}!\",\"{\\\"name\\\":\\\"Ada\\\"}\"]","failedCopy":"failed/template/1791383250541.vow"}
+{"ts":"2026-10-07T14:28:01.661Z","tag":"hard-ts","mode":"scratch","task":"template","lang":"ts","ok":false,"failKinds":["wrong-output","wrong-output","wrong-output"],"firstError":"wrong output for [\"{{#if vip}}VIP {{/if}}{{name}}\",\"{\\\"name\\\":\\\"Bo\\\",\\\"vip\\\":false}\"]","failedCopy":"failed/template/1791383281661.ts"}
+{"ts":"2026-10-07T14:28:40.175Z","tag":"hard-ts","mode":"scratch","task":"template","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T14:29:01.453Z","tag":"hard-ts","mode":"scratch","task":"ini-config","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T14:29:12.840Z","tag":"hard-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"{{#each users}}{{name}}:{{#if admin}}A{{/if}} {{/each}}\",\"{\\\"users\\\":[{\\\"name\\","failedCopy":"failed/template/1791383352839.vow"}
+{"ts":"2026-10-07T14:29:24.472Z","tag":"hard-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"{{#each users}}{{name}}:{{#if admin}}A{{/if}} {{/each}}\",\"{\\\"users\\\":[{\\\"name\\","failedCopy":"failed/template/1791383364471.vow"}
+{"ts":"2026-10-07T14:29:38.787Z","tag":"hard-vow","mode":"scratch","task":"ini-config","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"[Bad]\\nk=1\",\"bad.k\"]","failedCopy":"failed/ini-config/1791383378787.vow"}
+{"ts":"2026-10-07T14:29:49.976Z","tag":"hard-vow","mode":"scratch","task":"ini-config","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-07T14:30:40.463Z","tag":"hard-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic"],"firstError":"✗ RuntimeError: the program ran too long and was stopped","failedCopy":"failed/template/1791383440462.vow"}
+{"ts":"2026-10-07T14:30:52.200Z","tag":"hard-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic"],"firstError":"✗ RuntimeError: the program ran too long and was stopped","failedCopy":"failed/template/1791383452199.vow"}
+{"ts":"2026-10-07T14:31:23.226Z","tag":"hard-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ SyntaxError: unexpected 'return' after the end of a statement","failedCopy":"failed/template/1791383483226.vow"}
+{"ts":"2026-10-07T14:31:32.285Z","tag":"hard-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"{{#each users}}{{name}}:{{#if admin}}A{{/if}} {{/each}}\",\"{\\\"users\\\":[{\\\"name\\","failedCopy":"failed/template/1791383492284.vow"}
+{"ts":"2026-10-07T14:31:49.089Z","tag":"hard-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic"],"firstError":"✗ RuntimeError: the program ran too long and was stopped","failedCopy":"failed/template/1791383509089.vow"}
+{"ts":"2026-10-08T02:06:59.538Z","tag":"hard-vow2","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: fn valueToString returns two different types","failedCopy":"failed/template/1791425219537.vow"}
+{"ts":"2026-10-08T02:07:03.096Z","tag":"hard-vow2","mode":"scratch","task":"dep-order","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: this map mixes str and list<str> values","failedCopy":"failed/dep-order/1791425223095.vow"}
+{"ts":"2026-10-08T02:07:07.761Z","tag":"hard-vow2","mode":"scratch","task":"dep-order","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: len() works on lists and strs, not maps","failedCopy":"failed/dep-order/1791425227760.vow"}
+{"ts":"2026-10-08T02:07:13.468Z","tag":"hard-vow2","mode":"scratch","task":"dep-order","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T02:07:20.588Z","tag":"hard-vow2","mode":"scratch","task":"dep-order","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output","wrong-output"],"firstError":"wrong output for [\"a:b,c;a:d\"]","failedCopy":"failed/dep-order/1791425240587.vow"}
+{"ts":"2026-10-08T02:07:22.061Z","tag":"hard-vow2","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: jsonType() reads a json value, but this is a Result<a, str>","failedCopy":"failed/template/1791425242061.vow"}
+{"ts":"2026-10-08T02:07:31.633Z","tag":"hard-vow2","mode":"scratch","task":"dep-order","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T02:07:38.507Z","tag":"hard-vow2","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: indexOf() takes strs, but argument 1 is a list<str>","failedCopy":"failed/template/1791425258507.vow"}
+{"ts":"2026-10-08T02:07:47.451Z","tag":"hard-vow2","mode":"scratch","task":"calc-vars","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ SyntaxError: expected '{' to start the body of fn parseExpression","failedCopy":"failed/calc-vars/1791425267451.vow"}
+{"ts":"2026-10-08T02:07:49.540Z","tag":"hard-vow2","mode":"scratch","task":"calc-vars","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: trim takes 1 argument, but got 2","failedCopy":"failed/calc-vars/1791425269540.vow"}
+{"ts":"2026-10-08T02:08:01.632Z","tag":"hard-vow2","mode":"scratch","task":"template","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T02:08:07.683Z","tag":"hard-vow2","mode":"scratch","task":"calc-vars","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T02:08:11.867Z","tag":"hard-vow2","mode":"scratch","task":"calc-vars","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T02:08:15.630Z","tag":"hard-vow2","mode":"scratch","task":"ini-config","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output","wrong-output"],"firstError":"wrong output for [\"x = 1\\n[s]\",\"s.x\"]","failedCopy":"failed/ini-config/1791425295630.vow"}
+{"ts":"2026-10-08T02:08:32.338Z","tag":"hard-vow2","mode":"scratch","task":"ini-config","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T02:09:01.969Z","tag":"hard-vow2","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ SyntaxError: expected '{' to start the body of fn render","failedCopy":"failed/template/1791425341969.vow"}
+{"ts":"2026-10-08T02:09:17.262Z","tag":"hard-vow2","mode":"scratch","task":"dep-order","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T02:09:19.212Z","tag":"hard-vow2","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ SyntaxError: map keys must be strings","failedCopy":"failed/template/1791425359212.vow"}
+{"ts":"2026-10-08T02:09:21.461Z","tag":"hard-vow2","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: fn isTruthy returns two different types","failedCopy":"failed/template/1791425361461.vow"}
+{"ts":"2026-10-08T02:09:27.009Z","tag":"hard-vow2","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: trim() takes a str, but this is a list<str>","failedCopy":"failed/template/1791425367009.vow"}
+{"ts":"2026-10-08T02:09:48.711Z","tag":"hard-vow2","mode":"scratch","task":"calc-vars","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T02:09:56.417Z","tag":"hard-vow2","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: startsWith() takes strs, but argument 1 is a list<str>","failedCopy":"failed/template/1791425396416.vow"}
+{"ts":"2026-10-08T02:10:00.748Z","tag":"hard-vow2","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: join() takes a list<str>, but this is a str","failedCopy":"failed/template/1791425400747.vow"}
+{"ts":"2026-10-08T02:10:06.661Z","tag":"hard-vow2","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: startsWith() takes strs, but argument 1 is a list<str>","failedCopy":"failed/template/1791425406661.vow"}
+{"ts":"2026-10-08T02:10:12.400Z","tag":"hard-vow2","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: trim() takes a str, but this is a list<str>","failedCopy":"failed/template/1791425412400.vow"}
+{"ts":"2026-10-08T02:10:35.659Z","tag":"hard-vow2","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: startsWith() takes strs, but argument 1 is a list<str>","failedCopy":"failed/template/1791425435658.vow"}
+{"ts":"2026-10-08T02:10:43.438Z","tag":"hard-vow2","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: '+' doesn't work on list<a>","failedCopy":"failed/template/1791425443437.vow"}
+{"ts":"2026-10-08T02:10:49.135Z","tag":"hard-vow2","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: 'null' doesn't exist","failedCopy":"failed/template/1791425449134.vow"}
+{"ts":"2026-10-08T02:10:53.164Z","tag":"hard-vow2","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: trim() takes a str, but this is a list<str>","failedCopy":"failed/template/1791425453164.vow"}
+{"ts":"2026-10-08T02:10:55.603Z","tag":"hard-vow2","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: fn lookupValue might finish without returning a value","failedCopy":"failed/template/1791425455603.vow"}
+{"ts":"2026-10-08T02:11:05.069Z","tag":"hard-vow2","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"{{#each n}}x{{/each}}\",\"{\\\"n\\\":5}\"]","failedCopy":"failed/template/1791425465068.vow"}
+{"ts":"2026-10-08T02:11:13.544Z","tag":"hard-vow2","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output","wrong-output"],"firstError":"wrong output for [\"{{#if vip}}VIP {{/if}}{{name}}\",\"{\\\"name\\\":\\\"Bo\\\",\\\"vip\\\":false}\"]","failedCopy":"failed/template/1791425473543.vow"}
+{"ts":"2026-10-08T02:11:14.910Z","tag":"hard-vow2","mode":"scratch","task":"template","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T02:11:27.077Z","tag":"hard-vow2","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"{{#each users}}{{name}}:{{#if admin}}A{{/if}} {{/each}}\",\"{\\\"users\\\":[{\\\"name\\","failedCopy":"failed/template/1791425487077.vow"}
+{"ts":"2026-10-08T02:11:29.804Z","tag":"hard-vow2","mode":"scratch","task":"ini-config","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T02:11:32.409Z","tag":"hard-vow2","mode":"scratch","task":"template","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T02:11:32.461Z","tag":"hard-vow2","mode":"scratch","task":"ini-config","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T02:11:44.116Z","tag":"hard-vow2","mode":"scratch","task":"template","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T02:11:57.132Z","tag":"hard-vow2","mode":"scratch","task":"ini-config","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output"],"firstError":"wrong output for [\"[a]\\nk = 1\\nk = 2\\n[a]\\nj =\",\"a.k\",\"a.j\"]","failedCopy":"failed/ini-config/1791425517132.vow"}
+{"ts":"2026-10-08T02:12:20.107Z","tag":"hard-vow2","mode":"scratch","task":"ini-config","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T02:12:23.049Z","tag":"hard-vow2","mode":"scratch","task":"template","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T02:12:23.098Z","tag":"hard-vow2","mode":"scratch","task":"ini-config","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T13:34:28.904Z","tag":"stdlib-vow","mode":"scratch","task":"csv-diff","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T13:34:32.398Z","tag":"stdlib-vow","mode":"scratch","task":"interval-merge","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T13:34:44.770Z","tag":"stdlib-vow","mode":"scratch","task":"text-wrap","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T13:34:54.948Z","tag":"stdlib-vow","mode":"scratch","task":"roman","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: this list mixes num and str","failedCopy":"failed/roman/1791466494948.vow"}
+{"ts":"2026-10-08T13:35:00.179Z","tag":"stdlib-vow","mode":"scratch","task":"dep-order","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T13:35:04.752Z","tag":"stdlib-vow","mode":"scratch","task":"roman","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T13:35:32.841Z","tag":"stdlib-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: indexOf takes 2 arguments, but got 3","failedCopy":"failed/template/1791466532841.vow"}
+{"ts":"2026-10-08T13:35:52.582Z","tag":"stdlib-vow","mode":"scratch","task":"interval-merge","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T13:35:56.784Z","tag":"stdlib-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: argument 1 of findSubstring should be list<a>, but this is a str","failedCopy":"failed/template/1791466556782.vow"}
+{"ts":"2026-10-08T13:36:08.385Z","tag":"stdlib-vow","mode":"scratch","task":"calc-vars","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T13:36:09.176Z","tag":"stdlib-vow","mode":"scratch","task":"roman","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T13:36:19.650Z","tag":"stdlib-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: argument 3 of processTemplate should be map<str, a>, but this is a json","failedCopy":"failed/template/1791466579650.vow"}
+{"ts":"2026-10-08T13:36:32.453Z","tag":"stdlib-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: 'null' doesn't exist","failedCopy":"failed/template/1791466592453.vow"}
+{"ts":"2026-10-08T13:36:59.791Z","tag":"stdlib-vow","mode":"scratch","task":"csv-diff","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T13:37:01.031Z","tag":"stdlib-vow","mode":"scratch","task":"template","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T13:37:06.438Z","tag":"stdlib-vow","mode":"scratch","task":"dep-order","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T13:37:14.126Z","tag":"stdlib-vow","mode":"scratch","task":"text-wrap","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T13:37:17.802Z","tag":"stdlib-vow","mode":"scratch","task":"ini-config","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output","wrong-output"],"firstError":"wrong output for [\"[db]\\nhost = localhost\\nport=5432\\n; comment\\n[app]\\nname = demo\",\"db.host\",\"d","failedCopy":"failed/ini-config/1791466637801.vow"}
+{"ts":"2026-10-08T13:37:25.936Z","tag":"stdlib-vow","mode":"scratch","task":"calc-vars","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T13:37:30.441Z","tag":"stdlib-vow","mode":"scratch","task":"dep-order","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T13:37:30.597Z","tag":"stdlib-vow","mode":"scratch","task":"calc-vars","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T13:37:38.334Z","tag":"stdlib-vow","mode":"scratch","task":"ini-config","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T13:38:09.595Z","tag":"stdlib-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: fn valueToString returns two different types","failedCopy":"failed/template/1791466689594.vow"}
+{"ts":"2026-10-08T13:38:23.202Z","tag":"stdlib-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output"],"firstError":"wrong output for [\"{{#each xs}}[{{.}}]{{/each}}\",\"{\\\"xs\\\":[1,\\\"two\\\",3.5]}\"]","failedCopy":"failed/template/1791466703200.vow"}
+{"ts":"2026-10-08T13:38:50.076Z","tag":"stdlib-vow","mode":"scratch","task":"csv-diff","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T13:38:56.765Z","tag":"stdlib-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: argument 1 of parseTemplate should be list<str>, but this is a str","failedCopy":"failed/template/1791466736764.vow"}
+{"ts":"2026-10-08T13:39:21.141Z","tag":"stdlib-vow","mode":"scratch","task":"interval-merge","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T13:39:22.462Z","tag":"stdlib-vow","mode":"scratch","task":"text-wrap","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T13:39:25.396Z","tag":"stdlib-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: '.content' is ambiguous here","failedCopy":"failed/template/1791466765396.vow"}
+{"ts":"2026-10-08T13:39:59.561Z","tag":"stdlib-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: argument 1 of parseTemplate should be list<str>, but this is a str","failedCopy":"failed/template/1791466799560.vow"}
+{"ts":"2026-10-08T13:40:07.388Z","tag":"stdlib-vow","mode":"scratch","task":"dep-order","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"a:b,c;a:d\"]","failedCopy":"failed/dep-order/1791466807388.vow"}
+{"ts":"2026-10-08T13:40:07.690Z","tag":"stdlib-vow","mode":"scratch","task":"roman","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T13:40:22.220Z","tag":"stdlib-vow","mode":"scratch","task":"dep-order","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T13:40:28.740Z","tag":"stdlib-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"{{#if x}}never closed\",\"{\\\"x\\\":1}\"]","failedCopy":"failed/template/1791466828740.vow"}
+{"ts":"2026-10-08T13:40:39.534Z","tag":"stdlib-vow","mode":"scratch","task":"calc-vars","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: num() parses a str, but this is already a num","failedCopy":"failed/calc-vars/1791466839533.vow"}
+{"ts":"2026-10-08T13:40:54.028Z","tag":"stdlib-vow","mode":"scratch","task":"calc-vars","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"x = 1\\n\\ny = x + q\"]","failedCopy":"failed/calc-vars/1791466854027.vow"}
+{"ts":"2026-10-08T13:41:01.166Z","tag":"stdlib-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: fn getValue returns two different types","failedCopy":"failed/template/1791466861165.vow"}
+{"ts":"2026-10-08T13:41:02.019Z","tag":"stdlib-vow","mode":"scratch","task":"calc-vars","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T13:41:05.498Z","tag":"stdlib-vow","mode":"scratch","task":"template","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T13:41:17.277Z","tag":"stdlib-vow","mode":"scratch","task":"ini-config","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"[Bad]\\nk=1\",\"bad.k\"]","failedCopy":"failed/ini-config/1791466877276.vow"}
+{"ts":"2026-10-08T13:41:31.759Z","tag":"stdlib-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: '?' needs fn isTruthy to return a Result","failedCopy":"failed/template/1791466891758.vow"}
+{"ts":"2026-10-08T13:41:35.353Z","tag":"stdlib-vow","mode":"scratch","task":"ini-config","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T13:41:38.288Z","tag":"stdlib-vow","mode":"scratch","task":"template","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T13:41:38.344Z","tag":"stdlib-vow","mode":"scratch","task":"ini-config","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T13:41:50.798Z","tag":"stdlib-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: comparing a list<str> with a str","failedCopy":"failed/template/1791466910797.vow"}
+{"ts":"2026-10-08T13:42:15.394Z","tag":"stdlib-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output","wrong-output","wrong-output"],"firstError":"wrong output for [\"{{#if vip}}VIP {{/if}}{{name}}\",\"{\\\"name\\\":\\\"Bo\\\",\\\"vip\\\":false}\"]","failedCopy":"failed/template/1791466935392.vow"}
+{"ts":"2026-10-08T13:42:38.157Z","tag":"stdlib-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output","wrong-output"],"firstError":"wrong output for [\"{{#if vip}}VIP {{/if}}{{name}}\",\"{\\\"name\\\":\\\"Bo\\\",\\\"vip\\\":false}\"]","failedCopy":"failed/template/1791466958156.vow"}
+{"ts":"2026-10-08T13:42:59.877Z","tag":"stdlib-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"{{#each xs}}[{{.}}]{{/each}}\",\"{\\\"xs\\\":[1,\\\"two\\\",3.5]}\"]","failedCopy":"failed/template/1791466979876.vow"}
+{"ts":"2026-10-08T13:43:07.767Z","tag":"stdlib-vow","mode":"scratch","task":"template","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T13:43:23.710Z","tag":"stdlib-vow","mode":"scratch","task":"ini-config","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T17:22:28.481Z","tag":"json-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: fn main might finish without returning a value","failedCopy":"failed/template/1791480148480.vow"}
+{"ts":"2026-10-08T17:22:31.969Z","tag":"json-vow","mode":"scratch","task":"template","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T17:22:40.359Z","tag":"json-vow","mode":"scratch","task":"dep-order","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T17:22:47.697Z","tag":"json-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: field() reads a json value, but this is a Result<json, str>","failedCopy":"failed/template/1791480167697.vow"}
+{"ts":"2026-10-08T17:22:51.355Z","tag":"json-vow","mode":"scratch","task":"ini-config","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"[Bad]\\nk=1\",\"bad.k\"]","failedCopy":"failed/ini-config/1791480171354.vow"}
+{"ts":"2026-10-08T17:23:01.240Z","tag":"json-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output","wrong-output","wrong-output"],"firstError":"wrong output for [\"{{#if vip}}VIP {{/if}}{{name}}\",\"{\\\"name\\\":\\\"Bo\\\",\\\"vip\\\":false}\"]","failedCopy":"failed/template/1791480181240.vow"}
+{"ts":"2026-10-08T17:23:01.965Z","tag":"json-vow","mode":"scratch","task":"calc-vars","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: int() parses a str, but this is a num","failedCopy":"failed/calc-vars/1791480181965.vow"}
+{"ts":"2026-10-08T17:23:13.997Z","tag":"json-vow","mode":"scratch","task":"ini-config","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T17:23:23.053Z","tag":"json-vow","mode":"scratch","task":"calc-vars","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T17:23:29.666Z","tag":"json-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output","wrong-output"],"firstError":"wrong output for [\"{{#if vip}}VIP {{/if}}{{name}}\",\"{\\\"name\\\":\\\"Bo\\\",\\\"vip\\\":false}\"]","failedCopy":"failed/template/1791480209665.vow"}
+{"ts":"2026-10-08T17:24:01.002Z","tag":"json-vow","mode":"scratch","task":"dep-order","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output","wrong-output","wrong-output","wrong-output"],"firstError":"wrong output for [\"app:lib,util;lib:util;util:\"]","failedCopy":"failed/dep-order/1791480241002.vow"}
+{"ts":"2026-10-08T17:24:18.625Z","tag":"json-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"oops{{/each}}\",\"{}\"]","failedCopy":"failed/template/1791480258624.vow"}
+{"ts":"2026-10-08T17:24:18.825Z","tag":"json-vow","mode":"scratch","task":"dep-order","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T17:24:40.545Z","tag":"json-vow","mode":"scratch","task":"calc-vars","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: 'result' is already declared","failedCopy":"failed/calc-vars/1791480280544.vow"}
+{"ts":"2026-10-08T17:24:48.508Z","tag":"json-vow","mode":"scratch","task":"dep-order","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T17:24:58.093Z","tag":"json-vow","mode":"scratch","task":"calc-vars","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: fn formatValue returns two different types","failedCopy":"failed/calc-vars/1791480298093.vow"}
+{"ts":"2026-10-08T17:24:59.796Z","tag":"json-vow","mode":"scratch","task":"template","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T17:25:04.470Z","tag":"json-vow","mode":"scratch","task":"calc-vars","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output"],"firstError":"wrong output for [\"x = 2\\ny = x * (3 + 4)\\nz = y / 4 - -1\"]","failedCopy":"failed/calc-vars/1791480304470.vow"}
+{"ts":"2026-10-08T17:25:16.229Z","tag":"json-vow","mode":"scratch","task":"ini-config","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"[Bad]\\nk=1\",\"bad.k\"]","failedCopy":"failed/ini-config/1791480316228.vow"}
+{"ts":"2026-10-08T17:25:25.607Z","tag":"json-vow","mode":"scratch","task":"ini-config","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T17:25:29.613Z","tag":"json-vow","mode":"scratch","task":"calc-vars","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T17:25:46.975Z","tag":"json-vow","mode":"scratch","task":"calc-vars","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T17:26:39.215Z","tag":"json-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ TypeError: '?' needs fn lookupValue to return a Result","failedCopy":"failed/template/1791480399215.vow"}
+{"ts":"2026-10-08T17:27:13.155Z","tag":"json-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output","wrong-output"],"firstError":"wrong output for [\"{{#if vip}}VIP {{/if}}{{name}}\",\"{\\\"name\\\":\\\"Bo\\\",\\\"vip\\\":false}\"]","failedCopy":"failed/template/1791480433155.vow"}
+{"ts":"2026-10-08T17:27:44.225Z","tag":"json-vow","mode":"scratch","task":"template","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-08T17:28:10.870Z","tag":"json-vow","mode":"scratch","task":"ini-config","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"[Bad]\\nk=1\",\"bad.k\"]","failedCopy":"failed/ini-config/1791480490869.vow"}
+{"ts":"2026-10-08T17:28:36.404Z","tag":"json-vow","mode":"scratch","task":"ini-config","lang":"vow","ok":true,"failKinds":[]}

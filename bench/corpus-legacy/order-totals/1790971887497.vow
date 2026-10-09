@@ -1,0 +1,110 @@
+fn process() {
+  let inputStr = args()[0]
+
+  match parseJson(inputStr) {
+    ok(json) => {
+      if jsonType(json) != "array" {
+        print(`{"error":"bad order"}`)
+        return
+      }
+
+      match jsonList(json) {
+        ok(orders) => {
+          let totals = {}
+
+          for order in orders {
+            let item = ""
+            match get(order, "item") {
+              ok(ij) => {
+                match jsonStr(ij) {
+                  ok(s) => {
+                    item = s
+                  }
+                  err(e) => {
+                    print(`{"error":"bad order"}`)
+                    return
+                  }
+                }
+              }
+              err(e) => {
+                print(`{"error":"bad order"}`)
+                return
+              }
+            }
+
+            let qty = 0
+            match get(order, "qty") {
+              ok(qj) => {
+                match jsonNum(qj) {
+                  ok(n) => {
+                    qty = n
+                  }
+                  err(e) => {
+                    print(`{"error":"bad order"}`)
+                    return
+                  }
+                }
+              }
+              err(e) => {
+                print(`{"error":"bad order"}`)
+                return
+              }
+            }
+
+            let price = 0
+            match get(order, "price") {
+              ok(pj) => {
+                match jsonNum(pj) {
+                  ok(n) => {
+                    price = n
+                  }
+                  err(e) => {
+                    print(`{"error":"bad order"}`)
+                    return
+                  }
+                }
+              }
+              err(e) => {
+                print(`{"error":"bad order"}`)
+                return
+              }
+            }
+
+            let revenue = qty * price
+            if has(totals, item) {
+              totals[item] = totals[item] + revenue
+            } else {
+              totals[item] = revenue
+            }
+          }
+
+          let sortedKeys = sort(keys(totals))
+          let output = "{"
+          let first = true
+
+          for key in sortedKeys {
+            if not first {
+              output = output + ","
+            }
+            first = false
+            let value = totals[key]
+            output = output + "\"" + key + "\":" + str(value)
+          }
+
+          output = output + "}"
+          print(output)
+        }
+        err(e) => {
+          print(`{"error":"bad order"}`)
+          return
+        }
+      }
+    }
+    err(e) => {
+      print(`{"error":"bad order"}`)
+      return
+    }
+  }
+}
+
+process()

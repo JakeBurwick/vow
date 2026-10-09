@@ -1,0 +1,41 @@
+fn lookupKey(key) uses env {
+  let upperKey = upper(key)
+  let envKey = "APP_${upperKey}"
+  return env(envKey)
+}
+
+fn main() uses env {
+  let args = args()
+  let missingCount = 0
+
+  for key in args {
+    match lookupKey(key) {
+      ok(value) => {
+        if key == "port" {
+          match num(value) {
+            ok(portNum) => {
+              if portNum > 0 and portNum <= 65535 {
+                print("${key}=${value}")
+              } else {
+                print("port invalid")
+              }
+            }
+            err(_) => {
+              print("port invalid")
+            }
+          }
+        } else {
+          print("${key}=${value}")
+        }
+      }
+      err(_) => {
+        print("${key} missing")
+        missingCount = missingCount + 1
+      }
+    }
+  }
+
+  print("${missingCount} missing")
+}
+
+main()

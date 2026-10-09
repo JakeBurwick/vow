@@ -1,0 +1,150 @@
+struct Product {
+  name,
+  qty,
+  price,
+  discontinued
+}
+
+fn process_command(products, command) {
+  let cmd = trim(command)
+  let parts = split(cmd, " ")
+
+  if len(parts) == 0 {
+    return err(command)
+  }
+
+  let action = parts[0]
+
+  if action == "add" {
+    if len(parts) != 5 {
+      return err(command)
+    }
+    let sku = parts[1]
+    let name = parts[2]
+    let qty_str = parts[3]
+    let price_str = parts[4]
+
+    if has(products, sku) {
+      return err(command)
+    }
+
+    match num(qty_str) {
+      ok(qty) => {
+        match num(price_str) {
+          ok(price) => {
+            products[sku] = Product { name: name, qty: qty, price: price, discontinued: false }
+            return ok("ok")
+          }
+          err(e) => return err(command)
+        }
+      }
+      err(e) => return err(command)
+    }
+  } else if action == "sell" {
+    if len(parts) != 3 {
+      return err(command)
+    }
+    let sku = parts[1]
+    let qty_str = parts[2]
+
+    if not has(products, sku) {
+      return err(command)
+    }
+
+    let product = products[sku]
+    if product.discontinued {
+      return err(command)
+    }
+
+    match num(qty_str) {
+      ok(qty) => {
+        if qty > product.qty {
+          return err(command)
+        }
+        product.qty = product.qty - qty
+        return ok("ok")
+      }
+      err(e) => return err(command)
+    }
+  } else if action == "restock" {
+    if len(parts) != 3 {
+      return err(command)
+    }
+    let sku = parts[1]
+    let qty_str = parts[2]
+
+    if not has(products, sku) {
+      return err(command)
+    }
+
+    let product = products[sku]
+    if product.discontinued {
+      return err(command)
+    }
+
+    match num(qty_str) {
+      ok(qty) => {
+        product.qty = product.qty + qty
+        return ok("ok")
+      }
+      err(e) => return err(command)
+    }
+  } else if action == "discontinue" {
+    if len(parts) != 2 {
+      return err(command)
+    }
+    let sku = parts[1]
+
+    if not has(products, sku) {
+      return err(command)
+    }
+
+    let product = products[sku]
+    product.discontinued = true
+    return ok("ok")
+  } else if action == "report" {
+    if len(parts) != 1 {
+      return err(command)
+    }
+    return ok("report")
+  } else {
+    return err(command)
+  }
+}
+
+fn generate_report(products) {
+  let skus = sort(keys(products))
+
+  for sku in skus {
+    let product = products[sku]
+    let value = product.qty * product.price
+    let rounded_value = round(value, 2)
+    let value_str = str(rounded_value)
+
+    let line = sku + " " + product.name + " qty=" + str(product.qty) + " value=" + value_str
+
+    if product.discontinued {
+      line = line + " discontinued"
+    }
+
+    print(line)
+  }
+}
+
+let commands_str = args()[0]
+let commands = split(commands_str, ";")
+
+let products = {}
+
+for command in commands {
+  match process_command(products, command) {
+    ok(result) => {
+      if result == "report" {
+        generate_report(products)
+      }
+    }
+    err(e) => {
+      print("error: " + e)
+    }
+  }
+}

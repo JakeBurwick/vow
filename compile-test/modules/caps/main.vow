@@ -1,0 +1,12 @@
+import "./fetch.vow" as fetch
+fn report(url) uses net {
+  return fetch.title(url)
+}
+match report("https://example.com") {
+  ok(t) => print(t)
+  err(e) => print("failed: ${e}")
+}
+match fetch.home() {
+  ok(h) => print("home is set")
+  err(e) => print(e)
+}

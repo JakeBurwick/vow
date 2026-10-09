@@ -1,0 +1,49 @@
+fn matchingBracket(open) {
+  if open == "(" { return ")" }
+  if open == "[" { return "]" }
+  if open == "{" { return "}" }
+  return ""
+}
+
+fn isOpenBracket(c) {
+  return c == "(" or c == "[" or c == "{"
+}
+
+fn isCloseBracket(c) {
+  return c == ")" or c == "]" or c == "}"
+}
+
+let s = args()[0]
+let stack = []
+let valid = true
+
+for i in range(0, len(s)) {
+  let c = s[i]
+
+  if isOpenBracket(c) {
+    push(stack, c)
+  } else if isCloseBracket(c) {
+    if len(stack) == 0 {
+      valid = false
+      break
+    }
+    match pop(stack) {
+      ok(open) => {
+        if c != matchingBracket(open) {
+          valid = false
+          break
+        }
+      }
+      err(e) => {
+        valid = false
+        break
+      }
+    }
+  }
+}
+
+if valid and len(stack) == 0 {
+  print("yes")
+} else {
+  print("no")
+}

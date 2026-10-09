@@ -1,0 +1,44 @@
+struct Entry { name, message }
+
+let entries = []
+
+fn handle(req) {
+  let method = req["method"]
+  let path = req["path"]
+
+  if method == "GET" and path == "/" {
+    if len(entries) == 0 {
+      return html("No entries yet")
+    }
+    let body = ""
+    for entry in entries {
+      body = body + "<li>" + escape(entry.name) + ": " + escape(entry.message) + "</li>"
+    }
+    return html(body)
+  }
+
+  if method == "POST" and path == "/sign" {
+    let name_opt = match param(req["body"], "name") {
+      ok(n) => n
+      err(e) => ""
+    }
+    let message_opt = match param(req["body"], "message") {
+      ok(m) => m
+      err(e) => ""
+    }
+
+    if name_opt == "" or message_opt == "" {
+      return respond(400, "text/plain", "name and message required")
+    }
+
+    push(entries, Entry { name: name_opt, message: message_opt })
+    return redirect("/")
+  }
+
+  return respond(404, "text/plain", "not found")
+}
+
+match serve(8080, handle) {
+  ok(v) => {}
+  err(e) => print(e)
+}

@@ -1,0 +1,4 @@
+match parseJson(`5`) {
+  ok(j) => print(j["x"])
+  err(e) => print(e)
+}

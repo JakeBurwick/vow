@@ -1,0 +1,21 @@
+fn solve(sentence) {
+  let words = split(sentence, " ")
+  let best = ""
+  let bestCount = 0
+  for w in words {
+    let c = 0
+    for v in words {
+      if v == w { c = c + 1 }
+    }
+    if c > bestCount {
+      bestCount = c
+      best = w
+    }
+  }
+  return best
+}
+
+match get(args(), 0) {
+  ok(s) => print(solve(s))
+  err(e) => print("error: " + e)
+}

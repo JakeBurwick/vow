@@ -1,0 +1,132 @@
+fn classify(s) {
+  let v = match num(s) {
+    ok(n) => {
+      if n < 0 { return "negative" }
+      let d = n * 2
+      d
+    }
+    err(e) => 0 - 1
+  }
+  return "value " + str(v)
+}
+print(classify("4"))
+print(classify("-4"))
+print(classify("zz"))
+fn kind(t) {
+  match t {
+    "a" => "letter a"
+    "b" => {
+      let q = "letter"
+      q + " b"
+    }
+    _ => "other"
+  }
+}
+print(kind("a"))
+print(kind("b"))
+print(kind("c"))
+fn grade(x) {
+  if x >= 90 { "A" } else if x >= 80 {
+    let g = "B"
+    g
+  } else { "C" }
+}
+print(grade(95))
+print(grade(85))
+print(grade(5))
+fn side(tag, v) {
+  print("eval " + tag)
+  return v
+}
+let r = side("L", false) and match num("3") { ok(n) => n > 1 err(e) => false }
+print(r)
+let r2 = side("L2", true) and match num("3") {
+  ok(n) => {
+    print("in arm")
+    n > 1
+  }
+  err(e) => false
+}
+print(r2)
+let r3 = side("L3", true) or if side("R3", true) { true } else { false }
+print(r3)
+let r4 = side("L4", false) or if side("R4", true) {
+  let z = 1
+  z > 0
+} else { false }
+print(r4)
+print(side("a", 1) + match num("2") {
+  ok(n) => {
+    print("arm runs after a")
+    n
+  }
+  err(e) => 0
+} + side("c", 3))
+let xs = [0, 0, 0]
+fn idx(i) {
+  print("index")
+  return i
+}
+fn val(v) {
+  print("value")
+  return v
+}
+xs[idx(1)] = val(7)
+print(xs)
+let i = 0
+while match get(xs, i) { ok(v) => true err(e) => false } {
+  i = i + 1
+  if i == 1 { continue }
+  print("loop " + str(i))
+}
+fn firstPos(ys) {
+  for y in ys {
+    match num(y) {
+      ok(n) => {
+        if n > 0 { return ok(n) }
+      }
+      err(e) => continue
+    }
+  }
+  return err("none")
+}
+match firstPos(["x", "-1", "5", "7"]) {
+  ok(n) => print(n)
+  err(e) => print(e)
+}
+let f = (s) => {
+  let n = num(s)?
+  ok(n * 2)
+}
+match f("21") { ok(v) => print(v) err(e) => print("E " + e) }
+match f("q") { ok(v) => print(v) err(e) => print("E " + e) }
+fn chain(a, b) {
+  let x = num(a)?
+  let y = num(b)?
+  return ok(x + y)
+}
+match chain("1", "2") { ok(v) => print(v) err(e) => print(e) }
+match chain("1", "b") { ok(v) => print(v) err(e) => print(e) }
+for w in ["1", "x", "3"] {
+  let n = match num(w) {
+    ok(v) => v
+    err(e) => {
+      print("skip " + w)
+      0
+    }
+  }
+  print(n)
+}
+let done = false
+for w in [1, 2, 3, 4] {
+  if w == 3 { break }
+  print(w)
+}
+match num("5") {
+  ok(n) => print("five")
+  err(e) => {}
+}
+let label = match true { true => "T" false => "F" }
+print(label)
+let n2 = match 3 { 1 => "one" 3 => "three" _ => "?" }
+print(n2)

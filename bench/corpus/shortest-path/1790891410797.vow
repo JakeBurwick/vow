@@ -1,0 +1,99 @@
+fn parseEdges(edgesStr) {
+  let edgeList = split(edgesStr, ",")
+  let graph = {}
+
+  for edge in edgeList {
+    let parts = split(edge, "-")
+    if len(parts) == 2 {
+      let a = parts[0]
+      let b = parts[1]
+
+      if has(graph, a) {
+        graph[a] = graph[a] + "," + b
+      } else {
+        graph[a] = b
+      }
+
+      if has(graph, b) {
+        graph[b] = graph[b] + "," + a
+      } else {
+        graph[b] = a
+      }
+    }
+  }
+
+  return graph
+}
+
+fn bfs(graph, start, goal) {
+  if not has(graph, start) {
+    return err("start not in graph")
+  }
+  if not has(graph, goal) {
+    return err("goal not in graph")
+  }
+
+  if start == goal {
+    return ok([start])
+  }
+
+  let queue = [[start]]
+  let visited = {}
+  visited[start] = true
+
+  while len(queue) > 0 {
+    let path = queue[0]
+    queue = slice(queue, 1, len(queue))
+
+    let current = path[len(path) - 1]
+
+    if has(graph, current) {
+      let neighborStr = graph[current]
+      let neighbors = split(neighborStr, ",")
+      let sortedNeighbors = sort(neighbors)
+
+      for neighbor in sortedNeighbors {
+        if neighbor == goal {
+          let newPath = slice(path, 0, len(path))
+          push(newPath, neighbor)
+          return ok(newPath)
+        }
+
+        if not has(visited, neighbor) {
+          visited[neighbor] = true
+          let newPath = slice(path, 0, len(path))
+          push(newPath, neighbor)
+          push(queue, newPath)
+        }
+      }
+    }
+  }
+
+  return err("no path")
+}
+
+fn main() {
+  let a = args()
+  if len(a) < 3 {
+    print("no path")
+    return
+  }
+
+  let edgesStr = a[0]
+  let start = a[1]
+  let goal = a[2]
+
+  let graph = parseEdges(edgesStr)
+
+  match bfs(graph, start, goal) {
+    ok(path) => {
+      let pathStr = join(path, " -> ")
+      print(pathStr)
+    }
+    err(e) => {
+      print("no path")
+    }
+  }
+}
+
+main()

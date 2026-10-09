@@ -1,0 +1,2 @@
+import "./a.vow" as a
+print(a.fa())

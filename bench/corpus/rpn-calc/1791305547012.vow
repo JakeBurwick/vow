@@ -1,0 +1,62 @@
+let input = args()[0]
+let tokens = split(input, " ")
+let stack = []
+
+for token in tokens {
+  if token == "+" or token == "-" or token == "*" or token == "/" {
+    // Operator: need at least 2 operands
+    if len(stack) < 2 {
+      print("error")
+      return
+    }
+    // Pop two operands (order matters!)
+    match pop(stack) {
+      ok(b) => {
+        match pop(stack) {
+          ok(a) => {
+            if token == "+" {
+              push(stack, a + b)
+            } else if token == "-" {
+              push(stack, a - b)
+            } else if token == "*" {
+              push(stack, a * b)
+            } else if token == "/" {
+              if b == 0 {
+                print("error")
+                return
+              }
+              push(stack, a / b)
+            }
+          }
+          err(e) => {
+            print("error")
+            return
+          }
+        }
+      }
+      err(e) => {
+        print("error")
+        return
+      }
+    }
+  } else {
+    // Try to parse as a number
+    match num(token) {
+      ok(n) => {
+        push(stack, n)
+      }
+      err(e) => {
+        print("error")
+        return
+      }
+    }
+  }
+}
+
+// Should have exactly one element on stack
+if len(stack) != 1 {
+  print("error")
+} else {
+  let result = stack[0]
+  print(str(result))
+}

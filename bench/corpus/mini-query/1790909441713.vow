@@ -1,0 +1,423 @@
+struct Query {
+  selectCols,
+  whereCol,
+  whereOp,
+  whereVal,
+  orderCol,
+  orderDesc,
+  limitNum
+}
+
+fn isNumeric(s) {
+  match num(s) {
+    ok(_) => return ok(true)
+    err(_) => return ok(false)
+  }
+}
+
+fn parseQuery(queryStr) {
+  let parts = split(queryStr, " ")
+  if len(parts) == 0 {
+    return err("bad query")
+  }
+  if parts[0] != "SELECT" {
+    return err("bad query")
+  }
+  if len(parts) < 2 {
+    return err("bad query")
+  }
+
+  let selectStr = parts[1]
+  let selectCols = split(selectStr, ",")
+
+  let whereIdx = -1
+  let orderByIdx = -1
+  let limitIdx = -1
+
+  for i in range(1, len(parts)) {
+    if parts[i] == "WHERE" {
+      whereIdx = i
+    }
+    if parts[i] == "ORDER" {
+      orderByIdx = i
+    }
+    if parts[i] == "LIMIT" {
+      limitIdx = i
+    }
+  }
+
+  let whereOp = ""
+  let whereCol = ""
+  let whereVal = ""
+
+  if whereIdx >= 0 {
+    if whereIdx + 3 > len(parts) {
+      return err("bad query")
+    }
+    whereCol = parts[whereIdx + 1]
+    whereOp = parts[whereIdx + 2]
+    whereVal = parts[whereIdx + 3]
+
+    if whereOp != "=" and whereOp != "!=" and whereOp != "<" and whereOp != ">" and whereOp != "<=" and whereOp != ">=" {
+      return err("bad query")
+    }
+  }
+
+  let orderCol = ""
+  let orderDesc = false
+
+  if orderByIdx >= 0 {
+    if orderByIdx + 2 > len(parts) {
+      return err("bad query")
+    }
+    if parts[orderByIdx + 1] != "BY" {
+      return err("bad query")
+    }
+    if orderByIdx + 2 >= len(parts) {
+      return err("bad query")
+    }
+    orderCol = parts[orderByIdx + 2]
+
+    if orderByIdx + 3 < len(parts) {
+      if parts[orderByIdx + 3] == "DESC" {
+        orderDesc = true
+      }
+    }
+  }
+
+  let limitNum = -1
+  if limitIdx >= 0 {
+    if limitIdx + 1 >= len(parts) {
+      return err("bad query")
+    }
+    match num(parts[limitIdx + 1]) {
+      ok(n) => {
+        limitNum = n
+      }
+      err(_) => {
+        return err("bad query")
+      }
+    }
+  }
+
+  let result = Query { selectCols: selectCols, whereCol: whereCol, whereOp: whereOp, whereVal: whereVal, orderCol: orderCol, orderDesc: orderDesc, limitNum: limitNum }
+  return ok(result)
+}
+
+fn compareValuesHelper(a, b, op, aIsNum, bIsNum) {
+  if aIsNum and bIsNum {
+    let aNum = num(a)
+    let bNum = num(b)
+    match aNum {
+      ok(aN) => {
+        match bNum {
+          ok(bN) => {
+            if op == "=" {
+              return ok(aN == bN)
+            }
+            if op == "!=" {
+              return ok(aN != bN)
+            }
+            if op == "<" {
+              return ok(aN < bN)
+            }
+            if op == ">" {
+              return ok(aN > bN)
+            }
+            if op == "<=" {
+              return ok(aN <= bN)
+            }
+            if op == ">=" {
+              return ok(aN >= bN)
+            }
+            return err("bad op")
+          }
+          err(_) => {
+            return err("bad op")
+          }
+        }
+      }
+      err(_) => {
+        return err("bad op")
+      }
+    }
+  }
+
+  if op == "=" {
+    return ok(a == b)
+  }
+  if op == "!=" {
+    return ok(a != b)
+  }
+  return err("bad comparison")
+}
+
+fn compareValues(a, b, op) {
+  let aIsNum = false
+  match isNumeric(a) {
+    ok(result) => {
+      aIsNum = result
+    }
+    err(_) => {}
+  }
+  let bIsNum = false
+  match isNumeric(b) {
+    ok(result) => {
+      bIsNum = result
+    }
+    err(_) => {}
+  }
+
+  return compareValuesHelper(a, b, op, aIsNum, bIsNum)
+}
+
+fn rowMatches(row, headers, whereCol, whereOp, whereVal) {
+  if whereCol == "" {
+    return ok(true)
+  }
+
+  let colIdx = -1
+  for i in range(0, len(headers)) {
+    if headers[i] == whereCol {
+      colIdx = i
+    }
+  }
+
+  if colIdx == -1 {
+    return err("unknown column " + whereCol)
+  }
+
+  if colIdx >= len(row) {
+    return ok(false)
+  }
+
+  return compareValues(row[colIdx], whereVal, whereOp)
+}
+
+fn shouldSwap(aVal, bVal, allNumeric) {
+  if allNumeric {
+    let aN = num(aVal)
+    let bN = num(bVal)
+    match aN {
+      ok(aNum) => {
+        match bN {
+          ok(bNum) => {
+            if aNum > bNum {
+              return ok(true)
+            }
+            return ok(false)
+          }
+          err(_) => return ok(aVal > bVal)
+        }
+      }
+      err(_) => return ok(aVal > bVal)
+    }
+  }
+  return ok(aVal > bVal)
+}
+
+fn sortRowsCustom(rows, colIdx, allNumeric) {
+  let sorted = []
+  for row in rows {
+    push(sorted, row)
+  }
+
+  let n = len(sorted)
+  for i in range(0, n) {
+    for j in range(0, n - i - 1) {
+      if j + 1 < len(sorted) {
+        let aVal = sorted[j][colIdx]
+        let bVal = sorted[j + 1][colIdx]
+
+        match shouldSwap(aVal, bVal, allNumeric) {
+          ok(swap) => {
+            if swap {
+              let temp = sorted[j]
+              sorted[j] = sorted[j + 1]
+              sorted[j + 1] = temp
+            }
+          }
+          err(_) => {}
+        }
+      }
+    }
+  }
+
+  return sorted
+}
+
+let csvStr = args()[0]
+let queryStr = args()[1]
+
+let lines = split(csvStr, "\n")
+if len(lines) == 0 {
+  print("error: bad query")
+} else {
+  let headers = split(lines[0], ",")
+  let rows = []
+
+  for i in range(1, len(lines)) {
+    if lines[i] != "" {
+      push(rows, split(lines[i], ","))
+    }
+  }
+
+  match parseQuery(queryStr) {
+    ok(query) => {
+      let selectCols = query.selectCols
+      let whereCol = query.whereCol
+      let whereOp = query.whereOp
+      let whereVal = query.whereVal
+      let orderCol = query.orderCol
+      let orderDesc = query.orderDesc
+      let limitNum = query.limitNum
+
+      let selectIndices = []
+      for col in selectCols {
+        let found = false
+        for i in range(0, len(headers)) {
+          if headers[i] == col {
+            push(selectIndices, i)
+            found = true
+          }
+        }
+        if not found {
+          print("error: unknown column " + col)
+          selectIndices = []
+          break
+        }
+      }
+
+      if len(selectIndices) > 0 {
+        let filtered = []
+        let hasError = false
+        for row in rows {
+          match rowMatches(row, headers, whereCol, whereOp, whereVal) {
+            ok(matches) => {
+              if matches {
+                push(filtered, row)
+              }
+            }
+            err(e) => {
+              if contains(e, "unknown column") {
+                print("error: " + e)
+              } else {
+                print("error: bad comparison")
+              }
+              hasError = true
+              break
+            }
+          }
+        }
+
+        if not hasError {
+          if orderCol != "" {
+            let colIdx = -1
+            for i in range(0, len(headers)) {
+              if headers[i] == orderCol {
+                colIdx = i
+              }
+            }
+
+            if colIdx == -1 {
+              print("error: unknown column " + orderCol)
+            } else {
+              let allNumeric = true
+              for row in filtered {
+                if colIdx < len(row) {
+                  match isNumeric(row[colIdx]) {
+                    ok(isNum) => {
+                      if not isNum {
+                        allNumeric = false
+                      }
+                    }
+                    err(_) => {
+                      allNumeric = false
+                    }
+                  }
+                }
+              }
+
+              filtered = sortRowsCustom(filtered, colIdx, allNumeric)
+
+              if orderDesc {
+                filtered = reverse(filtered)
+              }
+
+              let results = []
+              for row in filtered {
+                if limitNum >= 0 and len(results) >= limitNum {
+                  break
+                }
+                push(results, row)
+              }
+
+              let outputLines = []
+              let headerLine = ""
+              for i in range(0, len(selectIndices)) {
+                if i > 0 {
+                  headerLine = headerLine + ","
+                }
+                headerLine = headerLine + headers[selectIndices[i]]
+              }
+              push(outputLines, headerLine)
+
+              for row in results {
+                let line = ""
+                for i in range(0, len(selectIndices)) {
+                  if i > 0 {
+                    line = line + ","
+                  }
+                  let idx = selectIndices[i]
+                  if idx < len(row) {
+                    line = line + row[idx]
+                  }
+                }
+                push(outputLines, line)
+              }
+
+              print(join(outputLines, "\n"))
+            }
+          } else {
+            let results = []
+            for row in filtered {
+              if limitNum >= 0 and len(results) >= limitNum {
+                break
+              }
+              push(results, row)
+            }
+
+            let outputLines = []
+            let headerLine = ""
+            for i in range(0, len(selectIndices)) {
+              if i > 0 {
+                headerLine = headerLine + ","
+              }
+              headerLine = headerLine + headers[selectIndices[i]]
+            }
+            push(outputLines, headerLine)
+
+            for row in results {
+              let line = ""
+              for i in range(0, len(selectIndices)) {
+                if i > 0 {
+                  line = line + ","
+                }
+                let idx = selectIndices[i]
+                if idx < len(row) {
+                  line = line + row[idx]
+                }
+              }
+              push(outputLines, line)
+            }
+
+            print(join(outputLines, "\n"))
+          }
+        }
+      }
+    }
+    err(e) => {
+      print("error: " + e)
+    }
+  }
+}

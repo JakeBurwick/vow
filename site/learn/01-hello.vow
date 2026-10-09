@@ -1,0 +1,10 @@
+// Every Vow program runs top to bottom. print shows a value.
+print("Hello, Vow!")
+
+let name = "Ada"
+let year = 2026
+// ${...} puts a value inside a string
+print("Hi ${name}, welcome to ${year}.")
+
+// Plain braces are just text, handy for templates and JSON
+print("{ this stays as written }")

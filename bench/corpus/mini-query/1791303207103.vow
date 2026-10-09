@@ -1,0 +1,258 @@
+fn findColumnIndex(header, col_name) {
+  for i in range(0, len(header)) {
+    if header[i] == col_name {
+      return ok(i)
+    }
+  }
+  return err(col_name)
+}
+
+fn isNumeric(s) {
+  match num(s) {
+    ok(_) => { return true }
+    err(_) => { return false }
+  }
+}
+
+fn main() {
+  let argv = args()
+  if len(argv) < 2 {
+    print("error: bad query")
+    return ok(true)
+  }
+
+  let csv_str = argv[0]
+  let query_str = argv[1]
+
+  // Parse CSV
+  let csv_lines = lines(csv_str)
+  if len(csv_lines) == 0 {
+    print("error: bad query")
+    return ok(true)
+  }
+
+  let header = split(csv_lines[0], ",")
+  let rows = []
+
+  for i in range(1, len(csv_lines)) {
+    let fields = split(csv_lines[i], ",")
+    push(rows, fields)
+  }
+
+  // Parse query
+  let query_parts = split(query_str, " ")
+
+  if len(query_parts) < 2 or query_parts[0] != "SELECT" {
+    print("error: bad query")
+    return ok(true)
+  }
+
+  let select_cols = split(query_parts[1], ",")
+
+  // Validate select columns exist
+  for col in select_cols {
+    match findColumnIndex(header, col) {
+      ok(_) => {}
+      err(name) => {
+        print("error: unknown column " + name)
+        return ok(true)
+      }
+    }
+  }
+
+  let i = 2
+  let where_col = ""
+  let where_op = ""
+  let where_val = ""
+  let order_col = ""
+  let order_desc = false
+  let limit_n = -1
+
+  while i < len(query_parts) {
+    if query_parts[i] == "WHERE" {
+      if i + 3 >= len(query_parts) {
+        print("error: bad query")
+        return ok(true)
+      }
+      where_col = query_parts[i + 1]
+      where_op = query_parts[i + 2]
+      where_val = query_parts[i + 3]
+      i = i + 4
+    } else if query_parts[i] == "ORDER" {
+      if i + 1 >= len(query_parts) or query_parts[i + 1] != "BY" {
+        print("error: bad query")
+        return ok(true)
+      }
+      if i + 2 >= len(query_parts) {
+        print("error: bad query")
+        return ok(true)
+      }
+      order_col = query_parts[i + 2]
+      i = i + 3
+      if i < len(query_parts) and query_parts[i] == "DESC" {
+        order_desc = true
+        i = i + 1
+      }
+    } else if query_parts[i] == "LIMIT" {
+      if i + 1 >= len(query_parts) {
+        print("error: bad query")
+        return ok(true)
+      }
+      match num(query_parts[i + 1]) {
+        ok(n) => {
+          limit_n = n
+          i = i + 2
+        }
+        err(_) => {
+          print("error: bad query")
+          return ok(true)
+        }
+      }
+    } else {
+      print("error: bad query")
+      return ok(true)
+    }
+  }
+
+  // Validate WHERE column
+  if where_col != "" {
+    match findColumnIndex(header, where_col) {
+      ok(_) => {}
+      err(name) => {
+        print("error: unknown column " + name)
+        return ok(true)
+      }
+    }
+  }
+
+  // Validate ORDER BY column
+  if order_col != "" {
+    match findColumnIndex(header, order_col) {
+      ok(_) => {}
+      err(name) => {
+        print("error: unknown column " + name)
+        return ok(true)
+      }
+    }
+  }
+
+  // Filter rows by WHERE clause
+  let filtered = []
+  for row in rows {
+    let include = true
+
+    if where_col != "" {
+      let where_col_idx = match findColumnIndex(header, where_col) {
+        ok(idx) => idx
+        err(name) => { return err(name) }
+      }
+
+      let row_val = row[where_col_idx]
+      let row_is_num = isNumeric(row_val)
+      let val_is_num = isNumeric(where_val)
+
+      if row_is_num and val_is_num {
+        let row_num = match num(row_val) { ok(n) => n err(_) => 0 }
+        let val_num = match num(where_val) { ok(n) => n err(_) => 0 }
+
+        if where_op == "=" {
+          include = row_num == val_num
+        } else if where_op == "!=" {
+          include = row_num != val_num
+        } else if where_op == "<" {
+          include = row_num < val_num
+        } else if where_op == ">" {
+          include = row_num > val_num
+        } else if where_op == "<=" {
+          include = row_num <= val_num
+        } else if where_op == ">=" {
+          include = row_num >= val_num
+        } else {
+          print("error: bad query")
+          return ok(true)
+        }
+      } else {
+        if where_op == "=" {
+          include = row_val == where_val
+        } else if where_op == "!=" {
+          include = row_val != where_val
+        } else {
+          print("error: bad comparison")
+          return ok(true)
+        }
+      }
+    }
+
+    if include {
+      push(filtered, row)
+    }
+  }
+
+  // Sort rows by ORDER BY clause
+  if order_col != "" {
+    let order_col_idx = match findColumnIndex(header, order_col) {
+      ok(idx) => idx
+      err(name) => { return err(name) }
+    }
+
+    // Check if all values in the column are numeric
+    let all_numeric = true
+    for row in filtered {
+      if not isNumeric(row[order_col_idx]) {
+        all_numeric = false
+      }
+    }
+
+    if all_numeric {
+      // Numeric sort
+      filtered = sortBy(filtered, row => {
+        let val = match num(row[order_col_idx]) { ok(n) => n err(_) => 0 }
+        if order_desc {
+          return 0 - val
+        } else {
+          return val
+        }
+      })
+    } else {
+      // String sort
+      filtered = sortBy(filtered, row => row[order_col_idx])
+      if order_desc {
+        filtered = reverse(filtered)
+      }
+    }
+  }
+
+  // Apply LIMIT clause
+  if limit_n >= 0 and limit_n < len(filtered) {
+    let limited = []
+    for j in range(0, limit_n) {
+      push(limited, filtered[j])
+    }
+    filtered = limited
+  }
+
+  // Output header
+  print(join(select_cols, ","))
+
+  // Output rows with selected columns
+  for row in filtered {
+    let out_vals = []
+    for col in select_cols {
+      let col_idx = match findColumnIndex(header, col) {
+        ok(idx) => idx
+        err(name) => { return err(name) }
+      }
+      push(out_vals, row[col_idx])
+    }
+    print(join(out_vals, ","))
+  }
+
+  return ok(true)
+}
+
+match main() {
+  ok(_) => {}
+  err(e) => {
+    print("error: unknown column " + e)
+  }
+}

@@ -1,0 +1,195 @@
+fn isLowercase(s) {
+  for c in split(s, "") {
+    if not (c >= "a" and c <= "z") {
+      return false
+    }
+  }
+  return true
+}
+
+fn main() {
+  let input = args()[0]
+  let entries = split(input, ";")
+  let packages = {}
+  let deps = {}
+
+  for entry in entries {
+    let trimmed = trim(entry)
+    if len(trimmed) == 0 {
+      continue
+    }
+
+    if not contains(trimmed, ":") {
+      print("error: bad entry ${trimmed}")
+      return ok(true)
+    }
+
+    let colonCount = 0
+    for c in split(trimmed, "") {
+      if c == ":" {
+        colonCount = colonCount + 1
+      }
+    }
+
+    if colonCount != 1 {
+      print("error: bad entry ${trimmed}")
+      return ok(true)
+    }
+
+    let parts = split(trimmed, ":")
+    let name = parts[0]
+    let depStr = parts[1]
+
+    if len(name) == 0 {
+      print("error: bad entry ${trimmed}")
+      return ok(true)
+    }
+
+    if not isLowercase(name) {
+      print("error: bad entry ${trimmed}")
+      return ok(true)
+    }
+
+    packages[name] = true
+
+    if len(depStr) == 0 {
+      deps[name] = []
+    } else {
+      let depList = split(depStr, ",")
+      let validDeps = []
+      for d in depList {
+        let dTrimmed = trim(d)
+        if not isLowercase(dTrimmed) {
+          print("error: bad entry ${trimmed}")
+          return ok(true)
+        }
+        push(validDeps, dTrimmed)
+      }
+      deps[name] = validDeps
+    }
+  }
+
+  for pkgName in keys(packages) {
+    if not has(deps, pkgName) {
+      deps[pkgName] = []
+    }
+  }
+
+  let depList = match get(keys(deps), 0) {
+    ok(k) => deps[k]
+    err(_) => []
+  }
+  for dep in depList {
+    if not has(packages, dep) {
+      packages[dep] = true
+      deps[dep] = []
+    }
+  }
+
+  for k in keys(packages) {
+    for d in deps[k] {
+      if not has(packages, d) {
+        packages[d] = true
+        deps[d] = []
+      }
+    }
+  }
+
+  let visited = {}
+  let rec = {}
+  let hasCycle = false
+
+  fn dfs(node) {
+    if hasCycle {
+      return
+    }
+    if has(visited, node) {
+      return
+    }
+    if has(rec, node) {
+      hasCycle = true
+      return
+    }
+
+    rec[node] = true
+    let nodeDeps = match get(deps, node) {
+      ok(d) => d
+      err(_) => []
+    }
+    for dep in nodeDeps {
+      dfs(dep)
+    }
+    rec[node] = false
+    visited[node] = true
+  }
+
+  for pkg in keys(packages) {
+    if not has(visited, pkg) {
+      dfs(pkg)
+    }
+  }
+
+  if hasCycle {
+    print("error: cycle")
+    return ok(true)
+  }
+
+  let inDegree = {}
+  for pkg in keys(packages) {
+    inDegree[pkg] = 0
+  }
+
+  for pkg in keys(packages) {
+    let pkgDeps = match get(deps, pkg) {
+      ok(d) => d
+      err(_) => []
+    }
+    for dep in pkgDeps {
+      inDegree[pkg] = inDegree[pkg] + 1
+    }
+  }
+
+  let queue = []
+  for pkg in keys(packages) {
+    if inDegree[pkg] == 0 {
+      push(queue, pkg)
+    }
+  }
+  queue = sort(queue)
+
+  let result = []
+  while len(queue) > 0 {
+    let current = queue[0]
+    let temp = []
+    for i in range(1, len(queue)) {
+      push(temp, queue[i])
+    }
+    queue = temp
+    push(result, current)
+
+    for pkg in keys(packages) {
+      let pkgDeps = deps[pkg]
+      let hasCurrent = false
+      for d in pkgDeps {
+        if d == current {
+          hasCurrent = true
+        }
+      }
+      if hasCurrent {
+        inDegree[pkg] = inDegree[pkg] - 1
+        if inDegree[pkg] == 0 {
+          push(queue, pkg)
+        }
+      }
+    }
+    queue = sort(queue)
+  }
+
+  print(join(result, " "))
+  return ok(true)
+}
+
+match main() {
+  ok(_) => {}
+  err(e) => print(e)
+}

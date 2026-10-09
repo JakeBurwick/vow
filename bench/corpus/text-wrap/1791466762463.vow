@@ -1,0 +1,60 @@
+fn main() {
+  let args_list = args()
+  let text = args_list[0]
+  let width_str = args_list[1]
+
+  // Check width format (digits only)
+  if not matches(width_str, `^\d+$`) {
+    print("error: bad width")
+    return
+  }
+
+  // Parse width
+  match num(width_str) {
+    ok(w) => {
+      if w <= 0 {
+        print("error: bad width")
+        return
+      }
+
+      // Split into words
+      let word_list = words(text)
+
+      if len(word_list) == 0 {
+        return
+      }
+
+      // Greedy line filling
+      let line_num = 1
+      let current_line = ""
+
+      for word in word_list {
+        if current_line == "" {
+          // Start a new line with this word
+          current_line = word
+        } else {
+          // Check if word fits on current line
+          let candidate = current_line + " " + word
+          if len(candidate) <= w {
+            current_line = candidate
+          } else {
+            // Print current line and start new one with word
+            print(str(line_num) + ": " + current_line)
+            line_num = line_num + 1
+            current_line = word
+          }
+        }
+      }
+
+      // Print the last line if not empty
+      if current_line != "" {
+        print(str(line_num) + ": " + current_line)
+      }
+    }
+    err(_) => {
+      print("error: bad width")
+    }
+  }
+}
+
+main()

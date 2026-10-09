@@ -1,0 +1,121 @@
+fn parsePath(path) {
+  let parts = split(path, ".")
+  if len(parts) != 2 {
+    return err("invalid")
+  }
+  let section = parts[0]
+  let key = parts[1]
+  return ok([section, key])
+}
+
+fn isValidName(s) {
+  if len(s) == 0 {
+    return false
+  }
+  let chars = split(s, "")
+  for c in chars {
+    let valid = (c >= "a" and c <= "z") or (c >= "0" and c <= "9") or c == "_"
+    if not valid {
+      return false
+    }
+  }
+  return true
+}
+
+fn main() {
+  let args_list = args()
+
+  if len(args_list) == 0 {
+    return
+  }
+
+  let ini_text = args_list[0]
+  let ini_lines = lines(ini_text)
+
+  let sections = {}
+  let current_section = ""
+  let had_error = false
+  let line_num = 0
+
+  for line in ini_lines {
+    line_num = line_num + 1
+    let trimmed = trim(line)
+
+    if len(trimmed) == 0 {
+      continue
+    }
+
+    if trimmed[0] == ";" or trimmed[0] == "#" {
+      continue
+    }
+
+    if trimmed[0] == "[" {
+      if trimmed[len(trimmed) - 1] != "]" {
+        print("error line " + str(line_num) + ": bad line")
+        return
+      }
+      current_section = slice(trimmed, 1, len(trimmed) - 1)
+      if not isValidName(current_section) {
+        print("error line " + str(line_num) + ": bad line")
+        return
+      }
+      if not has(sections, current_section) {
+        sections[current_section] = {}
+      }
+      continue
+    }
+
+    match indexOf(trimmed, "=") {
+      ok(eq_pos) => {
+        if current_section == "" {
+          print("error line " + str(line_num) + ": key outside section")
+          return
+        }
+
+        let key_part = trim(slice(trimmed, 0, eq_pos))
+        let value_part = trim(slice(trimmed, eq_pos + 1, len(trimmed)))
+
+        if not isValidName(key_part) {
+          print("error line " + str(line_num) + ": bad line")
+          return
+        }
+
+        let section_map = sections[current_section]
+        section_map[key_part] = value_part
+        sections[current_section] = section_map
+      }
+      err(e) => {
+        print("error line " + str(line_num) + ": bad line")
+        return
+      }
+    }
+  }
+
+  let query_count = len(args_list) - 1
+  for i in range(0, query_count) {
+    let query = args_list[i + 1]
+
+    match parsePath(query) {
+      ok(parts) => {
+        let section = parts[0]
+        let key = parts[1]
+
+        if has(sections, section) {
+          let section_map = sections[section]
+          if has(section_map, key) {
+            print("${query} = " + section_map[key])
+          } else {
+            print("${query} missing")
+          }
+        } else {
+          print("${query} missing")
+        }
+      }
+      err(e) => {
+        print("${query} missing")
+      }
+    }
+  }
+}
+
+main()

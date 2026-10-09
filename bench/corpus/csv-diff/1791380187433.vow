@@ -1,0 +1,126 @@
+fn parseCSV(csvText) {
+  let lines = split(csvText, "\n")
+  let rows = []
+  for line in lines {
+    if len(trim(line)) > 0 {
+      push(rows, split(line, ","))
+    }
+  }
+  return rows
+}
+
+fn main() {
+  let argv = args()
+  let oldText = argv[0]
+  let newText = argv[1]
+
+  let oldRows = parseCSV(oldText)
+  let newRows = parseCSV(newText)
+
+  if len(oldRows) == 0 or len(newRows) == 0 {
+    print("error: headers differ")
+    return ok(true)
+  }
+
+  let oldHeader = oldRows[0]
+  let newHeader = newRows[0]
+
+  // Check if headers differ
+  if len(oldHeader) != len(newHeader) {
+    print("error: headers differ")
+    return ok(true)
+  }
+
+  for i in range(0, len(oldHeader)) {
+    if oldHeader[i] != newHeader[i] {
+      print("error: headers differ")
+      return ok(true)
+    }
+  }
+
+  // Build maps of key -> row for old and new
+  let oldMap = {}
+  let oldMapStr = ""  // sentinel to pin type
+  for i in range(1, len(oldRows)) {
+    let row = oldRows[i]
+    if len(row) > 0 {
+      let key = row[0]
+      oldMap[key] = i
+      oldMapStr = ""
+    }
+  }
+
+  let newMap = {}
+  let newMapStr = ""  // sentinel
+  for i in range(1, len(newRows)) {
+    let row = newRows[i]
+    if len(row) > 0 {
+      let key = row[0]
+      newMap[key] = i
+      newMapStr = ""
+    }
+  }
+
+  // Collect all keys
+  let allKeys = []
+  for k in keys(oldMap) {
+    push(allKeys, k)
+  }
+  for k in keys(newMap) {
+    if not has(oldMap, k) {
+      push(allKeys, k)
+    }
+  }
+
+  // Sort keys
+  allKeys = sort(allKeys)
+
+  // Find differences
+  let diffs = []
+  for key in allKeys {
+    let inOld = has(oldMap, key)
+    let inNew = has(newMap, key)
+
+    if inOld and not inNew {
+      push(diffs, "- " + key)
+    } else if inNew and not inOld {
+      push(diffs, "+ " + key)
+    } else if inOld and inNew {
+      let oldRowIdx = oldMap[key]
+      let newRowIdx = newMap[key]
+      let oldRow = oldRows[oldRowIdx]
+      let newRow = newRows[newRowIdx]
+
+      for colIdx in range(1, len(oldHeader)) {
+        let oldVal = ""
+        let newVal = ""
+        if colIdx < len(oldRow) {
+          oldVal = oldRow[colIdx]
+        }
+        if colIdx < len(newRow) {
+          newVal = newRow[colIdx]
+        }
+
+        if oldVal != newVal {
+          let colName = oldHeader[colIdx]
+          push(diffs, "~ " + key + ": " + colName + " " + oldVal + " -> " + newVal)
+        }
+      }
+    }
+  }
+
+  if len(diffs) == 0 {
+    print("no changes")
+  } else {
+    for diff in diffs {
+      print(diff)
+    }
+  }
+
+  return ok(true)
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print("error: " + e)
+}

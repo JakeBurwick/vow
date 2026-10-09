@@ -1,0 +1,181 @@
+fn main() {
+  let argv = args()
+
+  if len(argv) < 1 {
+    print("{}")
+    return ok(true)
+  }
+
+  let json_str = argv[0]
+
+  // Parse JSON
+  let json_result = parseJson(json_str)
+
+  match json_result {
+    ok(root) => {
+      // Check if root is object or array
+      let root_type = jsonType(root)
+
+      if root_type != "object" and root_type != "array" {
+        print("{\"error\":\"not a container\"}")
+        return ok(true)
+      }
+
+      // Flatten the JSON
+      let entries = []
+
+      match flatten(root, "") {
+        ok(flat_entries) => {
+          entries = flat_entries
+        }
+        err(e) => {
+          print("{\"error\":\"" + e + "\"}")
+          return ok(true)
+        }
+      }
+
+      if len(entries) == 0 {
+        print("{}")
+        return ok(true)
+      }
+
+      // Build output JSON
+      let parts = []
+      for entry in entries {
+        let path = entry["path"]
+        let value = entry["value"]
+        let escaped_path = escapeJson(path)
+
+        push(parts, "\"" + escaped_path + "\":" + value)
+      }
+
+      print("{" + join(parts, ",") + "}")
+      return ok(true)
+    }
+    err(e) => {
+      print("{\"error\":\"bad json\"}")
+      return ok(true)
+    }
+  }
+}
+
+fn flatten(val, path) {
+  let entries = []
+  let val_type = jsonType(val)
+
+  if val_type == "object" {
+    let keys_list = jsonKeys(val)
+    keys_list = sort(keys_list)
+
+    if len(keys_list) == 0 {
+      // Empty object is a leaf
+      if path == "" {
+        // Root is empty object, return empty result
+        return ok(entries)
+      }
+      let value_str = "{}"
+      let entry = {"path": path, "value": value_str}
+      push(entries, entry)
+    } else {
+      for key in keys_list {
+        let child = get(val, key)?
+        let new_path = if path == "" { key } else { path + "." + key }
+        let child_entries = flatten(child, new_path)?
+
+        for e in child_entries {
+          push(entries, e)
+        }
+      }
+    }
+  } else if val_type == "array" {
+    match jsonList(val) {
+      ok(arr) => {
+        if len(arr) == 0 {
+          // Empty array is a leaf
+          if path == "" {
+            // Root is empty array, return empty result
+            return ok(entries)
+          }
+          let value_str = "[]"
+          let entry = {"path": path, "value": value_str}
+          push(entries, entry)
+        } else {
+          for i in range(0, len(arr)) {
+            let child = arr[i]
+            let new_path = path + "[" + str(i) + "]"
+            let child_entries = flatten(child, new_path)?
+
+            for e in child_entries {
+              push(entries, e)
+            }
+          }
+        }
+      }
+      err(e) => {
+        return err(e)
+      }
+    }
+  } else if val_type == "string" {
+    match jsonStr(val) {
+      ok(s) => {
+        let escaped = escapeJson(s)
+        let value_str = "\"" + escaped + "\""
+        let entry = {"path": path, "value": value_str}
+        push(entries, entry)
+      }
+      err(e) => {
+        return err(e)
+      }
+    }
+  } else if val_type == "number" {
+    match jsonNum(val) {
+      ok(n) => {
+        let value_str = if n == floor(n) { str(floor(n)) } else { str(n) }
+        let entry = {"path": path, "value": value_str}
+        push(entries, entry)
+      }
+      err(e) => {
+        return err(e)
+      }
+    }
+  } else if val_type == "bool" {
+    match jsonBool(val) {
+      ok(b) => {
+        let value_str = if b { "true" } else { "false" }
+        let entry = {"path": path, "value": value_str}
+        push(entries, entry)
+      }
+      err(e) => {
+        return err(e)
+      }
+    }
+  } else if val_type == "null" {
+    let value_str = "null"
+    let entry = {"path": path, "value": value_str}
+    push(entries, entry)
+  }
+
+  return ok(entries)
+}
+
+fn escapeJson(s) {
+  let result = ""
+  let chars = split(s, "")
+
+  for c in chars {
+    if c == "\"" {
+      result = result + "\\\""
+    } else if c == "\\" {
+      result = result + "\\\\"
+    } else {
+      result = result + c
+    }
+  }
+
+  return result
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

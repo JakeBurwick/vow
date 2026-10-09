@@ -1,0 +1,100 @@
+fn decimalToRoman(n) {
+  let pairs = [[1000, "M"], [900, "CM"], [500, "D"], [400, "CD"], [100, "C"], [90, "XC"], [50, "L"], [40, "XL"], [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]]
+  let result = ""
+  let num = n
+  for pair in pairs {
+    let val = pair[0]
+    let char = pair[1]
+    while num >= val {
+      result = result + char
+      num = num - val
+    }
+  }
+  return result
+}
+
+fn romanToDecimal(s) {
+  let values = {}
+  values["I"] = 1
+  values["V"] = 5
+  values["X"] = 10
+  values["L"] = 50
+  values["C"] = 100
+  values["D"] = 500
+  values["M"] = 1000
+
+  let result = 0
+  let prevVal = 0
+  let i = len(s) - 1
+  while i >= 0 {
+    let c = s[i]
+    match get(values, c) {
+      ok(curVal) => {
+        if curVal < prevVal {
+          result = result - curVal
+        } else {
+          result = result + curVal
+        }
+        prevVal = curVal
+      }
+      err(_) => {
+        return 0
+      }
+    }
+    i = i - 1
+  }
+  return result
+}
+
+fn main() {
+  let input = args()[0]
+
+  if input == "" {
+    print("error")
+    return
+  }
+
+  // Try parsing as decimal
+  match num(input) {
+    ok(n) => {
+      if n >= 1 and n <= 3999 {
+        // Check for leading zeros
+        if len(input) > 1 and input[0] == "0" {
+          print("error")
+        } else {
+          print(decimalToRoman(n))
+        }
+      } else {
+        print("error")
+      }
+    }
+    err(_) => {
+      // Try parsing as Roman numeral
+      // First check if it contains only valid Roman characters
+      let valid = true
+      for c in split(input, "") {
+        if not (c == "I" or c == "V" or c == "X" or c == "L" or c == "C" or c == "D" or c == "M") {
+          valid = false
+        }
+      }
+
+      if valid {
+        let decimal = romanToDecimal(input)
+        if decimal >= 1 and decimal <= 3999 {
+          let romanAgain = decimalToRoman(decimal)
+          if input == romanAgain {
+            print(str(decimal))
+          } else {
+            print("error")
+          }
+        } else {
+          print("error")
+        }
+      } else {
+        print("error")
+      }
+    }
+  }
+}
+
+main()

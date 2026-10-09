@@ -1,0 +1,30 @@
+// Turns todos into text. Pure: no capabilities.
+import "./todo.vow" as todo
+
+// "overdue 2 days", "due today", "due tomorrow", "due in 5 days"
+fn when(t, today) {
+  let d = daysBetween(today, t.due)
+  if d < 0 { return "overdue ${0 - d} day${_s(0 - d)}" }
+  if d == 0 { return "due today" }
+  if d == 1 { return "due tomorrow" }
+  return "due in ${d} days"
+}
+
+fn line(t, today) {
+  let box = if t.done { "[x]" } else { "[ ]" }
+  let date = slice(isoDate(t.due), 0, 10)
+  let note = if t.done { "done" } else { when(t, today) }
+  return "${padLeft(str(t.id), 3, " ")}. ${box} ${padRight(t.title, 24, " ")} ${date}  ${note}"
+}
+
+fn listing(todos, today) {
+  if len(todos) == 0 { return "nothing to do" }
+  let open = filter(todos, t => not t.done)
+  let ordered = sortBy(open, t => t.due)
+  for t in todos { if t.done { push(ordered, t) } }
+  let rows = map(ordered, t => line(t, today))
+  let late = count(open, t => daysBetween(today, t.due) < 0)
+  return join(rows, "\n") + "\n${len(open)} open, ${late} overdue"
+}
+
+fn _s(n) { return if n == 1 { "" } else { "s" } }

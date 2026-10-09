@@ -1,0 +1,260 @@
+fn findClose(chars, pos, openTag, closeTag) {
+  let d = 1
+  let i = pos
+  while i < len(chars) {
+    if i + 1 < len(chars) and chars[i] == "{" and chars[i + 1] == "{" {
+      let j = i + 2
+      while j + 1 < len(chars) and not (chars[j] == "}" and chars[j + 1] == "}") {
+        j = j + 1
+      }
+      if j + 1 < len(chars) {
+        let t = trim(join(slice(chars, i + 2, j), ""))
+        if startsWith(t, openTag) {
+          d = d + 1
+        } else if t == closeTag {
+          d = d - 1
+          if d == 0 {
+            return i
+          }
+        }
+        i = j + 2
+      } else {
+        i = i + 1
+      }
+    } else {
+      i = i + 1
+    }
+  }
+  return 0 - 1
+}
+
+fn isTruthy(v) {
+  let t = jsonType(v)
+  if t == "null" { return false }
+  if t == "bool" { match jsonBool(v) { ok(b) => return b err(_) => return false } }
+  if t == "number" { match jsonNum(v) { ok(n) => return n != 0 err(_) => return false } }
+  if t == "string" { match jsonStr(v) { ok(s) => return len(s) > 0 err(_) => return false } }
+  if t == "array" { return len(jsonList(v)) > 0 }
+  if t == "object" { return len(jsonKeys(v)) > 0 }
+  return false
+}
+
+fn fmt(v) {
+  let t = jsonType(v)
+  if t == "null" { return "" }
+  if t == "bool" { match jsonBool(v) { ok(b) => return if b { "true" } else { "false" } err(_) => return "" } }
+  if t == "number" { match jsonNum(v) { ok(n) => return str(n) err(_) => return "" } }
+  if t == "string" { match jsonStr(v) { ok(s) => return s err(_) => return "" } }
+  return ""
+}
+
+fn processWith(body, data, ctx) {
+  let result = ""
+  let i = 0
+  while i < len(body) {
+    if i + 1 < len(body) and body[i] == "{" and body[i + 1] == "{" {
+      let j = i + 2
+      while j + 1 < len(body) and not (body[j] == "}" and body[j + 1] == "}") {
+        j = j + 1
+      }
+      if j + 1 >= len(body) {
+        return err("x")
+      }
+      let tag = trim(join(slice(body, i + 2, j), ""))
+      if tag == "." {
+        result = result + fmt(ctx)
+      } else if startsWith(tag, "#if ") {
+        let vn = trim(slice(tag, 4, len(tag)))
+        let cp = findClose(body, j + 2, "#if ", "/if")
+        if cp >= 0 {
+          let b = slice(body, j + 2, cp)
+          match get(ctx, vn) {
+            ok(v) => {
+              if isTruthy(v) {
+                let bi = 0
+                while bi < len(b) {
+                  result = result + b[bi]
+                  bi = bi + 1
+                }
+              }
+            }
+            err(_) => {}
+          }
+          i = cp
+          while i < len(body) and not (i + 1 < len(body) and body[i] == "{" and body[i + 1] == "{") {
+            i = i + 1
+          }
+          if i + 1 < len(body) {
+            let k = i + 2
+            while k + 1 < len(body) and not (body[k] == "}" and body[k + 1] == "}") {
+              k = k + 1
+            }
+            if k + 1 < len(body) and trim(join(slice(body, i + 2, k), "")) == "/if" {
+              i = k + 2
+            }
+          }
+        } else {
+          i = j + 2
+        }
+      } else if not startsWith(tag, "#") and not startsWith(tag, "/") {
+        match get(ctx, tag) {
+          ok(v) => {
+            if jsonType(v) == "array" or jsonType(v) == "object" {
+              return err("not printable")
+            }
+            result = result + fmt(v)
+          }
+          err(_) => {
+            match get(data, tag) {
+              ok(v) => {
+                if jsonType(v) == "array" or jsonType(v) == "object" {
+                  return err("not printable")
+                }
+                result = result + fmt(v)
+              }
+              err(_) => {}
+            }
+          }
+        }
+        i = j + 2
+      } else {
+        i = j + 2
+      }
+    } else {
+      result = result + body[i]
+      i = i + 1
+    }
+  }
+  return ok(result)
+}
+
+let args_list = args()
+match parseJson(args_list[1]) {
+  ok(data) => {
+    if jsonType(data) != "object" {
+      print("error: bad data")
+    } else {
+      let chars = split(args_list[0], "")
+      let result = ""
+      let i = 0
+
+      while i < len(chars) {
+        if i + 1 < len(chars) and chars[i] == "{" and chars[i + 1] == "{" {
+          let j = i + 2
+          while j + 1 < len(chars) and not (chars[j] == "}" and chars[j + 1] == "}") {
+            j = j + 1
+          }
+
+          if j + 1 >= len(chars) {
+            print("error: unclosed if")
+            return
+          }
+
+          let tag = trim(join(slice(chars, i + 2, j), ""))
+
+          if startsWith(tag, "#if ") {
+            let vn = trim(slice(tag, 4, len(tag)))
+            let cp = findClose(chars, j + 2, "#if ", "/if")
+            if cp < 0 {
+              print("error: unclosed if")
+              return
+            }
+            let b = slice(chars, j + 2, cp)
+            match get(data, vn) {
+              ok(v) => {
+                if isTruthy(v) {
+                  match processWith(b, data, data) {
+                    ok(r) => result = result + r
+                    err(e) => {
+                      print("error: " + e)
+                      return
+                    }
+                  }
+                }
+              }
+              err(_) => {}
+            }
+            i = cp
+            while i < len(chars) and not (i + 1 < len(chars) and chars[i] == "{" and chars[i + 1] == "{") {
+              i = i + 1
+            }
+            if i + 1 < len(chars) {
+              let k = i + 2
+              while k + 1 < len(chars) and not (chars[k] == "}" and chars[k + 1] == "}") {
+                k = k + 1
+              }
+              if k + 1 < len(chars) and trim(join(slice(chars, i + 2, k), "")) == "/if" {
+                i = k + 2
+              }
+            }
+          } else if startsWith(tag, "#each ") {
+            let vn = trim(slice(tag, 6, len(tag)))
+            let cp = findClose(chars, j + 2, "#each ", "/each")
+            if cp < 0 {
+              print("error: unclosed each")
+              return
+            }
+            let b = slice(chars, j + 2, cp)
+            match get(data, vn) {
+              ok(v) => {
+                if jsonType(v) != "array" {
+                  print("error: not a list: " + vn)
+                  return
+                }
+                for item in jsonList(v) {
+                  match processWith(b, data, item) {
+                    ok(r) => result = result + r
+                    err(e) => {
+                      print("error: " + e)
+                      return
+                    }
+                  }
+                }
+              }
+              err(_) => {}
+            }
+            i = cp
+            while i < len(chars) and not (i + 1 < len(chars) and chars[i] == "{" and chars[i + 1] == "{") {
+              i = i + 1
+            }
+            if i + 1 < len(chars) {
+              let k = i + 2
+              while k + 1 < len(chars) and not (chars[k] == "}" and chars[k + 1] == "}") {
+                k = k + 1
+              }
+              if k + 1 < len(chars) and trim(join(slice(chars, i + 2, k), "")) == "/each" {
+                i = k + 2
+              }
+            }
+          } else if tag == "/if" {
+            print("error: unexpected /if")
+            return
+          } else if tag == "/each" {
+            print("error: unexpected /each")
+            return
+          } else {
+            match get(data, tag) {
+              ok(v) => {
+                if jsonType(v) == "array" or jsonType(v) == "object" {
+                  print("error: not printable")
+                  return
+                }
+                result = result + fmt(v)
+              }
+              err(_) => {}
+            }
+            i = j + 2
+          }
+        } else {
+          result = result + chars[i]
+          i = i + 1
+        }
+      }
+
+      print(result)
+    }
+  }
+  err(_) => {
+    print("error: bad data")
+  }
+}

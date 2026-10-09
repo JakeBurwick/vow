@@ -1,0 +1,2 @@
+import "./geo.vow" as geo
+let p = geo.Point { x: 1, z: 2 }

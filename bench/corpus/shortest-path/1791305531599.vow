@@ -1,0 +1,94 @@
+fn buildGraph(edgeStr) {
+  let edges = split(edgeStr, ",")
+  let graph = {}
+
+  for edge in edges {
+    let parts = split(edge, "-")
+    if len(parts) != 2 {
+      continue
+    }
+    let a = trim(parts[0])
+    let b = trim(parts[1])
+
+    if has(graph, a) {
+      push(graph[a], b)
+    } else {
+      graph[a] = [b]
+    }
+
+    if has(graph, b) {
+      push(graph[b], a)
+    } else {
+      graph[b] = [a]
+    }
+  }
+  return graph
+}
+
+fn reconstructPath(parent, goal) {
+  let path = [goal]
+  let current = goal
+
+  while has(parent, current) {
+    current = parent[current]
+    push(path, current)
+  }
+
+  return reverse(path)
+}
+
+fn bfs(graph, start, goal) {
+  if start == goal {
+    return ok([start])
+  }
+
+  if not has(graph, start) or not has(graph, goal) {
+    return err("no path")
+  }
+
+  let visited = {}
+  visited[start] = true
+
+  let queue = []
+  push(queue, start)
+
+  let parent = {}
+
+  let head = 0
+  while head < len(queue) {
+    let node = queue[head]
+    head = head + 1
+
+    let neighbors = sort(graph[node])
+
+    for next in neighbors {
+      if not has(visited, next) {
+        visited[next] = true
+        parent[next] = node
+        push(queue, next)
+
+        if next == goal {
+          return ok(reconstructPath(parent, goal))
+        }
+      }
+    }
+  }
+
+  return err("no path")
+}
+
+let args_list = args()
+if len(args_list) < 3 {
+  print("no path")
+} else {
+  let edgeStr = args_list[0]
+  let start = args_list[1]
+  let goal = args_list[2]
+
+  let graph = buildGraph(edgeStr)
+
+  match bfs(graph, start, goal) {
+    ok(path) => print(join(path, " -> "))
+    err(e) => print("no path")
+  }
+}

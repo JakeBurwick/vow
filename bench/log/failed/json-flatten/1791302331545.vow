@@ -1,0 +1,136 @@
+fn main() {
+  let argv = args()
+  if len(argv) < 1 {
+    print("\{\"error\":\"bad json\"}")
+    return
+  }
+
+  let json_str = argv[0]
+  match parseJson(json_str) {
+    ok(j) => {
+      let jtype = jsonType(j)
+      if jtype != "object" and jtype != "array" {
+        print("\{\"error\":\"not a container\"}")
+        return
+      }
+
+      let entries = []
+      walkJson(j, "", entries)
+
+      if len(entries) == 0 {
+        print("\{}")
+        return
+      }
+
+      let parts = []
+      for entry in entries {
+        push(parts, entry)
+      }
+
+      print("\{" + join(parts, ",") + "}")
+    }
+    err(e) => {
+      print("\{\"error\":\"bad json\"}")
+    }
+  }
+}
+
+fn walkJson(j, prefix, entries) {
+  let jtype = jsonType(j)
+
+  if jtype == "object" {
+    let keys = jsonKeys(j)
+    let sorted_keys = sort(keys)
+    let has_keys = len(sorted_keys) > 0
+
+    if not has_keys {
+      let escaped_path = escapeJsonString(prefix)
+      let entry = escaped_path + ":\{\}"
+      push(entries, entry)
+      return
+    }
+
+    for key in sorted_keys {
+      let child = get(j, key)
+      match child {
+        ok(c) => {
+          let child_path = if prefix == "" {
+            key
+          } else {
+            prefix + "." + key
+          }
+          walkJson(c, child_path, entries)
+        }
+        err(_) => {}
+      }
+    }
+  } else if jtype == "array" {
+    let items = jsonList(j)
+    let has_items = len(items) > 0
+
+    if not has_items {
+      let escaped_path = escapeJsonString(prefix)
+      let entry = escaped_path + ":[]"
+      push(entries, entry)
+      return
+    }
+
+    for i in range(0, len(items)) {
+      let item = items[i]
+      let child_path = prefix + "[" + str(i) + "]"
+      walkJson(item, child_path, entries)
+    }
+  } else {
+    let escaped_path = escapeJsonString(prefix)
+    let formatted_value = formatJsonValue(j)
+    let entry = escaped_path + ":" + formatted_value
+    push(entries, entry)
+  }
+}
+
+fn escapeJsonString(s) {
+  let escaped = replace(s, "\\", "\\\\")
+  escaped = replace(escaped, "\"", "\\\"")
+  return "\"" + escaped + "\""
+}
+
+fn formatJsonValue(v) {
+  let jtype = jsonType(v)
+
+  if jtype == "string" {
+    let s = match jsonStr(v) {
+      ok(str_val) => str_val
+      err(_) => ""
+    }
+    let escaped = replace(s, "\\", "\\\\")
+    escaped = replace(escaped, "\"", "\\\"")
+    return "\"" + escaped + "\""
+  } else if jtype == "number" {
+    let n = match jsonNum(v) {
+      ok(num_val) => num_val
+      err(_) => 0
+    }
+    let is_whole = n == floor(n)
+    if is_whole {
+      return str(floor(n))
+    } else {
+      return str(n)
+    }
+  } else if jtype == "bool" {
+    let b = match jsonBool(v) {
+      ok(bool_val) => bool_val
+      err(_) => false
+    }
+    return if b { "true" } else { "false" }
+  } else if jtype == "null" {
+    return "null"
+  } else if jtype == "object" {
+    return "\{\}"
+  } else if jtype == "array" {
+    return "[]"
+  }
+
+  return "null"
+}
+
+main()

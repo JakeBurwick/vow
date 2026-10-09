@@ -1,0 +1,156 @@
+fn escapeJsonString(s) {
+  let result = ""
+  for i in range(0, len(s)) {
+    let c = s[i]
+    if c == "\"" {
+      result = result + "\\\""
+    } else if c == "\\" {
+      result = result + "\\\\"
+    } else {
+      result = result + c
+    }
+  }
+  return result
+}
+
+fn formatNumber(n) {
+  let s = str(n)
+  let has_dot = contains(s, ".")
+  if has_dot {
+    return s
+  } else {
+    return s
+  }
+}
+
+fn flattenValue(v, path, entries) {
+  let t = jsonType(v)
+
+  if t == "string" {
+    match jsonStr(v) {
+      ok(s) => {
+        let escaped = escapeJsonString(s)
+        push(entries, {path, value: "\"" + escaped + "\""})
+        return ok(true)
+      }
+      err(e) => {
+        return err(e)
+      }
+    }
+  } else if t == "number" {
+    match jsonNum(v) {
+      ok(n) => {
+        let formatted = formatNumber(n)
+        push(entries, {path, value: formatted})
+        return ok(true)
+      }
+      err(e) => {
+        return err(e)
+      }
+    }
+  } else if t == "bool" {
+    match jsonBool(v) {
+      ok(b) => {
+        let str_val = if b { "true" } else { "false" }
+        push(entries, {path, value: str_val})
+        return ok(true)
+      }
+      err(e) => {
+        return err(e)
+      }
+    }
+  } else if t == "null" {
+    push(entries, {path, value: "null"})
+    return ok(true)
+  } else if t == "array" {
+    let arr = jsonList(v)
+    if len(arr) == 0 {
+      push(entries, {path, value: "[]"})
+      return ok(true)
+    }
+    for i in range(0, len(arr)) {
+      let elem = arr[i]
+      let new_path = path + "[" + str(i) + "]"
+      flattenValue(elem, new_path, entries)?
+    }
+    return ok(true)
+  } else if t == "object" {
+    let keys = jsonKeys(v)
+    if len(keys) == 0 {
+      push(entries, {path, value: "{}"})
+      return ok(true)
+    }
+    let sorted_keys = sort(keys)
+    for key in sorted_keys {
+      match get(v, key) {
+        ok(val) => {
+          let new_path = if path == "" {
+            key
+          } else {
+            path + "." + key
+          }
+          flattenValue(val, new_path, entries)?
+        }
+        err(_) => {
+          return err("key error")
+        }
+      }
+    }
+    return ok(true)
+  } else {
+    return err("unknown type")
+  }
+}
+
+fn main() {
+  let args_list = args()
+
+  if len(args_list) == 0 {
+    print("\{\"error\":\"bad json\"}")
+    return ok(true)
+  }
+
+  let json_str = args_list[0]
+
+  match parseJson(json_str) {
+    ok(j) => {
+      let t = jsonType(j)
+      if t != "object" and t != "array" {
+        print("\{\"error\":\"not a container\"}")
+        return ok(true)
+      }
+
+      let entries = []
+      match flattenValue(j, "", entries) {
+        ok(_) => {
+          if len(entries) == 0 {
+            print("\{}")
+            return ok(true)
+          }
+
+          let parts = []
+          for entry in entries {
+            let escaped_path = escapeJsonString(entry.path)
+            let part = "\"" + escaped_path + "\":" + entry.value
+            push(parts, part)
+          }
+          print("\{" + join(parts, ",") + "}")
+          return ok(true)
+        }
+        err(e) => {
+          print("\{\"error\":\"bad json\"}")
+          return ok(true)
+        }
+      }
+    }
+    err(e) => {
+      print("\{\"error\":\"bad json\"}")
+      return ok(true)
+    }
+  }
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

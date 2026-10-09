@@ -1,0 +1,73 @@
+let tokens = args()
+if len(tokens) == 0 {
+  print("error")
+} else {
+  let expr = tokens[0]
+  let parts = split(expr, " ")
+  let stack = []
+
+  let i = 0
+  let valid = true
+
+  while i < len(parts) and valid {
+    let part = parts[i]
+
+    if part == "+" or part == "-" or part == "*" or part == "/" {
+      if len(stack) < 2 {
+        valid = false
+      } else {
+        match pop(stack) {
+          ok(bval) => {
+            match pop(stack) {
+              ok(aval) => {
+                if part == "+" {
+                  push(stack, aval + bval)
+                } else if part == "-" {
+                  push(stack, aval - bval)
+                } else if part == "*" {
+                  push(stack, aval * bval)
+                } else if part == "/" {
+                  if bval == 0 {
+                    valid = false
+                  } else {
+                    push(stack, aval / bval)
+                  }
+                }
+              }
+              err(_) => {
+                valid = false
+              }
+            }
+          }
+          err(_) => {
+            valid = false
+          }
+        }
+      }
+    } else {
+      match num(part) {
+        ok(n) => {
+          push(stack, n)
+        }
+        err(_) => {
+          valid = false
+        }
+      }
+    }
+
+    i = i + 1
+  }
+
+  if valid and len(stack) == 1 {
+    match pop(stack) {
+      ok(result) => {
+        print(result)
+      }
+      err(_) => {
+        print("error")
+      }
+    }
+  } else {
+    print("error")
+  }
+}

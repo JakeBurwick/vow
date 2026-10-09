@@ -1,0 +1,23 @@
+let input = args()[0]
+let pairs = split(input, ",")
+
+let maxName = ""
+let maxAmount = -1
+
+for pair in pairs {
+  let parts = split(pair, ":")
+  let name = parts[0]
+  let amountStr = parts[1]
+
+  match num(amountStr) {
+    ok(amount) => {
+      if amount > maxAmount {
+        maxName = name
+        maxAmount = amount
+      }
+    }
+    err(e) => print("error parsing: " + e)
+  }
+}
+
+print(maxName + " " + str(maxAmount))

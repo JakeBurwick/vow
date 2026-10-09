@@ -1,0 +1,332 @@
+fn main() {
+  let args = args()
+
+  if len(args) < 2 {
+    print("error: bad query")
+    return
+  }
+
+  let csv = args[0]
+  let query = args[1]
+
+  // Parse CSV
+  let lines = split(csv, "\n")
+  if len(lines) == 0 {
+    print("error: bad query")
+    return
+  }
+
+  let header = split(lines[0], ",")
+  let rows = []
+  for i in range(1, len(lines)) {
+    if i < len(lines) and lines[i] != "" {
+      push(rows, split(lines[i], ","))
+    }
+  }
+
+  // Parse query
+  let parts = split(query, " ")
+  if len(parts) == 0 or parts[0] != "SELECT" {
+    print("error: bad query")
+    return
+  }
+
+  if len(parts) < 2 {
+    print("error: bad query")
+    return
+  }
+
+  let select_cols = split(parts[1], ",")
+
+  // Validate select columns exist
+  for col in select_cols {
+    if not col_in_header(header, col) {
+      print("error: unknown column " + col)
+      return
+    }
+  }
+
+  // Parse remaining clauses - use individual variables
+  let where_col = ""
+  let where_op = ""
+  let where_val = ""
+  let order_col = ""
+  let order_desc = false
+  let limit_n = -1
+  let parse_error = false
+
+  let idx = 2
+  while idx < len(parts) {
+    if parts[idx] == "WHERE" {
+      idx = idx + 1
+      if idx + 2 >= len(parts) {
+        parse_error = true
+        break
+      }
+      where_col = parts[idx]
+      where_op = parts[idx + 1]
+      where_val = parts[idx + 2]
+
+      if not col_in_header(header, where_col) {
+        print("error: unknown column " + where_col)
+        return
+      }
+
+      idx = idx + 3
+    } else if parts[idx] == "ORDER" {
+      idx = idx + 1
+      if idx >= len(parts) or parts[idx] != "BY" {
+        parse_error = true
+        break
+      }
+      idx = idx + 1
+      if idx >= len(parts) {
+        parse_error = true
+        break
+      }
+      order_col = parts[idx]
+      idx = idx + 1
+
+      if not col_in_header(header, order_col) {
+        print("error: unknown column " + order_col)
+        return
+      }
+
+      if idx < len(parts) and parts[idx] == "DESC" {
+        order_desc = true
+        idx = idx + 1
+      }
+    } else if parts[idx] == "LIMIT" {
+      idx = idx + 1
+      if idx >= len(parts) {
+        parse_error = true
+        break
+      }
+      match num(parts[idx]) {
+        ok(n) => {
+          limit_n = n
+          idx = idx + 1
+        }
+        err(e) => {
+          parse_error = true
+          break
+        }
+      }
+    } else {
+      parse_error = true
+      break
+    }
+  }
+
+  if parse_error {
+    print("error: bad query")
+    return
+  }
+
+  // Filter rows
+  let filtered = []
+  for row in rows {
+    let include = true
+
+    if where_col != "" {
+      let col_idx = find_col_idx(header, where_col)
+      if col_idx < 0 or col_idx >= len(row) {
+        include = false
+      } else {
+        let cell = row[col_idx]
+
+        let cell_num = try_num(cell)
+        let where_num = try_num(where_val)
+
+        match cell_num {
+          ok(cn) => {
+            match where_num {
+              ok(wn) => {
+                include = compare_num(cn, wn, where_op)
+              }
+              err(e) => {
+                if where_op == "=" {
+                  include = false
+                } else if where_op == "!=" {
+                  include = true
+                } else {
+                  print("error: bad comparison")
+                  return
+                }
+              }
+            }
+          }
+          err(e) => {
+            if where_op == "=" {
+              include = (cell == where_val)
+            } else if where_op == "!=" {
+              include = (cell != where_val)
+            } else {
+              print("error: bad comparison")
+              return
+            }
+          }
+        }
+      }
+    }
+
+    if include {
+      push(filtered, row)
+    }
+  }
+
+  // Sort if ORDER BY specified
+  if order_col != "" {
+    let col_idx = find_col_idx(header, order_col)
+    if col_idx >= 0 {
+      let all_numeric = true
+      for row in filtered {
+        if col_idx >= len(row) {
+          all_numeric = false
+          break
+        }
+        match try_num(row[col_idx]) {
+          ok(n) => {}
+          err(e) => {
+            all_numeric = false
+            break
+          }
+        }
+      }
+
+      filtered = sort_rows(filtered, col_idx, all_numeric, order_desc)
+    }
+  }
+
+  // Apply LIMIT
+  if limit_n > 0 and len(filtered) > limit_n {
+    let limited = []
+    for i in range(0, limit_n) {
+      if i < len(filtered) {
+        push(limited, filtered[i])
+      }
+    }
+    filtered = limited
+  }
+
+  // Output
+  print(join(select_cols, ","))
+  for row in filtered {
+    let output_vals = []
+    for col in select_cols {
+      let col_idx = find_col_idx(header, col)
+      if col_idx >= 0 and col_idx < len(row) {
+        push(output_vals, row[col_idx])
+      }
+    }
+    print(join(output_vals, ","))
+  }
+}
+
+fn col_in_header(header, col) {
+  for h in header {
+    if h == col {
+      return true
+    }
+  }
+  return false
+}
+
+fn find_col_idx(header, col) {
+  for i in range(0, len(header)) {
+    if header[i] == col {
+      return i
+    }
+  }
+  return -1
+}
+
+fn try_num(s) {
+  return num(s)
+}
+
+fn compare_num(a, b, op) {
+  if op == "=" {
+    return a == b
+  } else if op == "!=" {
+    return a != b
+  } else if op == "<" {
+    return a < b
+  } else if op == "<=" {
+    return a <= b
+  } else if op == ">" {
+    return a > b
+  } else if op == ">=" {
+    return a >= b
+  }
+  return false
+}
+
+fn sort_rows(rows, col_idx, numeric, desc) {
+  // Insertion sort to maintain stable sort (ties keep original order)
+  let result = []
+  for row in rows {
+    let inserted = false
+    for i in range(0, len(result)) {
+      let should_insert = should_insert_before(result[i], row, col_idx, numeric, desc)
+      if should_insert {
+        let new_result = []
+        for j in range(0, i) {
+          push(new_result, result[j])
+        }
+        push(new_result, row)
+        for j in range(i, len(result)) {
+          push(new_result, result[j])
+        }
+        result = new_result
+        inserted = true
+        break
+      }
+    }
+    if not inserted {
+      push(result, row)
+    }
+  }
+  return result
+}
+
+fn should_insert_before(existing, new_row, col_idx, numeric, desc) {
+  if col_idx >= len(existing) or col_idx >= len(new_row) {
+    return false
+  }
+
+  let existing_val = existing[col_idx]
+  let new_val = new_row[col_idx]
+
+  if numeric {
+    match try_num(existing_val) {
+      ok(ev) => {
+        match try_num(new_val) {
+          ok(nv) => {
+            if desc {
+              return nv > ev
+            } else {
+              return nv < ev
+            }
+          }
+          err(e) => {
+            return false
+          }
+        }
+      }
+      err(e) => {
+        return false
+      }
+    }
+  } else {
+    if desc {
+      return new_val > existing_val
+    } else {
+      return new_val < existing_val
+    }
+  }
+
+  return false
+}
+
+main()

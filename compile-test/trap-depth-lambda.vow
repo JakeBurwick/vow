@@ -1,0 +1,5 @@
+fn go(f, n) { return f(n) }
+let rec = (n) => n + 1
+print(go(rec, 1))
+fn loop(n) { return go(x => loop(x), n + 1) }
+print(loop(0))

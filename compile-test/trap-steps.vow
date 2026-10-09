@@ -1,0 +1,10 @@
+fn spin(n) {
+  let i = 0
+  while true {
+    i = i + 1
+    if i < 0 { return i }
+  }
+  return 0
+}
+print("go")
+print(spin(1))

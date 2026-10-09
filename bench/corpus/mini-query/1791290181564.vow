@@ -1,0 +1,317 @@
+struct ParsedQuery {
+  select_cols,
+  where_col,
+  where_op,
+  where_val,
+  order_by_col,
+  order_by_desc,
+  limit_n
+}
+
+fn splitCsv(line) {
+  return split(line, ",")
+}
+
+fn tryParseNum(s) {
+  return num(s)
+}
+
+fn getColIdx(cols, col_name) {
+  for i in range(0, len(cols)) {
+    if cols[i] == col_name {
+      return i
+    }
+  }
+  return 0 - 1
+}
+
+fn compareVals(v1, v2, op) {
+  // Try to parse both as numbers
+  match tryParseNum(v1) {
+    ok(n1) => {
+      match tryParseNum(v2) {
+        ok(n2) => {
+          // Numeric comparison
+          if op == "=" { return n1 == n2 }
+          if op == "!=" { return n1 != n2 }
+          if op == "<" { return n1 < n2 }
+          if op == "<=" { return n1 <= n2 }
+          if op == ">" { return n1 > n2 }
+          if op == ">=" { return n1 >= n2 }
+          return false
+        }
+        err(e) => {
+          // v1 is numeric but v2 isn't - string comparison
+          if op == "=" { return v1 == v2 }
+          if op == "!=" { return v1 != v2 }
+          return false
+        }
+      }
+    }
+    err(e1) => {
+      match tryParseNum(v2) {
+        ok(n2) => {
+          // v2 is numeric but v1 isn't - string comparison
+          if op == "=" { return v1 == v2 }
+          if op == "!=" { return v1 != v2 }
+          return false
+        }
+        err(e2) => {
+          // Both are strings
+          if op == "=" { return v1 == v2 }
+          if op == "!=" { return v1 != v2 }
+          return false
+        }
+      }
+    }
+  }
+}
+
+fn isNumericColumn(rows, col_idx) {
+  // Check if all values in column are numeric
+  for row in rows {
+    let val = row[col_idx]
+    match tryParseNum(val) {
+      ok(n) => {}
+      err(e) => { return false }
+    }
+  }
+  return true
+}
+
+fn parseQuery(query_str) {
+  let parts = split(query_str, " ")
+
+  // Must start with SELECT
+  if len(parts) < 2 or parts[0] != "SELECT" {
+    return err("bad query")
+  }
+
+  // Parse SELECT columns
+  let select_part = parts[1]
+  let select_cols = split(select_part, ",")
+  let idx = 2
+
+  // Initialize optional fields
+  let where_col = ""
+  let where_op = ""
+  let where_val = ""
+  let order_by_col = ""
+  let order_by_desc = false
+  let limit_n = 0
+
+  // Parse WHERE if present
+  if idx < len(parts) and parts[idx] == "WHERE" {
+    if idx + 3 > len(parts) {
+      return err("bad query")
+    }
+    where_col = parts[idx + 1]
+    where_op = parts[idx + 2]
+    where_val = parts[idx + 3]
+    idx = idx + 4
+
+    // Validate operator
+    if where_op != "=" and where_op != "!=" and where_op != "<" and where_op != "<=" and where_op != ">" and where_op != ">=" {
+      return err("bad query")
+    }
+  }
+
+  // Parse ORDER BY if present
+  if idx < len(parts) and parts[idx] == "ORDER" {
+    if idx + 2 > len(parts) or parts[idx + 1] != "BY" {
+      return err("bad query")
+    }
+    order_by_col = parts[idx + 2]
+    idx = idx + 3
+
+    if idx < len(parts) and parts[idx] == "DESC" {
+      order_by_desc = true
+      idx = idx + 1
+    }
+  }
+
+  // Parse LIMIT if present
+  if idx < len(parts) and parts[idx] == "LIMIT" {
+    if idx + 1 >= len(parts) {
+      return err("bad query")
+    }
+    match num(parts[idx + 1]) {
+      ok(n) => { limit_n = n }
+      err(e) => { return err("bad query") }
+    }
+    idx = idx + 2
+  }
+
+  // Check for unexpected tokens
+  if idx != len(parts) {
+    return err("bad query")
+  }
+
+  let pq = ParsedQuery {
+    select_cols: select_cols,
+    where_col: where_col,
+    where_op: where_op,
+    where_val: where_val,
+    order_by_col: order_by_col,
+    order_by_desc: order_by_desc,
+    limit_n: limit_n
+  }
+
+  return ok(pq)
+}
+
+fn main() {
+  let args_list = args()
+
+  let csv_input = match get(args_list, 0) {
+    ok(s) => s
+    err(e) => ""
+  }
+
+  let query_input = match get(args_list, 1) {
+    ok(s) => s
+    err(e) => ""
+  }
+
+  // Parse CSV
+  let csv_lines = lines(csv_input)
+  if len(csv_lines) == 0 {
+    return ok(true)
+  }
+
+  let header = splitCsv(csv_lines[0])
+  let rows = []
+
+  for i in range(1, len(csv_lines)) {
+    push(rows, splitCsv(csv_lines[i]))
+  }
+
+  // Parse query
+  match parseQuery(query_input) {
+    ok(pq) => {
+      // Verify all select columns exist
+      for col in pq.select_cols {
+        if not contains(header, col) {
+          print("error: unknown column ${col}")
+          return ok(true)
+        }
+      }
+
+      // Verify where column exists if WHERE is present
+      if pq.where_col != "" {
+        if not contains(header, pq.where_col) {
+          print("error: unknown column ${pq.where_col}")
+          return ok(true)
+        }
+      }
+
+      // Verify order by column exists if ORDER BY is present
+      if pq.order_by_col != "" {
+        if not contains(header, pq.order_by_col) {
+          print("error: unknown column ${pq.order_by_col}")
+          return ok(true)
+        }
+      }
+
+      // Get column indices
+      let select_indices = []
+      for col in pq.select_cols {
+        let idx = getColIdx(header, col)
+        push(select_indices, idx)
+      }
+
+      let where_col_idx = getColIdx(header, pq.where_col)
+      let order_by_col_idx = getColIdx(header, pq.order_by_col)
+
+      // Filter rows based on WHERE
+      let filtered = []
+      for row in rows {
+        let keep = true
+        if pq.where_col != "" {
+          let cell_val = row[where_col_idx]
+          let matches = compareVals(cell_val, pq.where_val, pq.where_op)
+
+          // Check for invalid string comparisons
+          match tryParseNum(cell_val) {
+            ok(n1) => {}
+            err(e1) => {
+              match tryParseNum(pq.where_val) {
+                ok(n2) => {}
+                err(e2) => {
+                  // Both are strings
+                  if pq.where_op != "=" and pq.where_op != "!=" {
+                    print("error: bad comparison")
+                    return ok(true)
+                  }
+                }
+              }
+            }
+          }
+
+          keep = matches
+        }
+        if keep {
+          push(filtered, row)
+        }
+      }
+
+      // Sort if ORDER BY is present
+      if pq.order_by_col != "" {
+        if isNumericColumn(filtered, order_by_col_idx) {
+          // Numeric sort
+          filtered = sortBy(filtered, r => {
+            match tryParseNum(r[order_by_col_idx]) {
+              ok(n) => {
+                if pq.order_by_desc {
+                  return 0 - n
+                } else {
+                  return n
+                }
+              }
+              err(e) => { return 0 }
+            }
+          })
+        } else {
+          // String sort
+          filtered = sortBy(filtered, r => {
+            r[order_by_col_idx]
+          })
+          if pq.order_by_desc {
+            filtered = reverse(filtered)
+          }
+        }
+      }
+
+      // Apply LIMIT
+      if pq.limit_n > 0 and len(filtered) > pq.limit_n {
+        let limited = []
+        for i in range(0, pq.limit_n) {
+          push(limited, filtered[i])
+        }
+        filtered = limited
+      }
+
+      // Output header
+      print(join(pq.select_cols, ","))
+
+      // Output rows
+      for row in filtered {
+        let row_vals = []
+        for idx in select_indices {
+          push(row_vals, row[idx])
+        }
+        print(join(row_vals, ","))
+      }
+    }
+    err(e) => {
+      print("error: bad query")
+    }
+  }
+
+  return ok(true)
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

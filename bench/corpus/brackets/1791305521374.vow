@@ -1,0 +1,31 @@
+let input = args()[0]
+let stack = []
+
+for c in split(input, "") {
+  if c == "(" or c == "[" or c == "{" {
+    push(stack, c)
+  } else if c == ")" or c == "]" or c == "}" {
+    if len(stack) == 0 {
+      print("no")
+      return
+    }
+    match pop(stack) {
+      ok(t) => {
+        if (c == ")" and t != "(") or (c == "]" and t != "[") or (c == "}" and t != "{") {
+          print("no")
+          return
+        }
+      }
+      err(e) => {
+        print("no")
+        return
+      }
+    }
+  }
+}
+
+if len(stack) == 0 {
+  print("yes")
+} else {
+  print("no")
+}

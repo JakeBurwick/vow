@@ -1,0 +1,111 @@
+fn decimalToRoman(n) {
+  let values = [1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1]
+  let numerals = ["M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"]
+
+  let result = ""
+  let num = n
+  for i in range(0, len(values)) {
+    let val = values[i]
+    let numeral = numerals[i]
+    while num >= val {
+      result = result + numeral
+      num = num - val
+    }
+  }
+  return result
+}
+
+fn romanToDecimal(s) {
+  let values_map = {}
+  values_map["I"] = 1
+  values_map["V"] = 5
+  values_map["X"] = 10
+  values_map["L"] = 50
+  values_map["C"] = 100
+  values_map["D"] = 500
+  values_map["M"] = 1000
+
+  let result = 0
+  let i = 0
+  while i < len(s) {
+    let curr_val = values_map[s[i]]
+    let next_val = 0
+    if i + 1 < len(s) {
+      next_val = values_map[s[i + 1]]
+    }
+
+    if curr_val < next_val {
+      // Subtractive form
+      result = result + (next_val - curr_val)
+      i = i + 2
+    } else {
+      result = result + curr_val
+      i = i + 1
+    }
+  }
+
+  return result
+}
+
+fn main() {
+  let args_list = args()
+
+  if len(args_list) == 0 {
+    print("error")
+    return
+  }
+
+  let input = args_list[0]
+
+  if input == "" {
+    print("error")
+    return
+  }
+
+  // Check if it's a decimal number or Roman numeral
+  let is_decimal = true
+  let is_roman = true
+
+  for c in split(input, "") {
+    if not (c >= "0" and c <= "9") {
+      is_decimal = false
+    }
+    if not (c == "I" or c == "V" or c == "X" or c == "L" or c == "C" or c == "D" or c == "M") {
+      is_roman = false
+    }
+  }
+
+  if is_decimal {
+    // Convert decimal to Roman
+    match num(input) {
+      ok(n) => {
+        // Check for leading zeros
+        if len(input) > 1 and input[0] == "0" {
+          print("error")
+        } else if n >= 1 and n <= 3999 {
+          print(decimalToRoman(n))
+        } else {
+          print("error")
+        }
+      }
+      err(_) => {
+        print("error")
+      }
+    }
+  } else if is_roman {
+    // Convert Roman to decimal
+    let decimal = romanToDecimal(input)
+
+    // Validate that it's in standard form by converting back
+    let expected = decimalToRoman(decimal)
+    if expected == input and decimal >= 1 and decimal <= 3999 {
+      print(str(decimal))
+    } else {
+      print("error")
+    }
+  } else {
+    print("error")
+  }
+}
+
+main()

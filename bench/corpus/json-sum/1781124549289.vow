@@ -1,0 +1,23 @@
+fn sumArray(s) {
+  let j = parseJson(s)?
+  if jsonType(j) != "array" {
+    return err("not an array")
+  }
+  let items = jsonList(j)
+  let total = 0
+  for it in items {
+    let n = jsonNum(it)?
+    total = total + n
+  }
+  return ok(total)
+}
+
+let argv = args()
+let s = match get(argv, 0) {
+  ok(v) => v
+  err(e) => ""
+}
+match sumArray(s) {
+  ok(t) => print(t)
+  err(e) => print("invalid")
+}

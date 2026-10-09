@@ -1,0 +1,178 @@
+fn isLowercase(s) {
+  for c in split(s, "") {
+    if not (c >= "a" and c <= "z") {
+      return false
+    }
+  }
+  return true
+}
+
+fn parseInput(input) {
+  let entries = split(input, ";")
+  let graph = {}
+  let allPackages = {}
+
+  for entry in entries {
+    if entry == "" {
+      continue
+    }
+
+    let parts = split(entry, ":")
+    if len(parts) != 2 {
+      return err("error: bad entry " + entry)
+    }
+
+    let name = parts[0]
+    let depsStr = parts[1]
+
+    if not isLowercase(name) or name == "" {
+      return err("error: bad entry " + entry)
+    }
+
+    let deps = []
+    if depsStr != "" {
+      deps = split(depsStr, ",")
+      for dep in deps {
+        if not isLowercase(dep) or dep == "" {
+          return err("error: bad entry " + entry)
+        }
+      }
+    }
+
+    if has(graph, name) {
+      let existingDeps = graph[name]
+      for dep in deps {
+        if not contains(existingDeps, dep) {
+          push(existingDeps, dep)
+        }
+      }
+    } else {
+      graph[name] = deps
+    }
+
+    allPackages[name] = true
+
+    for dep in deps {
+      allPackages[dep] = true
+    }
+  }
+
+  for pkg in keys(allPackages) {
+    if not has(graph, pkg) {
+      graph[pkg] = []
+    }
+  }
+
+  return ok(graph)
+}
+
+fn hasCycle(graph) {
+  let visited = {}
+  let recStack = {}
+
+  fn dfs(node) {
+    visited[node] = true
+    recStack[node] = true
+
+    let deps = graph[node]
+    for dep in deps {
+      if not has(visited, dep) {
+        if dfs(dep) {
+          return true
+        }
+      } else if has(recStack, dep) {
+        return true
+      }
+    }
+
+    recStack[node] = false
+    return false
+  }
+
+  for pkg in keys(graph) {
+    if not has(visited, pkg) {
+      if dfs(pkg) {
+        return true
+      }
+    }
+  }
+
+  return false
+}
+
+fn topologicalSort(graph) {
+  let inDegree = {}
+  let allNodes = keys(graph)
+
+  for node in allNodes {
+    if not has(inDegree, node) {
+      inDegree[node] = 0
+    }
+  }
+
+  for node in allNodes {
+    let deps = graph[node]
+    for dep in deps {
+      if has(inDegree, dep) {
+        inDegree[dep] = inDegree[dep] + 1
+      }
+    }
+  }
+
+  let ready = []
+  for node in allNodes {
+    if inDegree[node] == 0 {
+      push(ready, node)
+    }
+  }
+
+  ready = sort(ready)
+
+  let result = []
+
+  while len(ready) > 0 {
+    ready = sort(ready)
+    let node = ready[0]
+    let newReady = []
+    for i in range(1, len(ready)) {
+      push(newReady, ready[i])
+    }
+    ready = newReady
+
+    push(result, node)
+
+    let rdeps = []
+    for n in allNodes {
+      let deps = graph[n]
+      for dep in deps {
+        if dep == node {
+          push(rdeps, n)
+        }
+      }
+    }
+
+    for n in rdeps {
+      inDegree[n] = inDegree[n] - 1
+      if inDegree[n] == 0 {
+        push(ready, n)
+      }
+    }
+  }
+
+  return result
+}
+
+let args_list = args()
+let input = args_list[0]
+
+match parseInput(input) {
+  ok(graph) => {
+    if hasCycle(graph) {
+      print("error: cycle")
+    } else {
+      let sorted = topologicalSort(graph)
+      print(join(sorted, " "))
+    }
+  }
+  err(e) => print(e)
+}

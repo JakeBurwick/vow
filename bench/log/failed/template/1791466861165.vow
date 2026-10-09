@@ -1,0 +1,262 @@
+fn getValue(obj, path) {
+  let parts = split(path, ".")
+  let current = obj
+  for part in parts {
+    match jsonType(current) {
+      "object" => {
+        match get(current, part) {
+          ok(val) => { current = val }
+          err(e) => { return ok("__MISSING__") }
+        }
+      }
+      _ => { return ok("__MISSING__") }
+    }
+  }
+  return ok(current)
+}
+
+fn isTruthy(val) {
+  match jsonType(val) {
+    "null" => { return false }
+    "bool" => {
+      let b = jsonBool(val)?
+      return b
+    }
+    "number" => {
+      let n = jsonNum(val)?
+      return n != 0
+    }
+    "string" => {
+      let s = jsonStr(val)?
+      return s != ""
+    }
+    "array" => {
+      let arr = jsonList(val)
+      return len(arr) > 0
+    }
+    "object" => {
+      let keys = jsonKeys(val)
+      return len(keys) > 0
+    }
+    _ => { return false }
+  }
+}
+
+fn renderValue(val) {
+  match jsonType(val) {
+    "null" => { return "" }
+    "bool" => {
+      let b = jsonBool(val)?
+      if b { return "true" } else { return "false" }
+    }
+    "number" => {
+      let n = jsonNum(val)?
+      let s = str(n)
+      return s
+    }
+    "string" => {
+      let s = jsonStr(val)?
+      return s
+    }
+    _ => { return "ERROR" }
+  }
+}
+
+fn findClosingTag(template, start, tagType) {
+  let depth = 1
+  let i = start
+  let tagName = ""
+  if tagType == "if" {
+    tagName = "if"
+  } else if tagType == "each" {
+    tagName = "each"
+  }
+
+  while i < len(template) {
+    if template[i] == "{" and i + 1 < len(template) and template[i + 1] == "{" {
+      let j = i + 2
+      while j < len(template) and template[j] == " " { j = j + 1 }
+
+      if j + 1 < len(template) and template[j] == "#" {
+        j = j + 1
+        let start_j = j
+        while j < len(template) and template[j] != " " and template[j] != "}" { j = j + 1 }
+        let blockType = slice(template, start_j, j)
+        if blockType == tagName {
+          depth = depth + 1
+        }
+        i = j
+      } else if j + 1 < len(template) and template[j] == "/" {
+        j = j + 1
+        while j < len(template) and template[j] == " " { j = j + 1 }
+        let start_j = j
+        while j < len(template) and template[j] != " " and template[j] != "}" { j = j + 1 }
+        let blockType = slice(template, start_j, j)
+        if blockType == tagName {
+          depth = depth - 1
+          if depth == 0 {
+            return ok(i)
+          }
+        }
+        i = j
+      } else {
+        i = i + 1
+      }
+    } else {
+      i = i + 1
+    }
+  }
+
+  if tagType == "if" {
+    return err("error: unclosed if")
+  } else {
+    return err("error: unclosed each")
+  }
+}
+
+fn processTemplate(template, data) {
+  let result = ""
+  let i = 0
+
+  while i < len(template) {
+    if i < len(template) - 1 and template[i] == "{" and template[i + 1] == "{" {
+      let j = i + 2
+      while j < len(template) and template[j] == " " { j = j + 1 }
+
+      if j < len(template) and template[j] == "#" {
+        j = j + 1
+        let start_j = j
+        while j < len(template) and template[j] != " " and template[j] != "}" { j = j + 1 }
+        let blockType = slice(template, start_j, j)
+
+        while j < len(template) and template[j] == " " { j = j + 1 }
+        let start_var = j
+        while j < len(template) and template[j] != "}" { j = j + 1 }
+        let varName = slice(template, start_var, j)
+        let varName = trim(varName)
+
+        j = j + 2
+
+        if blockType == "if" {
+          let closePos = findClosingTag(template, i, "if")?
+          let innerTemplate = slice(template, j, closePos)
+
+          match getValue(data, varName) {
+            ok(val) => {
+              if val != "__MISSING__" {
+                if isTruthy(val)? {
+                  let inner = processTemplate(innerTemplate, data)?
+                  result = result + inner
+                }
+              }
+            }
+            err(e) => { return err(e) }
+          }
+
+          j = closePos + 6
+          i = j
+        } else if blockType == "each" {
+          let closePos = findClosingTag(template, i, "each")?
+          let innerTemplate = slice(template, j, closePos)
+
+          match getValue(data, varName) {
+            ok(val) => {
+              if val == "__MISSING__" {
+              } else {
+                match jsonType(val) {
+                  "array" => {
+                    let arr = jsonList(val)
+                    for elem in arr {
+                      let inner = processTemplate(innerTemplate, elem)?
+                      result = result + inner
+                    }
+                  }
+                  _ => { return err("error: not a list: " + varName) }
+                }
+              }
+            }
+            err(e) => { return err(e) }
+          }
+
+          j = closePos + 7
+          i = j
+        } else {
+          return err("error: bad line")
+        }
+      } else if j < len(template) and template[j] == "/" {
+        j = j + 1
+        while j < len(template) and template[j] == " " { j = j + 1 }
+        let start_j = j
+        while j < len(template) and template[j] != " " and template[j] != "}" { j = j + 1 }
+        let blockType = slice(template, start_j, j)
+
+        if blockType == "if" {
+          return err("error: unexpected /if")
+        } else if blockType == "each" {
+          return err("error: unexpected /each")
+        }
+        i = j
+      } else {
+        let start_var = j
+        while j < len(template) and template[j] != "}" { j = j + 1 }
+        let varName = slice(template, start_var, j)
+        let varName = trim(varName)
+
+        if j + 1 < len(template) and template[j + 1] == "}" {
+          match getValue(data, varName) {
+            ok(val) => {
+              if val != "__MISSING__" {
+                match jsonType(val) {
+                  "array" => { return err("error: not printable") }
+                  "object" => { return err("error: not printable") }
+                  _ => {
+                    let rendered = renderValue(val)?
+                    result = result + rendered
+                  }
+                }
+              }
+            }
+            err(e) => { return err(e) }
+          }
+          i = j + 2
+        } else {
+          i = j
+        }
+      }
+    } else {
+      result = result + template[i]
+      i = i + 1
+    }
+  }
+
+  return ok(result)
+}
+
+fn main() {
+  let args_list = args()
+  if len(args_list) < 2 {
+    print("error: bad data")
+    return
+  }
+
+  let template = args_list[0]
+  let jsonStr = args_list[1]
+
+  match parseJson(jsonStr) {
+    ok(data) => {
+      if jsonType(data) != "object" {
+        print("error: bad data")
+      } else {
+        match processTemplate(template, data) {
+          ok(result) => { print(result) }
+          err(e) => { print(e) }
+        }
+      }
+    }
+    err(e) => {
+      print("error: bad data")
+    }
+  }
+}
+
+main()

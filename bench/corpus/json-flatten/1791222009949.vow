@@ -1,0 +1,140 @@
+struct PathValue {
+  path, value
+}
+
+fn flattenValue(j, path) {
+  let result = []
+  let typ = jsonType(j)
+
+  if typ == "object" {
+    let keys = jsonKeys(j)
+    keys = sort(keys)
+
+    if len(keys) == 0 {
+      push(result, PathValue { path: path, value: j })
+    } else {
+      for key in keys {
+        let child = j[key]
+        let childPath = if path == "" { key } else { path + "." + key }
+        let childResults = flattenValue(child, childPath)?
+        for item in childResults {
+          push(result, item)
+        }
+      }
+    }
+  } else if typ == "array" {
+    let arr = jsonList(j)
+
+    if len(arr) == 0 {
+      push(result, PathValue { path: path, value: j })
+    } else {
+      for i in range(0, len(arr)) {
+        let child = arr[i]
+        let childPath = path + "[" + str(i) + "]"
+        let childResults = flattenValue(child, childPath)?
+        for item in childResults {
+          push(result, item)
+        }
+      }
+    }
+  } else {
+    push(result, PathValue { path: path, value: j })
+  }
+
+  return ok(result)
+}
+
+fn serializeJson(j) {
+  let typ = jsonType(j)
+
+  if typ == "string" {
+    let s = jsonStr(j)?
+    return ok(toJson(s))
+  } else if typ == "number" {
+    let n = jsonNum(j)?
+    return ok(str(n))
+  } else if typ == "bool" {
+    let b = jsonBool(j)?
+    return ok(if b { "true" } else { "false" })
+  } else if typ == "null" {
+    return ok("null")
+  } else if typ == "array" {
+    let arr = jsonList(j)
+    if len(arr) == 0 {
+      return ok("[]")
+    }
+    let elements = []
+    for elem in arr {
+      let serialized = serializeJson(elem)?
+      push(elements, serialized)
+    }
+    return ok("[" + join(elements, ",") + "]")
+  } else if typ == "object" {
+    let keys = jsonKeys(j)
+    if len(keys) == 0 {
+      return ok("{}")
+    }
+    let entries = []
+    for key in sort(keys) {
+      let value = j[key]
+      let serializedValue = serializeJson(value)?
+      let entry = toJson(key) + ":" + serializedValue
+      push(entries, entry)
+    }
+    return ok("{" + join(entries, ",") + "}")
+  } else {
+    return err("unknown type")
+  }
+}
+
+fn main() {
+  let argv = args()
+  let jsonStr = argv[0]
+
+  match parseJson(jsonStr) {
+    ok(j) => {
+      let typ = jsonType(j)
+
+      if typ != "object" and typ != "array" {
+        print("{\"error\":\"not a container\"}")
+        return ok(true)
+      }
+
+      let pairs = flattenValue(j, "")?
+
+      if len(pairs) == 0 {
+        print("{}")
+        return ok(true)
+      }
+
+      if len(pairs) == 1 and pairs[0].path == "" {
+        print("{}")
+        return ok(true)
+      }
+
+      let entries = []
+      for pv in pairs {
+        let path = pv.path
+        let value = pv.value
+
+        let jsonPath = toJson(path)
+        let jsonValue = serializeJson(value)?
+
+        let entry = jsonPath + ":" + jsonValue
+        push(entries, entry)
+      }
+
+      print("{" + join(entries, ",") + "}")
+      return ok(true)
+    }
+    err(e) => {
+      print("{\"error\":\"bad json\"}")
+      return ok(true)
+    }
+  }
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

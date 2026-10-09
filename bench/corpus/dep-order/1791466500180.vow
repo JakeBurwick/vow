@@ -1,0 +1,129 @@
+fn isValidName(name) {
+  if len(name) == 0 { return false }
+  for i in range(0, len(name)) {
+    let c = name[i]
+    if not (c >= "a" and c <= "z") {
+      return false
+    }
+  }
+  return true
+}
+
+fn main() {
+  let input = args()[0]
+  let entries = split(input, ";")
+
+  let allNamesSet = {}
+  let deps = {}
+
+  for entry in entries {
+    let trimmed = trim(entry)
+    if len(trimmed) == 0 { continue }
+
+    let parts = split(entry, ":")
+    if len(parts) != 2 {
+      print("error: bad entry ${entry}")
+      return ok(true)
+    }
+
+    let name = parts[0]
+    let depStr = parts[1]
+
+    if not isValidName(name) {
+      print("error: bad entry ${entry}")
+      return ok(true)
+    }
+
+    allNamesSet[name] = true
+
+    let depList = []
+    if len(depStr) > 0 {
+      let rawDeps = split(depStr, ",")
+      for dep in rawDeps {
+        if not isValidName(dep) {
+          print("error: bad entry ${entry}")
+          return ok(true)
+        }
+        push(depList, dep)
+      }
+    }
+
+    if has(deps, name) {
+      for dep in depList {
+        if not contains(deps[name], dep) {
+          push(deps[name], dep)
+        }
+      }
+    } else {
+      deps[name] = depList
+    }
+  }
+
+  // Make sure all referenced packages exist
+  for pkg in keys(deps) {
+    for dep in deps[pkg] {
+      allNamesSet[dep] = true
+    }
+  }
+
+  let allNames = keys(allNamesSet)
+
+  // Build in-degree
+  let inDegree = {}
+  for pkg in allNames {
+    if has(deps, pkg) {
+      inDegree[pkg] = len(deps[pkg])
+    } else {
+      inDegree[pkg] = 0
+    }
+  }
+
+  // Build dependents
+  let dependents = {}
+  for pkg in allNames {
+    dependents[pkg] = []
+  }
+
+  for pkg in keys(deps) {
+    for dep in deps[pkg] {
+      push(dependents[dep], pkg)
+    }
+  }
+
+  let queue = []
+  for pkg in allNames {
+    if inDegree[pkg] == 0 {
+      push(queue, pkg)
+    }
+  }
+
+  queue = sort(queue)
+
+  let result = []
+  while len(queue) > 0 {
+    queue = sort(queue)
+    let curr = queue[0]
+    queue = slice(queue, 1, len(queue))
+    push(result, curr)
+
+    for pkg in dependents[curr] {
+      inDegree[pkg] = inDegree[pkg] - 1
+      if inDegree[pkg] == 0 {
+        push(queue, pkg)
+      }
+    }
+  }
+
+  if len(result) != len(allNames) {
+    print("error: cycle")
+  } else {
+    print(join(result, " "))
+  }
+
+  return ok(true)
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

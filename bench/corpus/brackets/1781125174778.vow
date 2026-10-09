@@ -1,0 +1,51 @@
+fn checkMatch(top, closing) {
+  if closing == ")" {
+    return top == "("
+  }
+  if closing == "]" {
+    return top == "["
+  }
+  if closing == "}" {
+    return top == "{"
+  }
+  return false
+}
+
+fn isBalanced(s) {
+  let stack = []
+  let chars = split(s, "")
+  for char in chars {
+    let isOpen = char == "(" or char == "[" or char == "{"
+    let isClose = char == ")" or char == "]" or char == "}"
+
+    if isOpen {
+      push(stack, char)
+    } else if isClose {
+      let popped = pop(stack)
+      match popped {
+        ok(top) => {
+          if not checkMatch(top, char) {
+            return ok(false)
+          }
+        }
+        err(_) => {
+          return ok(false)
+        }
+      }
+    }
+  }
+  return ok(len(stack) == 0)
+}
+
+match isBalanced(args()[0]) {
+  ok(result) => {
+    if result {
+      print("yes")
+    } else {
+      print("no")
+    }
+  }
+  err(_) => {
+    print("no")
+  }
+}

@@ -1,0 +1,108 @@
+fn main() {
+  let args_list = args()
+
+  if len(args_list) == 0 {
+    print("{}")
+    return ok(true)
+  }
+
+  let input = args_list[0]
+
+  // Parse JSON
+  match parseJson(input) {
+    ok(j) => {
+      match jsonList(j) {
+        ok(orders) => {
+          let totals = {}
+          let had_error = false
+
+          for order_json in orders {
+            if not had_error {
+              if jsonType(order_json) == "object" {
+                let get_item = get(order_json, "item")
+                let get_qty = get(order_json, "qty")
+                let get_price = get(order_json, "price")
+
+                match get_item {
+                  ok(item_json) => {
+                    match get_qty {
+                      ok(qty_json) => {
+                        match get_price {
+                          ok(price_json) => {
+                            match jsonStr(item_json) {
+                              ok(item) => {
+                                match jsonNum(qty_json) {
+                                  ok(qty) => {
+                                    match jsonNum(price_json) {
+                                      ok(price) => {
+                                        let revenue = qty * price
+                                        if has(totals, item) {
+                                          totals[item] = totals[item] + revenue
+                                        } else {
+                                          totals[item] = revenue
+                                        }
+                                      }
+                                      err(e) => {
+                                        had_error = true
+                                      }
+                                    }
+                                  }
+                                  err(e) => {
+                                    had_error = true
+                                  }
+                                }
+                              }
+                              err(e) => {
+                                had_error = true
+                              }
+                            }
+                          }
+                          err(e) => {
+                            had_error = true
+                          }
+                        }
+                      }
+                      err(e) => {
+                        had_error = true
+                      }
+                    }
+                  }
+                  err(e) => {
+                    had_error = true
+                  }
+                }
+              } else {
+                had_error = true
+              }
+            }
+          }
+
+          if had_error {
+            print("{\"error\":\"bad order\"}")
+          } else {
+            let sorted_keys = sort(keys(totals))
+            let parts = []
+            for key in sorted_keys {
+              let value = totals[key]
+              push(parts, "\"" + key + "\":" + toJson(value))
+            }
+            print("{" + join(parts, ",") + "}")
+          }
+        }
+        err(e) => {
+          print("{\"error\":\"bad order\"}")
+        }
+      }
+    }
+    err(e) => {
+      print("{\"error\":\"bad order\"}")
+    }
+  }
+
+  return ok(true)
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

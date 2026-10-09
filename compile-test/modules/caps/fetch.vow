@@ -1,0 +1,5 @@
+fn title(url) uses net {
+  let body = httpGet(url)?
+  return ok(trim(body))
+}
+fn home() uses env { return env("HOME_DIR") }

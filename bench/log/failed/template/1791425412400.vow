@@ -1,0 +1,279 @@
+struct EndInfo {
+  endPos,
+  nextPos
+}
+
+fn render(template, dataObj, stack, pos) {
+  let len_t = len(template)
+  let output = ""
+  let i = pos
+
+  while i < len_t {
+    if i + 1 < len_t and template[i] == "{" and template[i + 1] == "{" {
+      let j = i + 2
+      while j + 1 < len_t {
+        if template[j] == "}" and template[j + 1] == "}" {
+          break
+        }
+        j = j + 1
+      }
+      if j + 1 >= len_t {
+        return err("error: unclosed tag")
+      }
+
+      let tag = trim(slice(template, i + 2, j))
+
+      if startsWith(tag, "#if ") {
+        let varName = trim(join(slice(tag, 4, len(tag)), ""))
+        let nextPos = j + 2
+        match lookupValue(varName, stack, dataObj) {
+          ok(val) => {
+            if isTruthy(val) {
+              match findMatchingEnd(template, nextPos, "if") {
+                ok(endInfo) => {
+                  let bodyTemplate = slice(template, nextPos, endInfo.endPos)
+                  match render(bodyTemplate, dataObj, stack, 0) {
+                    ok(bodyRendered) => {
+                      output = output + bodyRendered
+                      i = endInfo.nextPos
+                    }
+                    err(e) => {
+                      return err(e)
+                    }
+                  }
+                }
+                err(e) => {
+                  return err("error: unclosed if")
+                }
+              }
+            } else {
+              match findMatchingEnd(template, nextPos, "if") {
+                ok(endInfo) => {
+                  i = endInfo.nextPos
+                }
+                err(e) => {
+                  return err("error: unclosed if")
+                }
+              }
+            }
+          }
+          err(e) => {
+            return err(e)
+          }
+        }
+      } else if startsWith(tag, "#each ") {
+        let varName = trim(join(slice(tag, 6, len(tag)), ""))
+        let nextPos = j + 2
+        match lookupValue(varName, stack, dataObj) {
+          ok(val) => {
+            match getListValue(val) {
+              ok(items) => {
+                match findMatchingEnd(template, nextPos, "each") {
+                  ok(endInfo) => {
+                    let bodyTemplate = slice(template, nextPos, endInfo.endPos)
+                    for item in items {
+                      let newStack = [item] + stack
+                      match render(bodyTemplate, dataObj, newStack, 0) {
+                        ok(itemOutput) => {
+                          output = output + itemOutput
+                        }
+                        err(e) => {
+                          return err(e)
+                        }
+                      }
+                    }
+                    i = endInfo.nextPos
+                  }
+                  err(e) => {
+                    return err("error: unclosed each")
+                  }
+                }
+              }
+              err(e) => {
+                return err(e)
+              }
+            }
+          }
+          err(e) => {
+            return err(e)
+          }
+        }
+      } else if startsWith(tag, "/if") {
+        return err("error: unexpected /if")
+      } else if startsWith(tag, "/each") {
+        return err("error: unexpected /each")
+      } else {
+        match lookupValue(tag, stack, dataObj) {
+          ok(val) => {
+            match formatValue(val) {
+              ok(formatted) => {
+                output = output + formatted
+                i = j + 2
+              }
+              err(e) => {
+                return err(e)
+              }
+            }
+          }
+          err(e) => {
+            return err(e)
+          }
+        }
+      }
+    } else {
+      output = output + template[i]
+      i = i + 1
+    }
+  }
+
+  return ok(output)
+}
+
+fn isTruthy(val) {
+  match jsonType(val) {
+    "null" => false
+    "bool" => {
+      match jsonBool(val) {
+        ok(b) => b
+        err(_) => false
+      }
+    }
+    "number" => {
+      match jsonNum(val) {
+        ok(n) => n != 0
+        err(_) => false
+      }
+    }
+    "string" => {
+      match jsonStr(val) {
+        ok(s) => len(s) > 0
+        err(_) => false
+      }
+    }
+    "array" => len(jsonList(val)) > 0
+    "object" => len(jsonKeys(val)) > 0
+    _ => false
+  }
+}
+
+fn formatValue(val) {
+  match jsonType(val) {
+    "null" => ok("")
+    "bool" => {
+      match jsonBool(val) {
+        ok(b) => if b { ok("true") } else { ok("false") }
+        err(e) => err(e)
+      }
+    }
+    "number" => {
+      match jsonNum(val) {
+        ok(n) => ok(str(n))
+        err(e) => err(e)
+      }
+    }
+    "string" => {
+      match jsonStr(val) {
+        ok(s) => ok(s)
+        err(e) => err(e)
+      }
+    }
+    _ => err("error: not printable")
+  }
+}
+
+fn getListValue(val) {
+  match jsonType(val) {
+    "array" => {
+      ok(jsonList(val))
+    }
+    "null" => ok([])
+    _ => err("error: not a list")
+  }
+}
+
+fn lookupValue(name, stack, dataObj) {
+  if name == "." {
+    if len(stack) > 0 {
+      return ok(stack[0])
+    } else {
+      return err("error: . not available")
+    }
+  }
+
+  for item in stack {
+    if jsonType(item) == "object" {
+      match get(item, name) {
+        ok(val) => {
+          return ok(val)
+        }
+        err(_) => {}
+      }
+    }
+  }
+
+  match get(dataObj, name) {
+    ok(val) => ok(val)
+    err(_) => ok(toJson(null))
+  }
+}
+
+fn findMatchingEnd(template, startPos, blockType) {
+  let depth = 1
+  let i = startPos
+  let len_t = len(template)
+
+  while i < len_t {
+    if i + 1 < len_t and template[i] == "{" and template[i + 1] == "{" {
+      let j = i + 2
+      while j + 1 < len_t {
+        if template[j] == "}" and template[j + 1] == "}" {
+          break
+        }
+        j = j + 1
+      }
+
+      if j + 1 < len_t {
+        let tag = trim(slice(template, i + 2, j))
+        if tag == "#" + blockType {
+          depth = depth + 1
+        } else if tag == "/" + blockType {
+          depth = depth - 1
+          if depth == 0 {
+            return ok(EndInfo { endPos: i, nextPos: j + 2 })
+          }
+        }
+        i = j + 2
+      } else {
+        i = i + 1
+      }
+    } else {
+      i = i + 1
+    }
+  }
+
+  return err("unclosed")
+}
+
+fn main() {
+  let args_list = args()
+  let template = args_list[0]
+  let dataStr = args_list[1]
+
+  match parseJson(dataStr) {
+    ok(data) => {
+      if jsonType(data) != "object" {
+        print("error: bad data")
+      } else {
+        match render(template, data, [], 0) {
+          ok(result) => print(result)
+          err(e) => print(e)
+        }
+      }
+    }
+    err(_) => {
+      print("error: bad data")
+    }
+  }
+}
+
+main()

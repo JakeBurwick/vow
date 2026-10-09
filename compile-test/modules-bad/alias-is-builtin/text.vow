@@ -1,0 +1,1 @@
+fn wrap(s) { return s }

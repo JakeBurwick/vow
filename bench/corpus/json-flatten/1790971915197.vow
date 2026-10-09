@@ -1,0 +1,110 @@
+fn escapeJsonString(s) {
+  let result = ""
+  for i in range(0, len(s)) {
+    let c = s[i]
+    if c == "\"" {
+      result = result + "\\\""
+    } else if c == "\\" {
+      result = result + "\\\\"
+    } else {
+      result = result + c
+    }
+  }
+  return result
+}
+
+fn flattenHelper(j, path, entries) {
+  let t = jsonType(j)
+
+  if t == "object" {
+    let ks = jsonKeys(j)
+    if len(ks) == 0 {
+      if path != "" {
+        entries[path] = "{}"
+      }
+      return ok(entries)
+    }
+    ks = sort(ks)
+    for k in ks {
+      let newPath = if path == "" { k } else { path + "." + k }
+      let v = get(j, k)?
+      match flattenHelper(v, newPath, entries) {
+        ok(_) => { }
+        err(e) => return err(e)
+      }
+    }
+    return ok(entries)
+  } else if t == "array" {
+    let list = jsonList(j)
+    if len(list) == 0 {
+      if path != "" {
+        entries[path] = "[]"
+      }
+      return ok(entries)
+    }
+    for i in range(0, len(list)) {
+      let newPath = path + "[" + str(i) + "]"
+      match flattenHelper(list[i], newPath, entries) {
+        ok(_) => { }
+        err(e) => return err(e)
+      }
+    }
+    return ok(entries)
+  } else {
+    let value = ""
+    if t == "string" {
+      let s = jsonStr(j)?
+      value = "\"" + escapeJsonString(s) + "\""
+    } else if t == "number" {
+      let n = jsonNum(j)?
+      value = str(n)
+    } else if t == "bool" {
+      let b = jsonBool(j)?
+      value = if b { "true" } else { "false" }
+    } else if t == "null" {
+      value = "null"
+    }
+
+    entries[path] = value
+    return ok(entries)
+  }
+}
+
+let programArgs = args()
+if len(programArgs) != 1 {
+  print("{\"error\":\"bad json\"}")
+} else {
+  let input = programArgs[0]
+
+  match parseJson(input) {
+    ok(j) => {
+      let t = jsonType(j)
+      if t != "object" and t != "array" {
+        print("{\"error\":\"not a container\"}")
+      } else {
+        let entries = {}
+        match flattenHelper(j, "", entries) {
+          ok(e) => {
+            if len(keys(e)) == 0 {
+              print("{}")
+            } else {
+              let output = "{"
+              let first = true
+              let ks = keys(entries)
+              ks = sort(ks)
+              for k in ks {
+                if not first { output = output + "," }
+                output = output + "\"" + escapeJsonString(k) + "\":" + entries[k]
+                first = false
+              }
+              output = output + "}"
+              print(output)
+            }
+          }
+          err(e) => print("{\"error\":\"bad json\"}")
+        }
+      }
+    }
+    err(e) => print("{\"error\":\"bad json\"}")
+  }
+}

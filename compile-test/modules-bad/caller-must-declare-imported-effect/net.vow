@@ -1,0 +1,1 @@
+fn get(u) uses net { return httpGet(u) }

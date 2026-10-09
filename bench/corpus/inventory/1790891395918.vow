@@ -1,0 +1,145 @@
+struct Product {
+  name, qty, price, disc
+}
+
+fn formatValue(value) {
+  let rounded = floor(value * 100 + 0.5) / 100
+  let str_val = str(rounded)
+
+  if contains(str_val, ".") {
+    let chars = split(str_val, "")
+    while len(chars) > 1 and chars[len(chars) - 1] == "0" {
+      chars = slice(chars, 0, len(chars) - 1)
+    }
+    if len(chars) > 1 and chars[len(chars) - 1] == "." {
+      chars = slice(chars, 0, len(chars) - 1)
+    }
+    return join(chars, "")
+  }
+  return str_val
+}
+
+let input = args()[0]
+let products = {}
+
+let commands = split(input, ";")
+
+for cmd in commands {
+  let trimmed = trim(cmd)
+  if len(trimmed) == 0 {
+    continue
+  }
+
+  let parts = split(trimmed, " ")
+  let action = parts[0]
+
+  if action == "add" {
+    if len(parts) != 5 {
+      print("error: " + cmd)
+      continue
+    }
+    let sku = parts[1]
+    let name = parts[2]
+
+    if has(products, sku) {
+      print("error: " + cmd)
+      continue
+    }
+
+    match num(parts[3]) {
+      ok(qty) => {
+        match num(parts[4]) {
+          ok(price) => {
+            let p = Product { name: name, qty: qty, price: price, disc: false }
+            products[sku] = p
+          }
+          err(_) => print("error: " + cmd)
+        }
+      }
+      err(_) => print("error: " + cmd)
+    }
+  } else if action == "sell" {
+    if len(parts) != 3 {
+      print("error: " + cmd)
+      continue
+    }
+    let sku = parts[1]
+
+    if not has(products, sku) {
+      print("error: " + cmd)
+      continue
+    }
+
+    let p = products[sku]
+    if p.disc {
+      print("error: " + cmd)
+      continue
+    }
+
+    match num(parts[2]) {
+      ok(qty) => {
+        if qty > p.qty {
+          print("error: " + cmd)
+        } else {
+          p.qty = p.qty - qty
+          products[sku] = p
+        }
+      }
+      err(_) => print("error: " + cmd)
+    }
+  } else if action == "restock" {
+    if len(parts) != 3 {
+      print("error: " + cmd)
+      continue
+    }
+    let sku = parts[1]
+
+    if not has(products, sku) {
+      print("error: " + cmd)
+      continue
+    }
+
+    let p = products[sku]
+    if p.disc {
+      print("error: " + cmd)
+      continue
+    }
+
+    match num(parts[2]) {
+      ok(qty) => {
+        p.qty = p.qty + qty
+        products[sku] = p
+      }
+      err(_) => print("error: " + cmd)
+    }
+  } else if action == "discontinue" {
+    if len(parts) != 2 {
+      print("error: " + cmd)
+      continue
+    }
+    let sku = parts[1]
+
+    if not has(products, sku) {
+      print("error: " + cmd)
+      continue
+    }
+
+    let p = products[sku]
+    p.disc = true
+    products[sku] = p
+  } else if action == "report" {
+    let skus = sort(keys(products))
+    for sku in skus {
+      let p = products[sku]
+      let value = p.qty * p.price
+      let value_str = formatValue(value)
+      let line = sku + " " + p.name + " qty=" + str(p.qty) + " value=" + value_str
+      if p.disc {
+        line = line + " discontinued"
+      }
+      print(line)
+    }
+  } else {
+    print("error: " + cmd)
+  }
+}

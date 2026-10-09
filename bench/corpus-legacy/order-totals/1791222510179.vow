@@ -1,0 +1,104 @@
+fn main() {
+  let args_list = args()
+  if len(args_list) == 0 {
+    print("{}")
+    return ok(true)
+  }
+
+  let input = args_list[0]
+
+  let j = match parseJson(input) {
+    ok(parsed) => parsed
+    err(e) => {
+      print("{\"error\":\"bad order\"}")
+      return ok(true)
+    }
+  }
+
+  let orders_json = match jsonList(j) {
+    ok(list) => list
+    err(e) => {
+      print("{\"error\":\"bad order\"}")
+      return ok(true)
+    }
+  }
+
+  let totals = {}
+
+  for order_json in orders_json {
+    let item_result = match jsonType(order_json) {
+      "object" => {
+        let item_str = match get(order_json, "item") {
+          ok(v) => {
+            match jsonStr(v) {
+              ok(s) => s
+              err(e) => ""
+            }
+          }
+          err(e) => ""
+        }
+
+        let qty_num = match get(order_json, "qty") {
+          ok(v) => {
+            match jsonNum(v) {
+              ok(n) => n
+              err(e) => 0 - 1
+            }
+          }
+          err(e) => 0 - 1
+        }
+
+        let price_num = match get(order_json, "price") {
+          ok(v) => {
+            match jsonNum(v) {
+              ok(n) => n
+              err(e) => 0 - 1
+            }
+          }
+          err(e) => 0 - 1
+        }
+
+        if item_str == "" or qty_num < 0 or price_num < 0 {
+          return err("bad order")
+        }
+
+        let revenue = qty_num * price_num
+
+        if has(totals, item_str) {
+          totals[item_str] = totals[item_str] + revenue
+        } else {
+          totals[item_str] = revenue
+        }
+
+        ok(true)
+      }
+      _ => err("not object")
+    }
+
+    match item_result {
+      ok(v) => {}
+      err(e) => {
+        print("{\"error\":\"bad order\"}")
+        return ok(true)
+      }
+    }
+  }
+
+  let keys_list = keys(totals)
+  keys_list = sort(keys_list)
+
+  let parts = []
+  for key in keys_list {
+    let value = totals[key]
+    let json_value = toJson(value)
+    push(parts, "\"" + key + "\":" + json_value)
+  }
+
+  print("{" + join(parts, ",") + "}")
+  return ok(true)
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print("{\"error\":\"bad order\"}")
+}

@@ -1,0 +1,133 @@
+fn isValidChar(c) {
+  let isLower = c >= "a" and c <= "z"
+  let isDigit = c >= "0" and c <= "9"
+  let isUnderscore = c == "_"
+  return isLower or isDigit or isUnderscore
+}
+
+fn isValidName(s) {
+  if len(s) == 0 {
+    return false
+  }
+  let i = 0
+  while i < len(s) {
+    if not isValidChar(s[i]) {
+      return false
+    }
+    i = i + 1
+  }
+  return true
+}
+
+fn substring(s, start, end) {
+  let result = ""
+  let i = start
+  while i < end and i < len(s) {
+    result = result + s[i]
+    i = i + 1
+  }
+  return result
+}
+
+struct Config {
+  sections,
+  error
+}
+
+fn main() {
+  let argv = args()
+  let iniStr = match get(argv, 0) { ok(s) => s err(_) => "" }
+
+  let iniLines = lines(iniStr)
+  let config = Config { sections: {}, error: "" }
+  let currentSection = ""
+  let lineNum = 0
+
+  for line in iniLines {
+    lineNum = lineNum + 1
+    let trimmedLine = trim(line)
+
+    if trimmedLine == "" {
+      continue
+    }
+
+    if startsWith(trimmedLine, ";") or startsWith(trimmedLine, "#") {
+      continue
+    }
+
+    if startsWith(trimmedLine, "[") and endsWith(trimmedLine, "]") {
+      let sectionName = trim(substring(trimmedLine, 1, len(trimmedLine) - 1))
+      if not isValidName(sectionName) {
+        config.error = "error line " + str(lineNum) + ": bad line"
+        break
+      }
+      currentSection = sectionName
+      if not has(config.sections, currentSection) {
+        config.sections[currentSection] = {}
+      }
+      continue
+    }
+
+    match indexOf(trimmedLine, "=") {
+      ok(eqPos) => {
+        if currentSection == "" {
+          config.error = "error line " + str(lineNum) + ": key outside section"
+          break
+        }
+
+        let keyPart = trim(substring(trimmedLine, 0, eqPos))
+        let valuePart = trim(substring(trimmedLine, eqPos + 1, len(trimmedLine)))
+
+        if not isValidName(keyPart) {
+          config.error = "error line " + str(lineNum) + ": bad line"
+          break
+        }
+
+        let sectionMap = config.sections[currentSection]
+        sectionMap[keyPart] = valuePart
+      }
+      err(_) => {
+        config.error = "error line " + str(lineNum) + ": bad line"
+        break
+      }
+    }
+  }
+
+  if config.error != "" {
+    print(config.error)
+    return
+  }
+
+  let queries = match get(argv, 1) { ok(s) => s err(_) => "" }
+  if queries != "" {
+    let queryList = []
+    let i = 1
+    while i < len(argv) {
+      let q = argv[i]
+      push(queryList, q)
+      i = i + 1
+    }
+
+    for query in queryList {
+      match indexOf(query, ".") {
+        ok(dotPos) => {
+          let section = substring(query, 0, dotPos)
+          let key = substring(query, dotPos + 1, len(query))
+
+          match get(config.sections, section) {
+            ok(sectionMap) => {
+              match get(sectionMap, key) {
+                ok(value) => print("${query} = ${value}")
+                err(_) => print("${query} missing")
+              }
+            }
+            err(_) => print("${query} missing")
+          }
+        }
+        err(_) => print("${query} missing")
+      }
+    }
+  }
+}
+
+main()

@@ -1,0 +1,304 @@
+struct Query {
+  select_cols,
+  where_col,
+  where_op,
+  where_val,
+  order_col,
+  order_desc,
+  limit_n
+}
+
+fn parseQuery(queryStr) {
+  let tokens = split(queryStr, " ")
+  let i = 0
+
+  if i >= len(tokens) or tokens[i] != "SELECT" {
+    return err("error: bad query")
+  }
+  i = i + 1
+
+  if i >= len(tokens) {
+    return err("error: bad query")
+  }
+  let cols_str = tokens[i]
+  let select_cols = split(cols_str, ",")
+  i = i + 1
+
+  let where_col = ""
+  let where_op = ""
+  let where_val = ""
+  let order_col = ""
+  let order_desc = false
+  let limit_n = -1
+
+  if i < len(tokens) and tokens[i] == "WHERE" {
+    i = i + 1
+
+    if i >= len(tokens) {
+      return err("error: bad query")
+    }
+    where_col = tokens[i]
+    i = i + 1
+
+    if i >= len(tokens) {
+      return err("error: bad query")
+    }
+    where_op = tokens[i]
+    i = i + 1
+
+    if i >= len(tokens) {
+      return err("error: bad query")
+    }
+    where_val = tokens[i]
+    i = i + 1
+  }
+
+  if i < len(tokens) and tokens[i] == "ORDER" {
+    i = i + 1
+
+    if i >= len(tokens) or tokens[i] != "BY" {
+      return err("error: bad query")
+    }
+    i = i + 1
+
+    if i >= len(tokens) {
+      return err("error: bad query")
+    }
+    order_col = tokens[i]
+    i = i + 1
+
+    if i < len(tokens) and tokens[i] == "DESC" {
+      order_desc = true
+      i = i + 1
+    }
+  }
+
+  if i < len(tokens) and tokens[i] == "LIMIT" {
+    i = i + 1
+
+    if i >= len(tokens) {
+      return err("error: bad query")
+    }
+    match num(tokens[i]) {
+      ok(n) => {
+        limit_n = n
+        i = i + 1
+      }
+      err(e) => {
+        return err("error: bad query")
+      }
+    }
+  }
+
+  if i != len(tokens) {
+    return err("error: bad query")
+  }
+
+  return ok(Query {
+    select_cols: select_cols,
+    where_col: where_col,
+    where_op: where_op,
+    where_val: where_val,
+    order_col: order_col,
+    order_desc: order_desc,
+    limit_n: limit_n
+  })
+}
+
+fn isNumeric(s) {
+  match num(s) {
+    ok(n) => true
+    err(e) => false
+  }
+}
+
+fn compareValues(v1, v2, op) {
+  let n1_ok = isNumeric(v1)
+  let n2_ok = isNumeric(v2)
+
+  if n1_ok and n2_ok {
+    let n1 = match num(v1) { ok(n) => n err(e) => 0 }
+    let n2 = match num(v2) { ok(n) => n err(e) => 0 }
+
+    if op == "=" { return ok(n1 == n2) }
+    if op == "!=" { return ok(n1 != n2) }
+    if op == "<" { return ok(n1 < n2) }
+    if op == ">" { return ok(n1 > n2) }
+    if op == "<=" { return ok(n1 <= n2) }
+    if op == ">=" { return ok(n1 >= n2) }
+    return ok(false)
+  } else {
+    if op != "=" and op != "!=" {
+      return err("error: bad comparison")
+    }
+    if op == "=" { return ok(v1 == v2) }
+    return ok(v1 != v2)
+  }
+}
+
+fn getColumnIndex(colName, header) {
+  for i in range(0, len(header)) {
+    if header[i] == colName {
+      return ok(i)
+    }
+  }
+  return err("error: unknown column ${colName}")
+}
+
+fn matchesWhere(row, whereCol, whereOp, whereVal, colIndex) {
+  if whereCol == "" {
+    return ok(true)
+  }
+
+  let cellValue = row[colIndex]
+  match compareValues(cellValue, whereVal, whereOp) {
+    ok(result) => return ok(result)
+    err(e) => return err(e)
+  }
+}
+
+fn main() {
+  let args_list = args()
+
+  if len(args_list) < 2 {
+    print("error: bad query")
+    return ok(true)
+  }
+
+  let csv = args_list[0]
+  let query = args_list[1]
+
+  let lines = split(csv, "\n")
+  if len(lines) == 0 {
+    print("error: bad query")
+    return ok(true)
+  }
+
+  let header = split(lines[0], ",")
+
+  let rows = []
+  for i in range(1, len(lines)) {
+    if lines[i] != "" {
+      let row = split(lines[i], ",")
+      push(rows, row)
+    }
+  }
+
+  match parseQuery(query) {
+    ok(q) => {
+      let colIndices = []
+      for colName in q.select_cols {
+        match getColumnIndex(colName, header) {
+          ok(idx) => push(colIndices, idx)
+          err(e) => {
+            print(e)
+            return ok(true)
+          }
+        }
+      }
+
+      let whereColIndex = -1
+      if q.where_col != "" {
+        match getColumnIndex(q.where_col, header) {
+          ok(idx) => whereColIndex = idx
+          err(e) => {
+            print(e)
+            return ok(true)
+          }
+        }
+      }
+
+      let orderColIndex = -1
+      if q.order_col != "" {
+        match getColumnIndex(q.order_col, header) {
+          ok(idx) => orderColIndex = idx
+          err(e) => {
+            print(e)
+            return ok(true)
+          }
+        }
+      }
+
+      let filtered = []
+      for row in rows {
+        match matchesWhere(row, q.where_col, q.where_op, q.where_val, whereColIndex) {
+          ok(matches) => {
+            if matches {
+              push(filtered, row)
+            }
+          }
+          err(e) => {
+            print(e)
+            return ok(true)
+          }
+        }
+      }
+
+      if q.order_col != "" {
+        let isNumCol = false
+        for row in filtered {
+          if isNumeric(row[orderColIndex]) {
+            isNumCol = true
+            break
+          }
+        }
+
+        if isNumCol {
+          let allNumeric = true
+          for row in filtered {
+            if not isNumeric(row[orderColIndex]) {
+              allNumeric = false
+              break
+            }
+          }
+
+          if allNumeric {
+            filtered = sortBy(filtered, row => {
+              let val = match num(row[orderColIndex]) { ok(n) => n err(e) => 0 }
+              if q.order_desc { val = 0 - val }
+              val
+            })
+          } else {
+            filtered = sortBy(filtered, row => {
+              let val = row[orderColIndex]
+              if q.order_desc { val }
+              val
+            })
+          }
+        } else {
+          filtered = sortBy(filtered, row => {
+            let val = row[orderColIndex]
+            if q.order_desc { val }
+            val
+          })
+        }
+      }
+
+      let resultLimit = len(filtered)
+      if q.limit_n > 0 and q.limit_n < resultLimit {
+        resultLimit = q.limit_n
+      }
+
+      print(join(q.select_cols, ","))
+
+      for i in range(0, resultLimit) {
+        let row = filtered[i]
+        let values = []
+        for colIdx in colIndices {
+          push(values, row[colIdx])
+        }
+        print(join(values, ","))
+      }
+    }
+    err(e) => {
+      print(e)
+    }
+  }
+
+  return ok(true)
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

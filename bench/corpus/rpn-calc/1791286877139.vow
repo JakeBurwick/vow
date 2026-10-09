@@ -1,0 +1,61 @@
+fn evaluate(s) {
+  let tokens = split(s, " ")
+  let stack = []
+
+  for token in tokens {
+    if token == "+" or token == "-" or token == "*" or token == "/" {
+      match pop(stack) {
+        ok(b) => {
+          match pop(stack) {
+            ok(a) => {
+              let result = match token {
+                "+" => a + b
+                "-" => a - b
+                "*" => a * b
+                "/" => {
+                  if b == 0 {
+                    return err("division by zero")
+                  }
+                  a / b
+                }
+                _ => return err("unknown operator")
+              }
+              push(stack, result)
+            }
+            err(_) => {
+              return err("not enough operands")
+            }
+          }
+        }
+        err(_) => {
+          return err("not enough operands")
+        }
+      }
+    } else {
+      match num(token) {
+        ok(n) => {
+          push(stack, n)
+        }
+        err(_) => {
+          return err("unknown token")
+        }
+      }
+    }
+  }
+
+  if len(stack) != 1 {
+    return err("invalid stack size")
+  }
+
+  return ok(stack[0])
+}
+
+let s = args()[0]
+match evaluate(s) {
+  ok(result) => {
+    print(str(result))
+  }
+  err(_) => {
+    print("error")
+  }
+}

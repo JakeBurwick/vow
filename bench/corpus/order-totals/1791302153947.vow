@@ -1,0 +1,48 @@
+fn calculateTotals(s) {
+  let j = parseJson(s)?
+  if jsonType(j) != "array" { return err("bad order") }
+
+  let orders = jsonList(j)
+  let totals = {}
+
+  for order in orders {
+    if jsonType(order) != "object" { return err("bad order") }
+
+    let item = jsonStr(get(order, "item")?)?
+    let qty = jsonNum(get(order, "qty")?)?
+    let price = jsonNum(get(order, "price")?)?
+
+    let revenue = qty * price
+    if has(totals, item) {
+      totals[item] = totals[item] + revenue
+    } else {
+      totals[item] = revenue
+    }
+  }
+
+  return ok(totals)
+}
+
+fn main() {
+  let s = args()[0]
+
+  match calculateTotals(s) {
+    ok(totals) => {
+      let keys = sort(keys(totals))
+      let parts = []
+      for k in keys {
+        push(parts, "\"" + k + "\":" + toJson(totals[k]))
+      }
+      if len(parts) == 0 {
+        print("{}")
+      } else {
+        print("{" + join(parts, ",") + "}")
+      }
+    }
+    err(e) => {
+      print("{\"error\":\"bad order\"}")
+    }
+  }
+}
+
+main()

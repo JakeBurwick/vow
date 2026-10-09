@@ -1,0 +1,169 @@
+struct Pair {
+  path,
+  val
+}
+
+fn flattenHelper(json, path, result) {
+  let typeStr = jsonType(json)
+
+  if typeStr == "object" {
+    match jsonKeys(json) {
+      ok(keysUnsorted) => {
+        let keys = sort(keysUnsorted)
+        if len(keys) == 0 {
+          push(result, Pair { path: path, val: json })
+        } else {
+          for key in keys {
+            match get(json, key) {
+              ok(val) => {
+                let newPath = if path == "" { key } else { path + "." + key }
+                flattenHelper(val, newPath, result)
+              }
+              err(e) => {}
+            }
+          }
+        }
+      }
+      err(e) => {}
+    }
+  } else if typeStr == "array" {
+    match jsonList(json) {
+      ok(arr) => {
+        if len(arr) == 0 {
+          push(result, Pair { path: path, val: json })
+        } else {
+          for i in range(0, len(arr)) {
+            let val = arr[i]
+            let newPath = path + "[" + str(i) + "]"
+            flattenHelper(val, newPath, result)
+          }
+        }
+      }
+      err(e) => {}
+    }
+  } else {
+    push(result, Pair { path: path, val: json })
+  }
+}
+
+fn jsonToString(j) {
+  let typeStr = jsonType(j)
+
+  if typeStr == "null" {
+    return "null"
+  } else if typeStr == "bool" {
+    match jsonBool(j) {
+      ok(b) => {
+        if b {
+          return "true"
+        } else {
+          return "false"
+        }
+      }
+      err(e) => { return "" }
+    }
+  } else if typeStr == "number" {
+    match jsonNum(j) {
+      ok(n) => { return str(n) }
+      err(e) => { return "" }
+    }
+  } else if typeStr == "string" {
+    match jsonStr(j) {
+      ok(s) => { return toJson(s) }
+      err(e) => { return "" }
+    }
+  } else if typeStr == "array" {
+    match jsonList(j) {
+      ok(arr) => {
+        let parts = []
+        for item in arr {
+          push(parts, jsonToString(item))
+        }
+        return "[" + join(parts, ",") + "]"
+      }
+      err(e) => { return "" }
+    }
+  } else if typeStr == "object" {
+    match jsonKeys(j) {
+      ok(keysUnsorted) => {
+        let keys = sort(keysUnsorted)
+        let parts = []
+        for key in keys {
+          match get(j, key) {
+            ok(val) => {
+              let keyStr = toJson(key)
+              let valStr = jsonToString(val)
+              push(parts, keyStr + ":" + valStr)
+            }
+            err(e) => {}
+          }
+        }
+        return "{" + join(parts, ",") + "}"
+      }
+      err(e) => { return "" }
+    }
+  } else {
+    return ""
+  }
+}
+
+fn main() {
+  let jsonStr = args()[0]
+
+  match parseJson(jsonStr) {
+    ok(json) => {
+      let typeStr = jsonType(json)
+
+      if typeStr != "object" and typeStr != "array" {
+        print("{\"error\":\"not a container\"}")
+        return
+      }
+
+      let isEmpty = false
+      if typeStr == "object" {
+        match jsonKeys(json) {
+          ok(keys) => {
+            if len(keys) == 0 {
+              isEmpty = true
+            }
+          }
+          err(e) => {}
+        }
+      } else if typeStr == "array" {
+        match jsonList(json) {
+          ok(arr) => {
+            if len(arr) == 0 {
+              isEmpty = true
+            }
+          }
+          err(e) => {}
+        }
+      }
+
+      if isEmpty {
+        print("{}")
+        return
+      }
+
+      let pairs = []
+      flattenHelper(json, "", pairs)
+
+      let outputParts = []
+      for pair in pairs {
+        let pathStr = pair.path
+        let valJson = pair.val
+        let pathJsonStr = toJson(pathStr)
+        let valJsonStr = jsonToString(valJson)
+        let entry = pathJsonStr + ":" + valJsonStr
+        push(outputParts, entry)
+      }
+
+      print("{" + join(outputParts, ",") + "}")
+    }
+    err(e) => {
+      print("{\"error\":\"bad json\"}")
+    }
+  }
+}
+
+main()

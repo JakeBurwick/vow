@@ -1,0 +1,5 @@
+fn pick(xs) {
+  return map(xs, i => [10, 20][i])
+}
+print(pick([0, 1]))
+print(pick([0, 5]))

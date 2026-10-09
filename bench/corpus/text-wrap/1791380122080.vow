@@ -1,0 +1,66 @@
+fn main() {
+  let args_list = args()
+
+  let text = match get(args_list, 0) {
+    ok(s) => s
+    err(e) => ""
+  }
+
+  let width_str = match get(args_list, 1) {
+    ok(s) => s
+    err(e) => ""
+  }
+
+  let width = match num(width_str) {
+    ok(n) => n
+    err(e) => 0
+  }
+
+  if width <= 0 or width_str == "" {
+    print("error: bad width")
+    return ok(true)
+  }
+
+  let words = split(text, " ")
+  let filtered_words = []
+
+  for w in words {
+    if w != "" {
+      push(filtered_words, w)
+    }
+  }
+
+  if len(filtered_words) == 0 {
+    return ok(true)
+  }
+
+  let line_num = 1
+  let i = 0
+
+  while i < len(filtered_words) {
+    let line = filtered_words[i]
+    i = i + 1
+
+    while i < len(filtered_words) {
+      let next_word = filtered_words[i]
+      let potential = line + " " + next_word
+
+      if len(potential) <= width {
+        line = potential
+        i = i + 1
+      } else {
+        break
+      }
+    }
+
+    print(str(line_num) + ": " + line)
+    line_num = line_num + 1
+  }
+
+  return ok(true)
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

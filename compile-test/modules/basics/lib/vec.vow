@@ -1,0 +1,7 @@
+import "./num.vow" as nums
+
+struct V { x, y }
+
+fn add(a, b) { return V { x: a.x + b.x, y: a.y + b.y } }
+fn len2(a) { return nums.sq(a.x) + nums.sq(a.y) }
+fn pick(xs, i) { return xs[i] }

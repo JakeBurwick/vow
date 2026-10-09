@@ -1,0 +1,48 @@
+fn main() {
+  let cli_args = args()
+
+  if len(cli_args) != 1 {
+    print("invalid")
+    return
+  }
+
+  let json_input = cli_args[0]
+
+  match parseJson(json_input) {
+    ok(j) => process_users(j)
+    err(e) => print("invalid")
+  }
+}
+
+fn process_users(parsed) {
+  match jsonList(parsed) {
+    ok(users_list) => process_list(users_list)
+    err(e) => print("invalid")
+  }
+}
+
+fn process_list(users_list) {
+  for user_json in users_list {
+    match get(user_json, "name") {
+      ok(n) => match jsonStr(n) {
+        ok(name) => match get(user_json, "age") {
+          ok(a) => match jsonNum(a) {
+            ok(age) => check_age(age, name)
+            err(e) => print("invalid")
+          }
+          err(e) => print("invalid")
+        }
+        err(e) => print("invalid")
+      }
+      err(e) => print("invalid")
+    }
+  }
+}
+
+fn check_age(age, name) {
+  if age >= 18 {
+    print(name)
+  }
+}
+
+main()

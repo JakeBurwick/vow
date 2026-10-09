@@ -1,0 +1,123 @@
+struct ParseResult { value, pos }
+
+fn handleExpr() {
+  let args_list = args()
+  if len(args_list) == 0 {
+    print("syntax error")
+  } else {
+    let expr = args_list[0]
+    match evaluate(expr) {
+      ok(result) => print(str(result))
+      err(msg) => print(msg)
+    }
+  }
+}
+
+handleExpr()
+
+fn evaluate(expr) {
+  if len(expr) == 0 {
+    return err("syntax error")
+  }
+  let tokens = tokenize(expr)?
+  if len(tokens) == 0 {
+    return err("syntax error")
+  }
+  let result = parseAddSub(tokens, 0)?
+  if result.pos != len(tokens) {
+    return err("syntax error")
+  }
+  return ok(result.value)
+}
+
+fn tokenize(expr) {
+  let tokens = []
+  let chars = split(expr, "")
+  let i = 0
+  while i < len(chars) {
+    let c = chars[i]
+    if c == " " {
+      i = i + 1
+    } else if c == "+" or c == "-" or c == "*" or c == "/" or c == "(" or c == ")" {
+      push(tokens, c)
+      i = i + 1
+    } else if c >= "0" and c <= "9" {
+      let num_str = ""
+      while i < len(chars) {
+        let ch = chars[i]
+        if ch >= "0" and ch <= "9" {
+          num_str = num_str + ch
+          i = i + 1
+        } else {
+          break
+        }
+      }
+      push(tokens, num_str)
+    } else {
+      return err("syntax error")
+    }
+  }
+  return ok(tokens)
+}
+
+fn parseAddSub(tokens, pos) {
+  let left = parseMulDiv(tokens, pos)?
+  let cur_pos = left.pos
+  while cur_pos < len(tokens) {
+    let tok = tokens[cur_pos]
+    if tok == "+" or tok == "-" {
+      let right = parseMulDiv(tokens, cur_pos + 1)?
+      if tok == "+" {
+        left = ParseResult { value: left.value + right.value, pos: right.pos }
+      } else {
+        left = ParseResult { value: left.value - right.value, pos: right.pos }
+      }
+      cur_pos = right.pos
+    } else {
+      break
+    }
+  }
+  return ok(left)
+}
+
+fn parseMulDiv(tokens, pos) {
+  let left = parsePrimary(tokens, pos)?
+  let cur_pos = left.pos
+  while cur_pos < len(tokens) {
+    let tok = tokens[cur_pos]
+    if tok == "*" or tok == "/" {
+      let right = parsePrimary(tokens, cur_pos + 1)?
+      if tok == "*" {
+        left = ParseResult { value: left.value * right.value, pos: right.pos }
+      } else {
+        if right.value == 0 {
+          return err("division by zero")
+        }
+        left = ParseResult { value: left.value / right.value, pos: right.pos }
+      }
+      cur_pos = right.pos
+    } else {
+      break
+    }
+  }
+  return ok(left)
+}
+
+fn parsePrimary(tokens, pos) {
+  if pos >= len(tokens) {
+    return err("syntax error")
+  }
+  let tok = tokens[pos]
+  if tok == "(" {
+    let result = parseAddSub(tokens, pos + 1)?
+    if result.pos >= len(tokens) or tokens[result.pos] != ")" {
+      return err("syntax error")
+    }
+    return ok(ParseResult { value: result.value, pos: result.pos + 1 })
+  } else {
+    match num(tok) {
+      ok(n) => return ok(ParseResult { value: n, pos: pos + 1 })
+      err(e) => return err("syntax error")
+    }
+  }
+}

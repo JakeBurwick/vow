@@ -1,0 +1,107 @@
+struct QueueItem {
+  path,
+  node
+}
+
+fn parseGraph(edgesStr) {
+  let graph = {}
+  let edges = split(edgesStr, ",")
+
+  for edge in edges {
+    let parts = split(edge, "-")
+    if len(parts) != 2 {
+      continue
+    }
+    let a = parts[0]
+    let b = parts[1]
+
+    if not has(graph, a) {
+      graph[a] = []
+    }
+    if not has(graph, b) {
+      graph[b] = []
+    }
+
+    push(graph[a], b)
+    push(graph[b], a)
+  }
+
+  return graph
+}
+
+fn bfs(graph, start, goal) {
+  if start == goal {
+    return ok([start])
+  }
+
+  if not has(graph, start) or not has(graph, goal) {
+    return err("no path")
+  }
+
+  let queue = []
+  push(queue, QueueItem { path: [start], node: start })
+
+  let visited = {}
+  visited[start] = true
+
+  while len(queue) > 0 {
+    let item = queue[0]
+    queue = slice(queue, 1, len(queue))
+
+    let currentPath = item.path
+    let current = item.node
+
+    let neighbors = sort(graph[current])
+
+    for neighbor in neighbors {
+      if not has(visited, neighbor) {
+        visited[neighbor] = true
+
+        let newPath = []
+        for node in currentPath {
+          push(newPath, node)
+        }
+        push(newPath, neighbor)
+
+        if neighbor == goal {
+          return ok(newPath)
+        }
+
+        push(queue, QueueItem { path: newPath, node: neighbor })
+      }
+    }
+  }
+
+  return err("no path")
+}
+
+fn main() {
+  let args_list = args()
+
+  if len(args_list) < 3 {
+    print("no path")
+    return ok(true)
+  }
+
+  let edgesStr = args_list[0]
+  let start = args_list[1]
+  let goal = args_list[2]
+
+  let graph = parseGraph(edgesStr)
+
+  match bfs(graph, start, goal) {
+    ok(path) => {
+      print(join(path, " -> "))
+    }
+    err(e) => {
+      print(e)
+    }
+  }
+
+  return ok(true)
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

@@ -1,0 +1,33 @@
+let s = args()[0]
+let stack = []
+let valid = true
+
+for c in split(s, "") {
+  if c == "(" or c == "[" or c == "{" {
+    push(stack, c)
+  } else if c == ")" or c == "]" or c == "}" {
+    if len(stack) == 0 {
+      valid = false
+      break
+    }
+    let top_result = pop(stack)
+    match top_result {
+      ok(top) => {
+        if (c == ")" and top != "(") or (c == "]" and top != "[") or (c == "}" and top != "{") {
+          valid = false
+          break
+        }
+      }
+      err(e) => {
+        valid = false
+        break
+      }
+    }
+  }
+}
+
+if valid and len(stack) == 0 {
+  print("yes")
+} else {
+  print("no")
+}

@@ -1,0 +1,127 @@
+fn parseEdges(edges_str) {
+  let edges = split(edges_str, ",")
+  let graph = {}
+  let nodes_set = {}
+
+  for edge in edges {
+    let edge_trim = trim(edge)
+    if edge_trim == "" {
+      continue
+    }
+    let parts = split(edge_trim, "-")
+    if len(parts) != 2 {
+      continue
+    }
+    let a = trim(parts[0])
+    let b = trim(parts[1])
+
+    nodes_set[a] = true
+    nodes_set[b] = true
+
+    if not has(graph, a) {
+      graph[a] = []
+    }
+    if not has(graph, b) {
+      graph[b] = []
+    }
+
+    push(graph[a], b)
+    push(graph[b], a)
+  }
+
+  return ok({graph, nodes: nodes_set})
+}
+
+fn bfs(graph, start, goal) {
+  if start == goal {
+    return ok([start])
+  }
+
+  let queue = []
+  let visited = {}
+  let parent = {}
+
+  push(queue, start)
+  visited[start] = true
+
+  while len(queue) > 0 {
+    let current = queue[0]
+    queue = slice(queue, 1, len(queue))
+
+    let neighbors = match get(graph, current) {
+      ok(n) => n
+      err(_) => []
+    }
+
+    let sorted_neighbors = sort(neighbors)
+
+    for neighbor in sorted_neighbors {
+      if not has(visited, neighbor) {
+        visited[neighbor] = true
+        parent[neighbor] = current
+        push(queue, neighbor)
+
+        if neighbor == goal {
+          let path = []
+          let node = goal
+          while true {
+            push(path, node)
+            if node == start {
+              break
+            }
+            node = parent[node]
+          }
+          let reversed = reverse(path)
+          return ok(reversed)
+        }
+      }
+    }
+  }
+
+  return err("no path")
+}
+
+fn main() {
+  let args_list = args()
+
+  if len(args_list) < 3 {
+    print("no path")
+    return ok(true)
+  }
+
+  let edges_str = args_list[0]
+  let start = args_list[1]
+  let goal = args_list[2]
+
+  match parseEdges(edges_str) {
+    ok(parsed) => {
+      let graph = parsed.graph
+      let nodes = parsed.nodes
+
+      if not has(nodes, start) or not has(nodes, goal) {
+        print("no path")
+        return ok(true)
+      }
+
+      match bfs(graph, start, goal) {
+        ok(path) => {
+          print(join(path, " -> "))
+          return ok(true)
+        }
+        err(_) => {
+          print("no path")
+          return ok(true)
+        }
+      }
+    }
+    err(_) => {
+      print("no path")
+      return ok(true)
+    }
+  }
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

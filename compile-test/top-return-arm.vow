@@ -1,0 +1,9 @@
+print("a")
+let v = match num("x") {
+  ok(n) => n
+  err(e) => {
+    print("bailing")
+    return
+  }
+}
+print(v)

@@ -1,0 +1,220 @@
+struct Graph {
+  deps,
+  all_names
+}
+
+fn parseInput(input) {
+  let entries = split(input, ";")
+  let deps_map = {}
+  let names_set = {}
+
+  for entry in entries {
+    let trimmed = trim(entry)
+    if trimmed == "" {
+      continue
+    }
+
+    // Find the colon - must be exactly one
+    let colon_idx = -1
+    for i in range(0, len(trimmed)) {
+      if trimmed[i] == ":" {
+        if colon_idx != -1 {
+          return err("error: bad entry " + trimmed)
+        }
+        colon_idx = i
+      }
+    }
+
+    if colon_idx == -1 {
+      return err("error: bad entry " + trimmed)
+    }
+
+    let name = slice(trimmed, 0, colon_idx)
+    let deps_str = slice(trimmed, colon_idx + 1, len(trimmed))
+
+    // Validate name
+    if len(name) == 0 {
+      return err("error: bad entry " + trimmed)
+    }
+
+    for i in range(0, len(name)) {
+      let c = name[i]
+      if not (c >= "a" and c <= "z") {
+        return err("error: bad entry " + trimmed)
+      }
+    }
+
+    // Parse dependencies
+    let deps = []
+    if deps_str != "" {
+      let dep_list = split(deps_str, ",")
+      for dep in dep_list {
+        if len(dep) == 0 {
+          return err("error: bad entry " + trimmed)
+        }
+        for j in range(0, len(dep)) {
+          let c = dep[j]
+          if not (c >= "a" and c <= "z") {
+            return err("error: bad entry " + trimmed)
+          }
+        }
+        push(deps, dep)
+      }
+    }
+
+    // Store dependencies
+    if has(deps_map, name) {
+      let existing = deps_map[name]
+      for d in deps {
+        push(existing, d)
+      }
+    } else {
+      deps_map[name] = deps
+    }
+    names_set[name] = true
+
+    // Add dependencies as packages if not already present
+    for d in deps {
+      if not has(names_set, d) {
+        names_set[d] = true
+        if not has(deps_map, d) {
+          deps_map[d] = []
+        }
+      }
+    }
+  }
+
+  return ok(Graph { deps: deps_map, all_names: names_set })
+}
+
+fn hasCycle(graph) {
+  let deps = graph.deps
+  let color = {}
+
+  fn dfs(node) {
+    if has(color, node) {
+      let c = color[node]
+      if c == "gray" {
+        return err(true)
+      }
+      return ok(false)
+    }
+
+    color[node] = "gray"
+    let node_deps = match get(deps, node) {
+      ok(d) => d
+      err(e) => []
+    }
+
+    for dep in node_deps {
+      match dfs(dep) {
+        ok(found_cycle) => {
+          if found_cycle {
+            return err(true)
+          }
+        }
+        err(e) => return err(e)
+      }
+    }
+
+    color[node] = "black"
+    return ok(false)
+  }
+
+  for name in keys(deps) {
+    match dfs(name) {
+      ok(found_cycle) => {
+        if found_cycle {
+          return true
+        }
+      }
+      err(e) => return true
+    }
+  }
+
+  return false
+}
+
+fn topoSort(graph) {
+  let deps = graph.deps
+  let in_degree = {}
+
+  // Calculate in-degrees
+  for name in keys(deps) {
+    if not has(in_degree, name) {
+      in_degree[name] = 0
+    }
+  }
+
+  for name in keys(deps) {
+    let node_deps = deps[name]
+    for dep in node_deps {
+      if has(in_degree, dep) {
+        in_degree[dep] = in_degree[dep] + 1
+      } else {
+        in_degree[dep] = 1
+      }
+    }
+  }
+
+  // Actually we need to think about this differently
+  // In-degree should be: how many things depend on this node
+
+  let result = []
+  let ready = []
+  let remaining_in_degree = {}
+
+  for name in keys(deps) {
+    remaining_in_degree[name] = 0
+  }
+
+  // Count how many dependencies each package has
+  for name in keys(deps) {
+    remaining_in_degree[name] = len(deps[name])
+  }
+
+  for name in keys(deps) {
+    if remaining_in_degree[name] == 0 {
+      push(ready, name)
+    }
+  }
+
+  ready = sort(ready)
+
+  while len(ready) > 0 {
+    ready = sort(ready)
+    let pkg = ready[0]
+    ready = slice(ready, 1, len(ready))
+    push(result, pkg)
+
+    // Find all packages that depend on pkg
+    for name in keys(deps) {
+      if contains(deps[name], pkg) {
+        remaining_in_degree[name] = remaining_in_degree[name] - 1
+        if remaining_in_degree[name] == 0 {
+          push(ready, name)
+        }
+      }
+    }
+  }
+
+  return result
+}
+
+fn main() {
+  let input = args()[0]
+
+  match parseInput(input) {
+    ok(graph) => {
+      if hasCycle(graph) {
+        print("error: cycle")
+      } else {
+        let sorted = topoSort(graph)
+        print(join(sorted, " "))
+      }
+    }
+    err(e) => print(e)
+  }
+}
+
+main()

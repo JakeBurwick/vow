@@ -1,0 +1,8 @@
+struct Account { balance }
+fn open(n) { return Account { balance: n } }
+fn withdraw(acct, amt)
+  expects amt > 0 and amt <= acct.balance
+{
+  acct.balance = acct.balance - amt
+  return acct.balance
+}

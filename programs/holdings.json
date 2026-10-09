@@ -1,0 +1,6 @@
+{"cap_pct": 25, "positions": [
+  {"sym": "MSFT", "shares": 2, "cost": 310.00},
+  {"sym": "KO",   "shares": 10, "cost": 55.00},
+  {"sym": "XOM",  "shares": 5, "cost": 95.00},
+  {"sym": "NOPE", "shares": 10, "cost": 5.00}
+]}

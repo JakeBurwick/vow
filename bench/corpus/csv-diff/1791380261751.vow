@@ -1,0 +1,122 @@
+fn parseTable(tableText) {
+  let lines = split(tableText, "\n")
+  let rows = []
+  for line in lines {
+    let trimmed = trim(line)
+    if trimmed != "" {
+      push(rows, split(line, ","))
+    }
+  }
+  return rows
+}
+
+fn main() {
+  let args_list = args()
+  let oldText = args_list[0]
+  let newText = args_list[1]
+
+  let oldRows = parseTable(oldText)
+  let newRows = parseTable(newText)
+
+  if len(oldRows) == 0 or len(newRows) == 0 {
+    print("no changes")
+    return
+  }
+
+  let oldHeader = oldRows[0]
+  let newHeader = newRows[0]
+
+  // Check if headers differ
+  if len(oldHeader) != len(newHeader) {
+    print("error: headers differ")
+    return
+  }
+
+  for i in range(0, len(oldHeader)) {
+    if oldHeader[i] != newHeader[i] {
+      print("error: headers differ")
+      return
+    }
+  }
+
+  // Build maps: key -> row (as map of column -> value)
+  let oldMap = {}
+  for i in range(1, len(oldRows)) {
+    let row = oldRows[i]
+    if len(row) > 0 {
+      let key = row[0]
+      let rowMap = {}
+      for j in range(1, len(row)) {
+        if j < len(oldHeader) {
+          rowMap[oldHeader[j]] = row[j]
+        }
+      }
+      oldMap[key] = rowMap
+    }
+  }
+
+  let newMap = {}
+  for i in range(1, len(newRows)) {
+    let row = newRows[i]
+    if len(row) > 0 {
+      let key = row[0]
+      let rowMap = {}
+      for j in range(1, len(row)) {
+        if j < len(newHeader) {
+          rowMap[newHeader[j]] = row[j]
+        }
+      }
+      newMap[key] = rowMap
+    }
+  }
+
+  // Get all keys and sort them
+  let allKeys = []
+  for k in keys(oldMap) {
+    if not contains(allKeys, k) {
+      push(allKeys, k)
+    }
+  }
+  for k in keys(newMap) {
+    if not contains(allKeys, k) {
+      push(allKeys, k)
+    }
+  }
+  allKeys = sort(allKeys)
+
+  let changes = []
+
+  for key in allKeys {
+    let oldExists = has(oldMap, key)
+    let newExists = has(newMap, key)
+
+    if not oldExists and newExists {
+      push(changes, "+ " + key)
+    } else if oldExists and not newExists {
+      push(changes, "- " + key)
+    } else if oldExists and newExists {
+      let oldRow = oldMap[key]
+      let newRow = newMap[key]
+
+      for j in range(1, len(oldHeader)) {
+        let col = oldHeader[j]
+        let oldVal = match get(oldRow, col) { ok(v) => v err(e) => "" }
+        let newVal = match get(newRow, col) { ok(v) => v err(e) => "" }
+
+        if oldVal != newVal {
+          push(changes, "~ " + key + ": " + col + " " + oldVal + " -> " + newVal)
+        }
+      }
+    }
+  }
+
+  if len(changes) == 0 {
+    print("no changes")
+  } else {
+    for change in changes {
+      print(change)
+    }
+  }
+}
+
+main()

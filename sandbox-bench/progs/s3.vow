@@ -1,0 +1,5 @@
+let s = 0
+for i in range(1, 101) { s = s + i }
+print(s)
+let h = args()[0]
+match httpGet("http://" + h + ":47899/s3") { ok(v) => print(v)  err(e) => print(e) }

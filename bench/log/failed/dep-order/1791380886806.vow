@@ -1,0 +1,153 @@
+fn main() {
+  let input = args()[0]
+  let entries = split(input, ";")
+
+  // Parse entries and build dependency graph
+  let packages = {}  // map from name to list of deps
+  let all_packages = {}  // set of all package names seen
+
+  for entry in entries {
+    let trimmed = trim(entry)
+
+    // Skip empty entries
+    if len(trimmed) == 0 {
+      continue
+    }
+
+    // Find colon
+    match indexOf(trimmed, ":") {
+      ok(colon_pos) => {
+        let name_part = slice(trimmed, 0, colon_pos)
+        let deps_part = slice(trimmed, colon_pos + 1, len(trimmed))
+
+        // Validate name
+        if not isValidName(name_part) {
+          print("error: bad entry " + entry)
+          return ok(true)
+        }
+
+        // Mark this package
+        if not has(all_packages, name_part) {
+          all_packages[name_part] = true
+        }
+
+        // Parse dependencies
+        let deps = []
+        if len(deps_part) > 0 {
+          let dep_list = split(deps_part, ",")
+          for dep in dep_list {
+            let d = trim(dep)
+            if not isValidName(d) {
+              print("error: bad entry " + entry)
+              return ok(true)
+            }
+            push(deps, d)
+            // Mark dependency as a package
+            if not has(all_packages, d) {
+              all_packages[d] = true
+            }
+          }
+        }
+
+        // Update packages map (union dependencies)
+        if has(packages, name_part) {
+          let existing = packages[name_part]
+          for dep in deps {
+            if not contains(existing, dep) {
+              push(existing, dep)
+            }
+          }
+        } else {
+          packages[name_part] = deps
+        }
+      }
+      err(e) => {
+        print("error: bad entry " + entry)
+        return ok(true)
+      }
+    }
+  }
+
+  // For all packages not yet in the map, add them with no dependencies
+  for pkg_name in keys(all_packages) {
+    if not has(packages, pkg_name) {
+      packages[pkg_name] = []
+    }
+  }
+
+  // Topological sort with cycle detection
+  let sorted = []
+  let visited = {}  // 0 = not visited, 1 = visiting, 2 = visited
+  let has_cycle = false
+
+  for pkg in sort(keys(packages)) {
+    if not has(visited, pkg) {
+      visited[pkg] = 0
+    }
+  }
+
+  fn visit(name) {
+    if has(visited, name) {
+      let state = visited[name]
+      if state == 1 {
+        has_cycle = true
+        return false
+      }
+      if state == 2 {
+        return true
+      }
+    }
+
+    visited[name] = 1
+
+    let deps = match get(packages, name) {
+      ok(d) => d
+      err(e) => []
+    }
+
+    for dep in deps {
+      if not visit(dep) {
+        return false
+      }
+    }
+
+    visited[name] = 2
+    push(sorted, name)
+    return true
+  }
+
+  for pkg in sort(keys(packages)) {
+    if not has(visited, pkg) or visited[pkg] == 0 {
+      if not visit(pkg) {
+        print("error: cycle")
+        return ok(true)
+      }
+    }
+  }
+
+  if has_cycle {
+    print("error: cycle")
+    return ok(true)
+  }
+
+  print(join(sorted, " "))
+  return ok(true)
+}
+
+fn isValidName(s) {
+  if len(s) == 0 {
+    return false
+  }
+  for i in range(0, len(s)) {
+    let c = s[i]
+    if not (c >= "a" and c <= "z") {
+      return false
+    }
+  }
+  return true
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

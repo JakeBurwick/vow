@@ -1,0 +1,48 @@
+fn main() {
+  let args_list = args()
+
+  if len(args_list) == 0 {
+    print("{}")
+    return ok(true)
+  }
+
+  let input = args_list[0]
+
+  if input == "" {
+    print("{}")
+    return ok(true)
+  }
+
+  let pairs_list = split(input, ",")
+  let json_parts = []
+
+  for pair in pairs_list {
+    let parts = split(pair, ":")
+
+    if len(parts) != 2 {
+      print("{\"error\":\"bad pair: " + pair + "\"}")
+      return ok(true)
+    }
+
+    let name = parts[0]
+    let amount_str = parts[1]
+
+    match num(amount_str) {
+      ok(amount) => {
+        push(json_parts, "\"" + name + "\":" + toJson(amount))
+      }
+      err(e) => {
+        print("{\"error\":\"bad pair: " + pair + "\"}")
+        return ok(true)
+      }
+    }
+  }
+
+  print("{" + join(json_parts, ",") + "}")
+  return ok(true)
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

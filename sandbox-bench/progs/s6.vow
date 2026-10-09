@@ -1,0 +1,9 @@
+match readFile("data.txt") {
+  ok(t) => {
+    let s = 0
+    for l in lines(t) { s = s + (match num(l) { ok(n) => n  err(e) => 0 }) }
+    print(s)
+  }
+  err(e) => print(e)
+}
+match writeFile("/tmp/sb-dropped.txt", "pwned") { ok(v) => print("wrote")  err(e) => print(e) }

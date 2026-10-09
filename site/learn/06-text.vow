@@ -1,0 +1,15 @@
+let text = "The quick  brown fox\tjumps over the lazy dog"
+
+// words splits on any whitespace
+let ws = words(text)
+print(len(ws))
+
+// Regex patterns go in backtick strings (no escaping needed)
+print(matches("2026-10-08", `^\d{4}-\d{2}-\d{2}$`))
+print(findAll("call 555-0100 or 555-0199", `\d{3}-\d{4}`))
+match find("user=ada", `(\w+)=(\w+)`) {
+  ok(m) => print("key ${m[1]}, value ${m[2]}")
+  err(e) => print(e)
+}
+print(replaceAll("a-b-c", `-`, " + "))
+print(upper(ws[1]))

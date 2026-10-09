@@ -1,0 +1,72 @@
+let expr = args()[0]
+
+if expr == "" {
+  print("error")
+} else {
+  let tokens = split(expr, " ")
+  let stack = []
+  let error = false
+
+  for token in tokens {
+    if not error {
+      match num(token) {
+        ok(n) => {
+          push(stack, n)
+        }
+        err(e) => {
+          if token == "+" or token == "-" or token == "*" or token == "/" {
+            if len(stack) < 2 {
+              error = true
+            } else {
+              let b_pop = pop(stack)
+              let a_pop = pop(stack)
+
+              match b_pop {
+                ok(b) => {
+                  match a_pop {
+                    ok(a) => {
+                      if token == "+" {
+                        push(stack, a + b)
+                      } else if token == "-" {
+                        push(stack, a - b)
+                      } else if token == "*" {
+                        push(stack, a * b)
+                      } else if token == "/" {
+                        if b == 0 {
+                          error = true
+                        } else {
+                          push(stack, a / b)
+                        }
+                      }
+                    }
+                    err(e) => {
+                      error = true
+                    }
+                  }
+                }
+                err(e) => {
+                  error = true
+                }
+              }
+            }
+          } else {
+            error = true
+          }
+        }
+      }
+    }
+  }
+
+  if error or len(stack) != 1 {
+    print("error")
+  } else {
+    match get(stack, 0) {
+      ok(result) => {
+        print(str(result))
+      }
+      err(e) => {
+        print("error")
+      }
+    }
+  }
+}

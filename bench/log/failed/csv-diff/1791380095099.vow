@@ -1,0 +1,127 @@
+fn parseTable(s) {
+  let table_lines = lines(s)
+  if len(table_lines) == 0 {
+    return ok({
+      header: [],
+      rows: {}
+    })
+  }
+
+  let header = split(table_lines[0], ",")
+  let rows = {}
+
+  for i in range(1, len(table_lines)) {
+    let line = table_lines[i]
+    if line == "" {
+      continue
+    }
+    let parts = split(line, ",")
+    if len(parts) > 0 {
+      let key = parts[0]
+      rows[key] = parts
+    }
+  }
+
+  return ok({
+    header: header,
+    rows: rows
+  })
+}
+
+fn main() {
+  let args_list = args()
+
+  let old_str = match get(args_list, 0) {
+    ok(s) => s
+    err(e) => ""
+  }
+
+  let new_str = match get(args_list, 1) {
+    ok(s) => s
+    err(e) => ""
+  }
+
+  let old_table = match parseTable(old_str) {
+    ok(t) => t
+    err(e) => return err(e)
+  }
+
+  let new_table = match parseTable(new_str) {
+    ok(t) => t
+    err(e) => return err(e)
+  }
+
+  if old_table.header != new_table.header {
+    print("error: headers differ")
+    return ok(true)
+  }
+
+  let header = old_table.header
+  let old_rows = old_table.rows
+  let new_rows = new_table.rows
+
+  let all_keys = []
+  for k in keys(old_rows) {
+    if not contains(all_keys, k) {
+      push(all_keys, k)
+    }
+  }
+  for k in keys(new_rows) {
+    if not contains(all_keys, k) {
+      push(all_keys, k)
+    }
+  }
+
+  all_keys = sort(all_keys)
+
+  let has_changes = false
+  let output = []
+
+  for key in all_keys {
+    let in_old = has(old_rows, key)
+    let in_new = has(new_rows, key)
+
+    if not in_old and in_new {
+      push(output, "+ " + key)
+      has_changes = true
+    } else if in_old and not in_new {
+      push(output, "- " + key)
+      has_changes = true
+    } else if in_old and in_new {
+      let old_row = old_rows[key]
+      let new_row = new_rows[key]
+
+      for col_idx in range(1, len(header)) {
+        let col_name = header[col_idx]
+        let old_val = match get(old_row, col_idx) {
+          ok(v) => v
+          err(e) => ""
+        }
+        let new_val = match get(new_row, col_idx) {
+          ok(v) => v
+          err(e) => ""
+        }
+
+        if old_val != new_val {
+          push(output, "~ " + key + ": " + col_name + " " + old_val + " -> " + new_val)
+          has_changes = true
+        }
+      }
+    }
+  }
+
+  if has_changes {
+    for line in output {
+      print(line)
+    }
+  } else {
+    print("no changes")
+  }
+
+  return ok(true)
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

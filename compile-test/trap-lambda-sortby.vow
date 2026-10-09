@@ -1,0 +1,8 @@
+fn sorted(xs) {
+  return sortBy(xs, x => {
+    let k = [1, 2]
+    k[x]
+  })
+}
+print(sorted([0, 1]))
+print(sorted([0, 1, 7]))

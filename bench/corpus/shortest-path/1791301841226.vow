@@ -1,0 +1,130 @@
+// shortest-path: find shortest path in undirected graph using BFS with lexicographic tie-breaking
+
+struct Node {
+  name,
+  neighbors
+}
+
+fn buildGraph(edges) {
+  let graph = {}
+
+  for edge in edges {
+    let parts = split(edge, "-")
+    if len(parts) != 2 {
+      continue
+    }
+
+    let a = parts[0]
+    let b = parts[1]
+
+    // Initialize nodes if not present
+    if not has(graph, a) {
+      graph[a] = []
+    }
+    if not has(graph, b) {
+      graph[b] = []
+    }
+
+    // Add neighbors (undirected)
+    push(graph[a], b)
+    push(graph[b], a)
+  }
+
+  // Sort neighbors for each node to ensure consistent ordering
+  for node_name in keys(graph) {
+    let neighbors = graph[node_name]
+    graph[node_name] = sort(neighbors)
+  }
+
+  return graph
+}
+
+fn bfs(graph, start, goal) {
+  // Check if start and goal exist in graph
+  if not has(graph, start) or not has(graph, goal) {
+    return err("no path")
+  }
+
+  if start == goal {
+    return ok([start])
+  }
+
+  // BFS with queue of (node, path)
+  let queue = []
+  let visited = {}
+
+  push(queue, start)
+  visited[start] = true
+
+  // Store parent pointers for path reconstruction
+  let parent = {}
+  parent[start] = ""
+
+  while len(queue) > 0 {
+    let current = queue[0]
+    queue = slice(queue, 1, len(queue))
+
+    let neighbors = graph[current]
+
+    // Sort neighbors to ensure we explore in alphabetical order
+    let sorted_neighbors = sort(neighbors)
+
+    for neighbor in sorted_neighbors {
+      if not has(visited, neighbor) {
+        visited[neighbor] = true
+        parent[neighbor] = current
+
+        if neighbor == goal {
+          // Reconstruct path
+          let path = []
+          let node = goal
+          while node != "" {
+            push(path, node)
+            node = match get(parent, node) {
+              ok(p) => p
+              err(_) => ""
+            }
+          }
+          path = reverse(path)
+          return ok(path)
+        }
+
+        push(queue, neighbor)
+      }
+    }
+  }
+
+  return err("no path")
+}
+
+fn main() {
+  let args_list = args()
+
+  if len(args_list) < 3 {
+    print("no path")
+    return ok(true)
+  }
+
+  let edges_str = args_list[0]
+  let start = args_list[1]
+  let goal = args_list[2]
+
+  let edges = split(edges_str, ",")
+  let graph = buildGraph(edges)
+
+  match bfs(graph, start, goal) {
+    ok(path) => {
+      print(join(path, " -> "))
+    }
+    err(e) => {
+      print("no path")
+    }
+  }
+
+  return ok(true)
+}
+
+match main() {
+  ok(_) => {}
+  err(e) => print(e)
+}

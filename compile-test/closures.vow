@@ -1,0 +1,47 @@
+let fs = []
+for i in range(0, 3) { push(fs, () => i * 10) }
+for f in fs { print(f()) }
+let gs = []
+let j = 0
+while j < 3 {
+  let k = j
+  push(gs, () => k + 100)
+  j = j + 1
+}
+for g in gs { print(g()) }
+fn makeCounter() {
+  let n = 0
+  let inc = () => {
+    n = n + 1
+    n
+  }
+  return inc
+}
+let c = makeCounter()
+let d = makeCounter()
+print(c())
+print(c())
+print(d())
+fn outer(base) {
+  fn helper(x) { return x + base }
+  fn pure(x) { return x * 2 }
+  return helper(pure(3))
+}
+print(outer(10))
+let x = 1
+if true {
+  let x = 2
+  print(x)
+  x = 3
+  print(x)
+}
+print(x)
+let trim = s => "trimmed:" + s
+print(trim(" a "))
+fn max(a, b) { return a - b }
+print(max(10, 3))
+let lines = lines("a\nb\nc")
+print(len(lines))
+let addN = (a, b) => a + b
+print(addN(2, 3))
+print(str(addN(1, 1)) + "!")

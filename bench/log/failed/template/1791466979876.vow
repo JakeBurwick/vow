@@ -1,0 +1,285 @@
+fn getValue(obj, path) {
+  let parts = split(path, ".")
+  let current = obj
+  for part in parts {
+    match jsonType(current) {
+      "object" => {
+        match get(current, part) {
+          ok(val) => { current = val }
+          err(e) => { return err("missing") }
+        }
+      }
+      _ => { return err("missing") }
+    }
+  }
+  return ok(current)
+}
+
+fn isTruthy(val) {
+  match jsonType(val) {
+    "null" => { return false }
+    "bool" => {
+      match jsonBool(val) {
+        ok(b) => { return b }
+        err(e) => { return false }
+      }
+    }
+    "number" => {
+      match jsonNum(val) {
+        ok(n) => { return n != 0 }
+        err(e) => { return false }
+      }
+    }
+    "string" => {
+      match jsonStr(val) {
+        ok(s) => { return s != "" }
+        err(e) => { return false }
+      }
+    }
+    "array" => {
+      let arr = jsonList(val)
+      return len(arr) > 0
+    }
+    "object" => {
+      let keys = jsonKeys(val)
+      return len(keys) > 0
+    }
+    _ => { return false }
+  }
+}
+
+fn renderValue(val) {
+  match jsonType(val) {
+    "null" => { return "" }
+    "bool" => {
+      match jsonBool(val) {
+        ok(b) => { if b { return "true" } else { return "false" } }
+        err(e) => { return "" }
+      }
+    }
+    "number" => {
+      match jsonNum(val) {
+        ok(n) => { return str(n) }
+        err(e) => { return "" }
+      }
+    }
+    "string" => {
+      match jsonStr(val) {
+        ok(s) => { return s }
+        err(e) => { return "" }
+      }
+    }
+    _ => { return "" }
+  }
+}
+
+fn extractBetween(s, start, end) {
+  let result = ""
+  let i = start
+  while i < end and i < len(s) {
+    result = result + s[i]
+    i = i + 1
+  }
+  return result
+}
+
+fn skipSpaces(s, pos) {
+  let i = pos
+  while i < len(s) and s[i] == " " { i = i + 1 }
+  return i
+}
+
+fn skipClosingBraces(s, pos) {
+  let i = pos
+  while i + 1 < len(s) and s[i] == "}" and s[i + 1] == "}" {
+    i = i + 2
+  }
+  return i
+}
+
+fn findClosingTag(template, start, tagType) {
+  let depth = 1
+  let i = start
+
+  while i < len(template) {
+    if i < len(template) - 1 and template[i] == "{" and template[i + 1] == "{" {
+      let j = i + 2
+      j = skipSpaces(template, j)
+
+      if j < len(template) and template[j] == "#" {
+        j = j + 1
+        let start_j = j
+        while j < len(template) and template[j] != " " and template[j] != "}" { j = j + 1 }
+        let blockName = extractBetween(template, start_j, j)
+        if blockName == tagType {
+          depth = depth + 1
+        }
+      } else if j < len(template) and template[j] == "/" {
+        j = j + 1
+        j = skipSpaces(template, j)
+        let start_j = j
+        while j < len(template) and template[j] != " " and template[j] != "}" { j = j + 1 }
+        let blockName = extractBetween(template, start_j, j)
+        if blockName == tagType {
+          depth = depth - 1
+          if depth == 0 {
+            return ok(i)
+          }
+        }
+      }
+    }
+    i = i + 1
+  }
+
+  if tagType == "if" {
+    return err("error: unclosed if")
+  } else {
+    return err("error: unclosed each")
+  }
+}
+
+fn processTemplate(template, data) {
+  let result = ""
+  let i = 0
+
+  while i < len(template) {
+    if i < len(template) - 1 and template[i] == "{" and template[i + 1] == "{" {
+      let j = i + 2
+      j = skipSpaces(template, j)
+
+      if j < len(template) and template[j] == "#" {
+        j = j + 1
+        let start_j = j
+        while j < len(template) and template[j] != " " and template[j] != "}" { j = j + 1 }
+        let blockType = extractBetween(template, start_j, j)
+
+        j = skipSpaces(template, j)
+        let start_var = j
+        while j < len(template) and template[j] != "}" { j = j + 1 }
+        let varName = trim(extractBetween(template, start_var, j))
+
+        j = skipClosingBraces(template, j)
+
+        if blockType == "if" {
+          let closePos = findClosingTag(template, j, "if")?
+          let innerTemplate = extractBetween(template, j, closePos)
+
+          match getValue(data, varName) {
+            ok(val) => {
+              if isTruthy(val) {
+                let inner = processTemplate(innerTemplate, data)?
+                result = result + inner
+              }
+            }
+            err(e) => {}
+          }
+
+          let afterClose = closePos + 2
+          afterClose = skipSpaces(template, afterClose)
+          afterClose = skipSpaces(template, afterClose + 1)
+          while afterClose < len(template) and template[afterClose] != "}" { afterClose = afterClose + 1 }
+          afterClose = skipClosingBraces(template, afterClose)
+          i = afterClose
+        } else if blockType == "each" {
+          let closePos = findClosingTag(template, j, "each")?
+          let innerTemplate = extractBetween(template, j, closePos)
+
+          match getValue(data, varName) {
+            ok(val) => {
+              match jsonType(val) {
+                "array" => {
+                  let arr = jsonList(val)
+                  for elem in arr {
+                    let inner = processTemplate(innerTemplate, elem)?
+                    result = result + inner
+                  }
+                }
+                _ => { return err("error: not a list: " + varName) }
+              }
+            }
+            err(e) => {}
+          }
+
+          let afterClose = closePos + 2
+          afterClose = skipSpaces(template, afterClose)
+          afterClose = skipSpaces(template, afterClose + 1)
+          while afterClose < len(template) and template[afterClose] != "}" { afterClose = afterClose + 1 }
+          afterClose = skipClosingBraces(template, afterClose)
+          i = afterClose
+        } else {
+          return err("error: bad line")
+        }
+      } else if j < len(template) and template[j] == "/" {
+        j = j + 1
+        j = skipSpaces(template, j)
+        let start_j = j
+        while j < len(template) and template[j] != " " and template[j] != "}" { j = j + 1 }
+        let blockType = extractBetween(template, start_j, j)
+
+        if blockType == "if" {
+          return err("error: unexpected /if")
+        } else if blockType == "each" {
+          return err("error: unexpected /each")
+        }
+        i = j
+      } else {
+        let start_var = j
+        while j < len(template) and template[j] != "}" { j = j + 1 }
+        let varName = trim(extractBetween(template, start_var, j))
+
+        if j + 1 < len(template) and template[j + 1] == "}" {
+          match getValue(data, varName) {
+            ok(val) => {
+              match jsonType(val) {
+                "array" => { return err("error: not printable") }
+                "object" => { return err("error: not printable") }
+                _ => {
+                  let rendered = renderValue(val)
+                  result = result + rendered
+                }
+              }
+            }
+            err(e) => {}
+          }
+          i = j + 2
+        } else {
+          i = j
+        }
+      }
+    } else {
+      result = result + template[i]
+      i = i + 1
+    }
+  }
+
+  return ok(result)
+}
+
+fn main() {
+  let args_list = args()
+  if len(args_list) < 2 {
+    print("error: bad data")
+    return
+  }
+
+  let template = args_list[0]
+  let jsonStr = args_list[1]
+
+  match parseJson(jsonStr) {
+    ok(data) => {
+      if jsonType(data) != "object" {
+        print("error: bad data")
+      } else {
+        match processTemplate(template, data) {
+          ok(result) => { print(result) }
+          err(e) => { print(e) }
+        }
+      }
+    }
+    err(e) => {
+      print("error: bad data")
+    }
+  }
+}
+
+main()

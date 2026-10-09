@@ -1,0 +1,129 @@
+fn main() {
+  let input = args()[0]
+  let commands = split(input, ";")
+  let accounts = {}
+
+  for cmd in commands {
+    let parts = split(trim(cmd), " ")
+
+    if len(parts) == 0 {
+      continue
+    }
+
+    let op = parts[0]
+
+    if op == "open" {
+      if len(parts) < 3 {
+        print("error")
+        return
+      }
+      let name = parts[1]
+      let amount_str = parts[2]
+
+      if has(accounts, name) {
+        print("error")
+        return
+      }
+
+      match num(amount_str) {
+        ok(amt) => {
+          accounts[name] = amt
+        }
+        err(e) => {
+          print("error")
+          return
+        }
+      }
+    } else if op == "deposit" {
+      if len(parts) < 3 {
+        print("error")
+        return
+      }
+      let name = parts[1]
+      let amount_str = parts[2]
+
+      if not has(accounts, name) {
+        print("error")
+        return
+      }
+
+      match num(amount_str) {
+        ok(amt) => {
+          match get(accounts, name) {
+            ok(bal) => {
+              accounts[name] = bal + amt
+            }
+            err(e) => {
+              print("error")
+              return
+            }
+          }
+        }
+        err(e) => {
+          print("error")
+          return
+        }
+      }
+    } else if op == "withdraw" {
+      if len(parts) < 3 {
+        print("error")
+        return
+      }
+      let name = parts[1]
+      let amount_str = parts[2]
+
+      if not has(accounts, name) {
+        print("error")
+        return
+      }
+
+      match num(amount_str) {
+        ok(amt) => {
+          match get(accounts, name) {
+            ok(bal) => {
+              if amt > bal {
+                print("error")
+                return
+              }
+              accounts[name] = bal - amt
+            }
+            err(e) => {
+              print("error")
+              return
+            }
+          }
+        }
+        err(e) => {
+          print("error")
+          return
+        }
+      }
+    } else if op == "balance" {
+      if len(parts) < 2 {
+        print("error")
+        return
+      }
+      let name = parts[1]
+
+      if not has(accounts, name) {
+        print("error")
+        return
+      }
+
+      match get(accounts, name) {
+        ok(bal) => {
+          print("${name} ${bal}")
+        }
+        err(e) => {
+          print("error")
+          return
+        }
+      }
+    } else {
+      print("error")
+      return
+    }
+  }
+}
+
+main()

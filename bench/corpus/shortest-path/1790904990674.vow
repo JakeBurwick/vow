@@ -1,0 +1,81 @@
+fn find_shortest_path(edges_str, start, goal) {
+  if start == goal {
+    return ok(start)
+  }
+
+  // Split edges
+  let edge_list = split(edges_str, ",")
+
+  // Build adjacency list
+  let adj = {}
+  for edge in edge_list {
+    let parts = split(edge, "-")
+    if len(parts) == 2 {
+      let a = parts[0]
+      let b = parts[1]
+
+      if not has(adj, a) {
+        adj[a] = []
+      }
+      if not has(adj, b) {
+        adj[b] = []
+      }
+
+      push(adj[a], b)
+      push(adj[b], a)
+    }
+  }
+
+  // Check if nodes exist
+  if not has(adj, start) {
+    return err("no path")
+  }
+  if not has(adj, goal) {
+    return err("no path")
+  }
+
+  // BFS with path tracking
+  let queue = [[start]]
+  let visited = {}
+  visited[start] = true
+
+  while len(queue) > 0 {
+    let current_path = queue[0]
+    queue = slice(queue, 1, len(queue))
+    let current = current_path[len(current_path) - 1]
+
+    if current == goal {
+      let result = ""
+      for i in range(0, len(current_path)) {
+        if i > 0 {
+          result = result + " -> "
+        }
+        result = result + current_path[i]
+      }
+      return ok(result)
+    }
+
+    let neighbors = adj[current]
+    let sorted_neighbors = sort(neighbors)
+
+    for neighbor in sorted_neighbors {
+      if not has(visited, neighbor) {
+        visited[neighbor] = true
+        let new_path = slice(current_path, 0, len(current_path))
+        push(new_path, neighbor)
+        push(queue, new_path)
+      }
+    }
+  }
+
+  return err("no path")
+}
+
+let edges = args()[0]
+let start = args()[1]
+let goal = args()[2]
+
+match find_shortest_path(edges, start, goal) {
+  ok(path) => print(path)
+  err(e) => print("no path")
+}

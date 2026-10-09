@@ -1,0 +1,18 @@
+let raw = `{"name": "Ada", "langs": ["vow", "ts"], "admin": true}`
+
+match parseJson(raw) {
+  ok(user) => {
+    print(field(user, "name"))
+    for lang in jsonList(field(user, "langs")) {
+      print("knows ${lang}")
+    }
+    if truthy(field(user, "admin")) { print("is an admin") }
+    // a missing field is a json null, not a crash
+    print(isNull(field(user, "email")))
+  }
+  err(e) => print("bad JSON: ${e}")
+}
+
+// toJson turns Vow values (structs, maps, lists) into JSON text
+struct Summary { ok, count }
+print(toJson(Summary { ok: true, count: 3 }))

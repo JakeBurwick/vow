@@ -1,0 +1,84 @@
+struct Todo {
+  id
+  title
+  done
+}
+
+let todos = []
+let nextId = 1
+
+fn handle(req) {
+  let method = req["method"]
+  let path = req["path"]
+
+  if path == "/todos" {
+    if method == "POST" {
+      match param(req["body"], "title") {
+        ok(title) => {
+          if trim(title) == "" {
+            return respond(400, "text/plain", "title required")
+          }
+          let id = nextId
+          nextId = nextId + 1
+          let todo = Todo { id: id, title: title, done: false }
+          push(todos, todo)
+          return respond(201, "text/plain", "created " + str(id))
+        }
+        err(e) => {
+          return respond(400, "text/plain", "title required")
+        }
+      }
+    }
+    if method == "GET" {
+      if len(todos) == 0 {
+        return text("empty")
+      }
+      let lines = []
+      for todo in todos {
+        let box = ""
+        if todo.done { box = "[x]" } else { box = "[ ]" }
+        let line = str(todo.id) + " " + box + " " + todo.title
+        push(lines, line)
+      }
+      return text(join(lines, "\n"))
+    }
+  }
+
+  if path == "/todos/done" {
+    if method == "POST" {
+      match param(req["body"], "id") {
+        ok(idStr) => {
+          match num(idStr) {
+            ok(id) => {
+              let found = false
+              for todo in todos {
+                if todo.id == id {
+                  todo.done = true
+                  found = true
+                }
+              }
+              if found {
+                return text("ok")
+              } else {
+                return respond(404, "text/plain", "no such todo")
+              }
+            }
+            err(e) => {
+              return respond(404, "text/plain", "no such todo")
+            }
+          }
+        }
+        err(e) => {
+          return respond(404, "text/plain", "no such todo")
+        }
+      }
+    }
+  }
+
+  return respond(404, "text/plain", "not found")
+}
+
+match serve(8080, handle) {
+  ok(v) => {}
+  err(e) => print(e)
+}

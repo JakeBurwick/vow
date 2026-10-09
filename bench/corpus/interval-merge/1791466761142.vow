@@ -1,0 +1,133 @@
+fn isAllDigits(s) {
+  if len(s) == 0 { return false }
+  for c in split(s, "") {
+    if not (c >= "0" and c <= "9") {
+      return false
+    }
+  }
+  return true
+}
+
+fn parseInterval(piece) {
+  // Find the dash
+  let dash_idx = -1
+  for i in range(0, len(piece)) {
+    if piece[i] == "-" {
+      if dash_idx == -1 {
+        dash_idx = i
+      } else {
+        // Multiple dashes
+        return err("error: bad interval " + piece)
+      }
+    }
+  }
+
+  if dash_idx == -1 {
+    // No dash
+    return err("error: bad interval " + piece)
+  }
+
+  let a_str = slice(piece, 0, dash_idx)
+  let b_str = slice(piece, dash_idx + 1, len(piece))
+
+  if not isAllDigits(a_str) or not isAllDigits(b_str) {
+    return err("error: bad interval " + piece)
+  }
+
+  match num(a_str) {
+    ok(a) => {
+      match num(b_str) {
+        ok(b) => {
+          if a > b {
+            return err("error: bad interval " + piece)
+          }
+          return ok([a, b])
+        }
+        err(_) => {
+          return err("error: bad interval " + piece)
+        }
+      }
+    }
+    err(_) => {
+      return err("error: bad interval " + piece)
+    }
+  }
+}
+
+fn main() {
+  let args_list = args()
+
+  if len(args_list) == 0 {
+    print("")
+    return
+  }
+
+  let input = args_list[0]
+
+  if input == "" {
+    print("")
+    return
+  }
+
+  let pieces = split(input, ",")
+  let intervals = []
+
+  for piece in pieces {
+    match parseInterval(piece) {
+      ok(interval) => {
+        push(intervals, interval)
+      }
+      err(e) => {
+        print(e)
+        return
+      }
+    }
+  }
+
+  if len(intervals) == 0 {
+    print("")
+    return
+  }
+
+  // Sort by start
+  let sorted = sortBy(intervals, interval => interval[0])
+
+  // Merge
+  let merged = []
+  let current_start = 0 - 1
+  let current_end = 0 - 1
+
+  for interval in sorted {
+    if current_start < 0 {
+      current_start = interval[0]
+      current_end = interval[1]
+    } else {
+      let curr_start = interval[0]
+      let curr_end = interval[1]
+
+      if curr_start <= current_end + 1 {
+        // Merge: update current
+        current_end = max(current_end, curr_end)
+      } else {
+        // Add current to merged and start a new one
+        push(merged, [current_start, current_end])
+        current_start = curr_start
+        current_end = curr_end
+      }
+    }
+  }
+
+  if current_start >= 0 {
+    push(merged, [current_start, current_end])
+  }
+
+  // Format output
+  let result = []
+  for interval in merged {
+    push(result, str(interval[0]) + "-" + str(interval[1]))
+  }
+
+  print(join(result, ","))
+}
+
+main()

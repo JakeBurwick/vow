@@ -1,0 +1,21 @@
+let scores = [72, 95, 88, 61]
+
+// Loops
+let total = 0
+for s in scores {
+  total = total + s
+}
+print("total: ${total}")
+
+// The same with the standard library
+print(fold(scores, 0, (acc, s) => acc + s))
+print(map(scores, s => s + 5))
+print(filter(scores, s => s >= 80))
+print(sort(scores))
+
+// Maps have string keys
+let ages = {"ada": 36, "alan": 41}
+ages["grace"] = 85
+for name in keys(ages) {
+  print("${name} is ${ages[name]}")
+}

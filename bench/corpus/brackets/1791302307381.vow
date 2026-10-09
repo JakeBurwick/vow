@@ -1,0 +1,42 @@
+fn isMatching(open, close) {
+  if open == "(" and close == ")" { return true }
+  if open == "[" and close == "]" { return true }
+  if open == "{" and close == "}" { return true }
+  return false
+}
+
+fn checkBrackets(s) {
+  let stack = []
+  let chars = split(s, "")
+
+  for c in chars {
+    if c == "(" or c == "[" or c == "{" {
+      push(stack, c)
+    } else {
+      if len(stack) == 0 {
+        return false
+      }
+      let top = stack[len(stack) - 1]
+      if not isMatching(top, c) {
+        return false
+      }
+      match pop(stack) {
+        ok(v) => {}
+        err(e) => { return false }
+      }
+    }
+  }
+
+  if len(stack) == 0 {
+    return true
+  } else {
+    return false
+  }
+}
+
+let input = args()[0]
+if checkBrackets(input) {
+  print("yes")
+} else {
+  print("no")
+}

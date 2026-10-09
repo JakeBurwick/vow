@@ -1,0 +1,127 @@
+fn processMarkdown(markdown) {
+  let lines = lines(markdown)
+  let i = 0
+
+  while i < len(lines) {
+    let line = lines[i]
+
+    // Skip blank lines
+    if len(trim(line)) == 0 {
+      i = i + 1
+      continue
+    }
+
+    // Check for heading
+    if startsWith(line, "# ") {
+      let content = slice(line, 2, len(line))
+      print("<h1>" + processInline(content) + "</h1>")
+      i = i + 1
+    } else if startsWith(line, "## ") {
+      let content = slice(line, 3, len(line))
+      print("<h2>" + processInline(content) + "</h2>")
+      i = i + 1
+    } else if startsWith(line, "### ") {
+      let content = slice(line, 4, len(line))
+      print("<h3>" + processInline(content) + "</h3>")
+      i = i + 1
+    } else if startsWith(line, "- ") {
+      // List block
+      let html = "<ul>"
+      while i < len(lines) and len(trim(lines[i])) > 0 and startsWith(trim(lines[i]), "- ") {
+        let item = slice(trim(lines[i]), 2, len(trim(lines[i])))
+        html = html + "<li>" + processInline(item) + "</li>"
+        i = i + 1
+      }
+      html = html + "</ul>"
+      print(html)
+    } else {
+      // Paragraph block
+      let paragraphText = ""
+      while i < len(lines) and len(trim(lines[i])) > 0 {
+        let trimmed = trim(lines[i])
+        if startsWith(trimmed, "# ") or startsWith(trimmed, "## ") or startsWith(trimmed, "### ") or startsWith(trimmed, "- ") {
+          break
+        }
+        if len(paragraphText) > 0 {
+          paragraphText = paragraphText + " " + trimmed
+        } else {
+          paragraphText = trimmed
+        }
+        i = i + 1
+      }
+      print("<p>" + processInline(paragraphText) + "</p>")
+    }
+  }
+}
+
+fn processInline(text) {
+  let escaped = escapeHtml(text)
+  let withCode = applyCode(escaped)
+  let withBold = applyBold(withCode)
+  return withBold
+}
+
+fn escapeHtml(text) {
+  let step1 = replace(text, "&", "&amp;")
+  let step2 = replace(step1, "<", "&lt;")
+  let step3 = replace(step2, ">", "&gt;")
+  return step3
+}
+
+fn applyCode(text) {
+  let result = ""
+  let i = 0
+  while i < len(text) {
+    if text[i] == "`" {
+      let j = i + 1
+      while j < len(text) and text[j] != "`" {
+        j = j + 1
+      }
+      if j < len(text) {
+        let code = slice(text, i + 1, j)
+        result = result + "<code>" + code + "</code>"
+        i = j + 1
+      } else {
+        result = result + "`"
+        i = i + 1
+      }
+    } else {
+      result = result + text[i]
+      i = i + 1
+    }
+  }
+  return result
+}
+
+fn applyBold(text) {
+  let result = ""
+  let i = 0
+  while i < len(text) {
+    if i + 1 < len(text) and text[i] == "*" and text[i + 1] == "*" {
+      let j = i + 2
+      let found = false
+      while j + 1 < len(text) {
+        if text[j] == "*" and text[j + 1] == "*" {
+          found = true
+          break
+        }
+        j = j + 1
+      }
+      if found {
+        let bold = slice(text, i + 2, j)
+        result = result + "<strong>" + bold + "</strong>"
+        i = j + 2
+      } else {
+        result = result + "*"
+        i = i + 1
+      }
+    } else {
+      result = result + text[i]
+      i = i + 1
+    }
+  }
+  return result
+}
+
+let markdown = args()[0]
+processMarkdown(markdown)

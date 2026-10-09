@@ -1,0 +1,71 @@
+fn solve(input) {
+  let tokens = split(input, " ")
+  let stack = []
+
+  for token in tokens {
+    if token == "+" or token == "-" or token == "*" or token == "/" {
+      if len(stack) < 2 {
+        return err("not enough operands")
+      }
+      let b = pop(stack)
+      match b {
+        ok(b_val) => {
+          let a_res = pop(stack)
+          match a_res {
+            ok(a_val) => {
+              let result = 0
+              if token == "+" {
+                result = a_val + b_val
+              } else if token == "-" {
+                result = a_val - b_val
+              } else if token == "*" {
+                result = a_val * b_val
+              } else if token == "/" {
+                if b_val == 0 {
+                  return err("division by zero")
+                }
+                result = a_val / b_val
+              }
+              push(stack, result)
+            }
+            err(_) => {
+              return err("not enough operands")
+            }
+          }
+        }
+        err(_) => {
+          return err("not enough operands")
+        }
+      }
+    } else {
+      let n = num(token)
+      match n {
+        ok(n_val) => push(stack, n_val)
+        err(_) => {
+          return err("unknown token")
+        }
+      }
+    }
+  }
+
+  if len(stack) != 1 {
+    return err("leftover operands")
+  }
+
+  let final_res = pop(stack)
+  match final_res {
+    ok(n) => { return ok(n) }
+    err(e) => { return err(e) }
+  }
+}
+
+let input = args()
+if len(input) > 0 {
+  let result = solve(input[0])
+  match result {
+    ok(n) => print(n)
+    err(_) => print("error")
+  }
+} else {
+  print("error")
+}

@@ -1,0 +1,29 @@
+fn adultNames(s) {
+  let j = parseJson(s)?
+  if jsonType(j) != "array" { return err("not an array") }
+  let items = jsonList(j)
+  let names = []
+  for item in items {
+    if jsonType(item) != "object" { return err("element not an object") }
+    let n = jsonStr(get(item, "name")?)?
+    let a = jsonNum(get(item, "age")?)?
+    if a >= 18 { push(names, n) }
+  }
+  return ok(names)
+}
+
+fn run() {
+  let s = get(args(), 0)?
+  let names = adultNames(s)?
+  for n in names { print(n) }
+  return ok(true)
+}
+
+match run() {
+  ok(v) => {
+    let done = v
+  }
+  err(e) => {
+    print("invalid")
+  }
+}

@@ -1,0 +1,126 @@
+fn main() {
+  let args_list = args()
+  let ini_content = match get(args_list, 0) { ok(s) => s err(_) => "" }
+
+  // Parse the INI file
+  match parseIni(ini_content) {
+    ok(config) => {
+      // Process queries from remaining args
+      for i in range(1, len(args_list)) {
+        let query = args_list[i]
+        processQuery(config, query)
+      }
+    }
+    err(e) => {
+      print(e)
+    }
+  }
+}
+
+fn parseIni(content) {
+  let ini_lines = lines(content)
+  let config = {}
+  let current_section = ""
+  let line_num = 0
+
+  for line in ini_lines {
+    line_num = line_num + 1
+    let trimmed = trim(line)
+
+    // Skip blank lines
+    if len(trimmed) == 0 {
+      continue
+    }
+
+    // Skip comments
+    if startsWith(trimmed, ";") or startsWith(trimmed, "#") {
+      continue
+    }
+
+    // Check for section
+    if startsWith(trimmed, "[") and endsWith(trimmed, "]") {
+      let section_name = slice(trimmed, 1, len(trimmed) - 1)
+      if isValidName(section_name) {
+        current_section = section_name
+        if not has(config, current_section) {
+          config[current_section] = {}
+        }
+      } else {
+        return err("error line " + str(line_num) + ": bad line")
+      }
+      continue
+    }
+
+    // Check for key = value
+    match find(trimmed, `=`) {
+      ok(parts) => {
+        if len(current_section) == 0 {
+          return err("error line " + str(line_num) + ": key outside section")
+        }
+
+        let key_part = trim(parts[0])
+        let value_part = trim(slice(trimmed, len(parts[0]) + 1, len(trimmed)))
+
+        if isValidName(key_part) {
+          if not has(config, current_section) {
+            config[current_section] = {}
+          }
+          let section = config[current_section]
+          section[key_part] = value_part
+        } else {
+          return err("error line " + str(line_num) + ": bad line")
+        }
+      }
+      err(_) => {
+        return err("error line " + str(line_num) + ": bad line")
+      }
+    }
+  }
+
+  return ok(config)
+}
+
+fn isValidName(name) {
+  if len(name) == 0 {
+    return false
+  }
+  for i in range(0, len(name)) {
+    let c = name[i]
+    if not ((c >= "a" and c <= "z") or (c >= "0" and c <= "9") or c == "_") {
+      return false
+    }
+  }
+  return true
+}
+
+fn processQuery(config, query) {
+  // Split on the last dot
+  let dot_idx = -1
+  for i in range(0, len(query)) {
+    if query[i] == "." {
+      dot_idx = i
+    }
+  }
+
+  if dot_idx == -1 {
+    print("${query} missing")
+    return
+  }
+
+  let section = slice(query, 0, dot_idx)
+  let key = slice(query, dot_idx + 1, len(query))
+
+  if has(config, section) {
+    let section_map = config[section]
+    if has(section_map, key) {
+      let value = section_map[key]
+      print("${query} = ${value}")
+    } else {
+      print("${query} missing")
+    }
+  } else {
+    print("${query} missing")
+  }
+}
+
+main()

@@ -1,0 +1,374 @@
+// lisp.vow: a small Lisp interpreter written in Vow.
+// usage: node cli.js programs/lisp/lisp.vow programs/lisp/demo.lisp
+//        node cli.js programs/lisp/lisp.vow -e "(+ 1 2)"
+//
+// Every failure (bad syntax, unbound name, wrong arg count, car of empty list)
+// is a Result that flows up with ?, so a broken Lisp program prints an error
+// line and the interpreter keeps going with the next form. Nothing can crash it.
+
+struct Env { vars, parent }
+// kind: "num" | "sym" | "str" | "list" | "fn" | "builtin" | "bool" | "nil"
+struct Val { kind, num, text, items, env }
+
+// ---------- constructors ----------
+
+fn mk(kind, n, t, items) { return Val { kind: kind, num: n, text: t, items: items, env: [] } }
+fn numV(n) { return mk("num", n, "", []) }
+fn symV(s) { return mk("sym", 0, s, []) }
+fn strV(s) { return mk("str", 0, s, []) }
+fn listV(xs) { return mk("list", 0, "", xs) }
+fn boolV(b) {
+  if b { return mk("bool", 1, "#t", []) }
+  return mk("bool", 0, "#f", [])
+}
+fn nilV() { return mk("nil", 0, "", []) }
+fn builtinV(name) { return mk("builtin", 0, name, []) }
+
+fn truthy(v) { return not (v.kind == "bool" and v.num == 0) and v.kind != "nil" }
+
+// ---------- reader ----------
+
+fn tokenize(src) {
+  let toks = []
+  let cur = ""
+  let inStr = false
+  let inComment = false
+  for c in split(src, "") {
+    if inComment {
+      if c == "\n" { inComment = false }
+    } else if inStr {
+      cur = cur + c
+      if c == "\"" {
+        push(toks, cur)
+        cur = ""
+        inStr = false
+      }
+    } else if c == ";" {
+      inComment = true
+    } else if c == "\"" {
+      if cur != "" { push(toks, cur) }
+      cur = "\""
+      inStr = true
+    } else if c == "(" or c == ")" or c == "'" {
+      if cur != "" { push(toks, cur) }
+      cur = ""
+      push(toks, c)
+    } else if c == " " or c == "\n" or c == "\t" {
+      if cur != "" { push(toks, cur) }
+      cur = ""
+    } else {
+      cur = cur + c
+    }
+  }
+  if inStr { return err("unterminated string literal") }
+  if cur != "" { push(toks, cur) }
+  return ok(toks)
+}
+
+struct Reader { toks, pos }
+
+fn readForm(r) {
+  if r.pos >= len(r.toks) { return err("unexpected end of input (missing ')')") }
+  let t = r.toks[r.pos]
+  r.pos = r.pos + 1
+  if t == "(" {
+    let items = []
+    while true {
+      if r.pos >= len(r.toks) { return err("missing ')'") }
+      if r.toks[r.pos] == ")" {
+        r.pos = r.pos + 1
+        return ok(listV(items))
+      }
+      push(items, readForm(r)?)
+    }
+  }
+  if t == ")" { return err("unexpected ')'") }
+  if t == "'" { return ok(listV([symV("quote"), readForm(r)?])) }
+  if slice(t, 0, 1) == "\"" { return ok(strV(slice(t, 1, len(t) - 1))) }
+  if t == "#t" { return ok(boolV(true)) }
+  if t == "#f" { return ok(boolV(false)) }
+  return match num(t) {
+    ok(n) => ok(numV(n))
+    err(e) => ok(symV(t))
+  }
+}
+
+// ---------- printer ----------
+
+fn show(v) {
+  if v.kind == "num" { return str(v.num) }
+  if v.kind == "str" { return "\"" + v.text + "\"" }
+  if v.kind == "list" {
+    let parts = []
+    for x in v.items { push(parts, show(x)) }
+    return "(" + join(parts, " ") + ")"
+  }
+  if v.kind == "fn" { return "<lambda>" }
+  if v.kind == "builtin" { return "<builtin " + v.text + ">" }
+  if v.kind == "nil" { return "nil" }
+  return v.text
+}
+
+// ---------- environment ----------
+
+fn lookup(env, name) {
+  if has(env.vars, name) { return ok(env.vars[name]) }
+  return match get(env.parent, 0) {
+    ok(p) => lookup(p, name)
+    err(e) => err("unbound name: " + name)
+  }
+}
+
+fn setBang(env, name, v) {
+  if has(env.vars, name) {
+    env.vars[name] = v
+    return ok(v)
+  }
+  return match get(env.parent, 0) {
+    ok(p) => setBang(p, name, v)
+    err(e) => err("set! on undefined name: " + name)
+  }
+}
+
+// ---------- builtins ----------
+
+fn nums(name, args) {
+  let out = []
+  for a in args {
+    if a.kind != "num" { return err("${name} expects numbers, got ${show(a)}") }
+    push(out, a.num)
+  }
+  return ok(out)
+}
+
+fn arity(name, args, n) {
+  if len(args) != n { return err("${name} takes ${n} argument(s), got ${len(args)}") }
+  return ok(true)
+}
+
+fn applyBuiltin(name, args) {
+  if name == "+" { return ok(numV(sum(nums(name, args)?))) }
+  if name == "*" {
+    let p = 1
+    for n in nums(name, args)? { p = p * n }
+    return ok(numV(p))
+  }
+  if name == "-" or name == "/" {
+    let ns = nums(name, args)?
+    if len(ns) == 0 { return err("${name} needs at least one argument") }
+    if len(ns) == 1 and name == "-" { return ok(numV(0 - ns[0])) }
+    let acc = ns[0]
+    for n in slice(ns, 1, len(ns)) {
+      if name == "-" { acc = acc - n } else {
+        if n == 0 { return err("division by zero") }
+        acc = acc / n
+      }
+    }
+    return ok(numV(acc))
+  }
+  if name == "<" or name == ">" or name == "=" or name == "<=" or name == ">=" {
+    arity(name, args, 2)?
+    let ns = nums(name, args)?
+    let a = ns[0]
+    let b = ns[1]
+    if name == "<" { return ok(boolV(a < b)) }
+    if name == ">" { return ok(boolV(a > b)) }
+    if name == "<=" { return ok(boolV(a <= b)) }
+    if name == ">=" { return ok(boolV(a >= b)) }
+    return ok(boolV(a == b))
+  }
+  if name == "mod" {
+    arity(name, args, 2)?
+    let ns = nums(name, args)?
+    if ns[1] == 0 { return err("mod by zero") }
+    return ok(numV(ns[0] - floor(ns[0] / ns[1]) * ns[1]))
+  }
+  if name == "list" { return ok(listV(args)) }
+  if name == "car" or name == "cdr" or name == "null?" or name == "length" {
+    arity(name, args, 1)?
+    let l = args[0]
+    if l.kind != "list" { return err("${name} expects a list, got ${show(l)}") }
+    if name == "null?" { return ok(boolV(len(l.items) == 0)) }
+    if name == "length" { return ok(numV(len(l.items))) }
+    if len(l.items) == 0 { return err("${name} of empty list") }
+    if name == "car" { return ok(l.items[0]) }
+    return ok(listV(slice(l.items, 1, len(l.items))))
+  }
+  if name == "cons" {
+    arity(name, args, 2)?
+    if args[1].kind != "list" { return err("cons expects a list as its second argument") }
+    let out = [args[0]]
+    for x in args[1].items { push(out, x) }
+    return ok(listV(out))
+  }
+  if name == "display" {
+    let parts = []
+    for a in args {
+      if a.kind == "str" { push(parts, a.text) } else { push(parts, show(a)) }
+    }
+    print(join(parts, " "))
+    return ok(nilV())
+  }
+  if name == "eq?" {
+    arity(name, args, 2)?
+    return ok(boolV(show(args[0]) == show(args[1])))
+  }
+  if name == "not" {
+    arity(name, args, 1)?
+    return ok(boolV(not truthy(args[0])))
+  }
+  return err("unknown builtin " + name)
+}
+
+// ---------- evaluator ----------
+
+fn evalBody(forms, env) {
+  let last = nilV()
+  for f in forms { last = eval(f, env)? }
+  return ok(last)
+}
+
+fn special(head, v, env) {
+  let xs = v.items
+  if head == "quote" {
+    if len(xs) != 2 { return err("quote takes one form") }
+    return ok(xs[1])
+  }
+  if head == "if" {
+    if len(xs) < 3 or len(xs) > 4 { return err("if takes (if cond then [else])") }
+    if truthy(eval(xs[1], env)?) { return eval(xs[2], env) }
+    if len(xs) == 4 { return eval(xs[3], env) }
+    return ok(nilV())
+  }
+  if head == "define" {
+    if len(xs) < 3 { return err("define needs a name and a value") }
+    let target = xs[1]
+    if target.kind == "list" {
+      // (define (f a b) body...) is sugar for (define f (lambda (a b) body...))
+      if len(target.items) == 0 { return err("define: empty function header") }
+      let fname = target.items[0].text
+      let params = slice(target.items, 1, len(target.items))
+      let fv = Val { kind: "fn", num: 0, text: fname, items: [listV(params), listV(slice(xs, 2, len(xs)))], env: [env] }
+      env.vars[fname] = fv
+      return ok(symV(fname))
+    }
+    if target.kind != "sym" { return err("define: name must be a symbol, got ${show(target)}") }
+    env.vars[target.text] = eval(xs[2], env)?
+    return ok(symV(target.text))
+  }
+  if head == "set!" {
+    if len(xs) != 3 or xs[1].kind != "sym" { return err("set! takes (set! name value)") }
+    return setBang(env, xs[1].text, eval(xs[2], env)?)
+  }
+  if head == "lambda" {
+    if len(xs) < 3 or xs[1].kind != "list" { return err("lambda takes (lambda (params...) body...)") }
+    return ok(Val { kind: "fn", num: 0, text: "lambda", items: [xs[1], listV(slice(xs, 2, len(xs)))], env: [env] })
+  }
+  if head == "begin" { return evalBody(slice(xs, 1, len(xs)), env) }
+  if head == "let" {
+    if len(xs) < 3 or xs[1].kind != "list" { return err("let takes (let ((name value)...) body...)") }
+    let inner = Env { vars: {}, parent: [env] }
+    for b in xs[1].items {
+      if b.kind != "list" or len(b.items) != 2 or b.items[0].kind != "sym" { return err("bad let binding: ${show(b)}") }
+      inner.vars[b.items[0].text] = eval(b.items[1], env)?
+    }
+    return evalBody(slice(xs, 2, len(xs)), inner)
+  }
+  if head == "and" {
+    let last = boolV(true)
+    for x in slice(xs, 1, len(xs)) {
+      last = eval(x, env)?
+      if not truthy(last) { return ok(last) }
+    }
+    return ok(last)
+  }
+  if head == "or" {
+    for x in slice(xs, 1, len(xs)) {
+      let r = eval(x, env)?
+      if truthy(r) { return ok(r) }
+    }
+    return ok(boolV(false))
+  }
+  return err("not a special form: " + head)
+}
+
+fn isSpecial(name) {
+  return contains(["quote", "if", "define", "set!", "lambda", "begin", "let", "and", "or"], name)
+}
+
+fn apply(f, args) {
+  if f.kind == "builtin" { return applyBuiltin(f.text, args) }
+  if f.kind != "fn" { return err("not a function: " + show(f)) }
+  let params = f.items[0].items
+  if len(params) != len(args) {
+    return err("${f.text} takes ${len(params)} argument(s), got ${len(args)}")
+  }
+  let parent = f.env[0]
+  let local = Env { vars: {}, parent: [parent] }
+  for i in range(0, len(params)) { local.vars[params[i].text] = args[i] }
+  return evalBody(f.items[1].items, local)
+}
+
+fn eval(v, env) {
+  if v.kind == "sym" { return lookup(env, v.text) }
+  if v.kind != "list" { return ok(v) }
+  if len(v.items) == 0 { return ok(v) }
+  let head = v.items[0]
+  if head.kind == "sym" and isSpecial(head.text) { return special(head.text, v, env) }
+  let f = eval(head, env)?
+  let args = []
+  for a in slice(v.items, 1, len(v.items)) { push(args, eval(a, env)?) }
+  return apply(f, args)
+}
+
+// ---------- driver ----------
+
+fn globalEnv() {
+  let g = Env { vars: {}, parent: [] }
+  for name in ["+", "-", "*", "/", "<", ">", "=", "<=", ">=", "mod", "list", "car", "cdr", "cons", "null?", "length", "display", "eq?", "not"] {
+    g.vars[name] = builtinV(name)
+  }
+  g.vars["nil"] = nilV()
+  return g
+}
+
+fn runSource(src, env, echo) {
+  let r = Reader { toks: tokenize(src)?, pos: 0 }
+  while r.pos < len(r.toks) {
+    match readForm(r) {
+      ok(form) => {
+        match eval(form, env) {
+          ok(v) => {
+            if echo and v.kind != "nil" { print("=> " + show(v)) }
+          }
+          err(e) => print("error: " + e)
+        }
+      }
+      err(e) => return err("read error: " + e)
+    }
+  }
+  return ok(true)
+}
+
+fn loadFile(path) uses fs { return readFile(path) }
+
+let argv = args()
+let env = globalEnv()
+if len(argv) == 2 and argv[0] == "-e" {
+  match runSource(argv[1], env, true) {
+    ok(done) => print("")
+    err(e) => print(e)
+  }
+} else if len(argv) == 1 {
+  match loadFile(argv[0]) {
+    ok(src) => {
+      match runSource(src, env, false) {
+        ok(done) => print("")
+        err(e) => print(e)
+      }
+    }
+    err(e) => print("could not load: " + e)
+  }
+} else {
+  print("usage: lisp.vow <file.lisp>   or   lisp.vow -e \"(+ 1 2)\"")
+}

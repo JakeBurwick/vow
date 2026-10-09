@@ -1,0 +1,258 @@
+struct Scope {
+  data
+}
+
+struct Context {
+  root,
+  scopes
+}
+
+fn isTruthy(v) {
+  let t = jsonType(v)
+  if t == "null" { return false }
+  if t == "bool" {
+    match jsonBool(v) {
+      ok(b) => return b
+      err(_) => return false
+    }
+  }
+  if t == "number" {
+    match jsonNum(v) {
+      ok(n) => return n != 0
+      err(_) => return false
+    }
+  }
+  if t == "string" {
+    match jsonStr(v) {
+      ok(s) => return s != ""
+      err(_) => return false
+    }
+  }
+  if t == "array" { return len(jsonList(v)) > 0 }
+  if t == "object" { return len(jsonKeys(v)) > 0 }
+  return false
+}
+
+fn getValue(ctx, name) {
+  let i = len(ctx.scopes) - 1
+  while i >= 0 {
+    let scope = ctx.scopes[i]
+    if jsonType(scope.data) == "object" {
+      let v = get(scope.data, name)
+      match v {
+        ok(val) => return ok(val)
+        err(_) => {
+          i = i - 1
+        }
+      }
+    } else {
+      i = i - 1
+    }
+  }
+  return err("missing")
+}
+
+fn formatValue(v) {
+  let t = jsonType(v)
+  if t == "string" {
+    match jsonStr(v) {
+      ok(s) => return ok(s)
+      err(e) => return err("not printable")
+    }
+  }
+  if t == "number" {
+    match jsonNum(v) {
+      ok(n) => return ok(str(n))
+      err(e) => return err("not printable")
+    }
+  }
+  if t == "bool" {
+    match jsonBool(v) {
+      ok(b) => return ok(if b { "true" } else { "false" })
+      err(e) => return err("not printable")
+    }
+  }
+  if t == "null" { return ok("") }
+  return err("not printable")
+}
+
+fn findClosingTag(template, start, tag) {
+  let depth = 1
+  let pos = start
+  let templateLen = len(template)
+  let checkStr = template + ""
+
+  while pos < templateLen {
+    if pos + 2 < templateLen and checkStr[pos] == "{" and checkStr[pos + 1] == "{" {
+      let rest = slice(checkStr, pos + 2, templateLen)
+      let openTag = "#" + tag
+      let closeTag = "/" + tag
+
+      let isOpen = startsWith(rest, openTag) or startsWith(rest, "#each") or startsWith(rest, "#if")
+      if isOpen {
+        depth = depth + 1
+      } else if startsWith(rest, closeTag) {
+        depth = depth - 1
+        if depth == 0 {
+          return ok(pos)
+        }
+      }
+    }
+    pos = pos + 1
+  }
+  return err("unclosed")
+}
+
+fn parseTemplate(template, ctx) {
+  let result = ""
+  let pos = 0
+  let templateLen = len(template)
+  let checkStr = template + ""
+
+  while pos < templateLen {
+    if pos + 2 <= templateLen and checkStr[pos] == "{" and checkStr[pos + 1] == "{" {
+      let endBrace = pos + 2
+      while endBrace + 1 < templateLen and not (checkStr[endBrace] == "}" and checkStr[endBrace + 1] == "}") {
+        endBrace = endBrace + 1
+      }
+      if endBrace + 1 < templateLen {
+        let tag = slice(checkStr, pos + 2, endBrace)
+        let trimmedTag = trim(tag)
+
+        if startsWith(trimmedTag, "#if ") {
+          let name = trim(slice(trimmedTag, 4, len(trimmedTag)))
+          match findClosingTag(checkStr, endBrace + 2, "if") {
+            ok(closePos) => {
+              let v = getValue(ctx, name)
+              match v {
+                ok(val) => {
+                  if isTruthy(val) {
+                    let body = slice(checkStr, endBrace + 2, closePos)
+                    match parseTemplate(body, ctx) {
+                      ok(inner) => result = result + inner
+                      err(e) => return err(e)
+                    }
+                  }
+                }
+                err(_) => {
+                  // missing values are falsy in if
+                }
+              }
+              pos = closePos + 7
+            }
+            err(e) => return err("error: unclosed if")
+          }
+        } else if startsWith(trimmedTag, "#each ") {
+          let name = trim(slice(trimmedTag, 6, len(trimmedTag)))
+          match getValue(ctx, name) {
+            ok(listVal) => {
+              if jsonType(listVal) != "array" {
+                return err("error: not a list: ${name}")
+              }
+              let items = jsonList(listVal)
+              match findClosingTag(checkStr, endBrace + 2, "each") {
+                ok(closePos) => {
+                  let body = slice(checkStr, endBrace + 2, closePos)
+                  for item in items {
+                    let newScopes = [Scope { data: item }]
+                    for scope in ctx.scopes {
+                      push(newScopes, scope)
+                    }
+                    let itemCtx = Context { root: ctx.root, scopes: newScopes }
+                    match parseTemplate(body, itemCtx) {
+                      ok(inner) => result = result + inner
+                      err(e) => return err(e)
+                    }
+                  }
+                  pos = closePos + 9
+                }
+                err(e) => return err("error: unclosed each")
+              }
+            }
+            err(_) => {
+              // missing names in #each render nothing
+              match findClosingTag(checkStr, endBrace + 2, "each") {
+                ok(closePos) => {
+                  pos = closePos + 9
+                }
+                err(e) => return err("error: unclosed each")
+              }
+            }
+          }
+        } else if startsWith(trimmedTag, "/if") {
+          return err("error: unexpected /if")
+        } else if startsWith(trimmedTag, "/each") {
+          return err("error: unexpected /each")
+        } else {
+          let name = trimmedTag
+          if name == "." {
+            // special case: current item
+            if len(ctx.scopes) > 0 {
+              let scope = ctx.scopes[0]
+              match formatValue(scope.data) {
+                ok(s) => result = result + s
+                err(e) => return err("error: ${e}")
+              }
+            }
+          } else {
+            match getValue(ctx, name) {
+              ok(val) => {
+                match formatValue(val) {
+                  ok(s) => result = result + s
+                  err(e) => return err("error: ${e}")
+                }
+              }
+              err(_) => {
+                // missing name renders nothing
+              }
+            }
+          }
+          pos = endBrace + 2
+        }
+      } else {
+        result = result + template[pos]
+        pos = pos + 1
+      }
+    } else {
+      result = result + template[pos]
+      pos = pos + 1
+    }
+  }
+
+  return ok(result)
+}
+
+fn main() {
+  let args_list = args()
+  if len(args_list) < 2 {
+    print("error: missing args")
+    return ok(true)
+  }
+
+  let template = args_list[0]
+  let dataStr = args_list[1]
+
+  match parseJson(dataStr) {
+    ok(j) => {
+      if jsonType(j) != "object" {
+        print("error: bad data")
+      } else {
+        let scopes = [Scope { data: j }]
+        let ctx = Context { root: j, scopes: scopes }
+        match parseTemplate(template, ctx) {
+          ok(result) => print(result)
+          err(e) => print(e)
+        }
+      }
+    }
+    err(e) => {
+      print("error: bad data")
+    }
+  }
+  return ok(true)
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

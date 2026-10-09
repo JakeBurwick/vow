@@ -1,0 +1,10 @@
+fn start(port) uses net {
+  return serve(port, req => {
+    if req["method"] == "POST" { return respond(201, "text/plain", "made " + req["body"]) }
+    return text("path " + req["path"])
+  })
+}
+match start(9090) {
+  ok(v) => print("done")
+  err(e) => print(e)
+}

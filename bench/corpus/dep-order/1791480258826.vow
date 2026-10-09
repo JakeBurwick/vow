@@ -1,0 +1,120 @@
+fn isLowercase(s) {
+  if len(s) == 0 { return false }
+  for c in split(s, "") {
+    if not (c >= "a" and c <= "z") { return false }
+  }
+  return true
+}
+
+fn main() {
+  let args_list = args()
+  let input = match get(args_list, 0) { ok(s) => s err(e) => "" }
+
+  if input == "" {
+    print("")
+    return
+  }
+
+  let entries = split(input, ";")
+  let deps_map = {}
+  let all_packages = {}
+
+  for entry in entries {
+    if len(trim(entry)) == 0 { continue }
+
+    let parts = split(entry, ":")
+    if len(parts) != 2 {
+      print("error: bad entry " + entry)
+      return
+    }
+
+    let name = parts[0]
+    let deps_str = parts[1]
+
+    if not isLowercase(name) {
+      print("error: bad entry " + entry)
+      return
+    }
+
+    all_packages[name] = true
+
+    let deps = if len(deps_str) == 0 { [] } else { split(deps_str, ",") }
+
+    for dep in deps {
+      if not isLowercase(dep) {
+        print("error: bad entry " + entry)
+        return
+      }
+      all_packages[dep] = true
+    }
+
+    if has(deps_map, name) {
+      let existing = deps_map[name]
+      for dep in deps {
+        push(existing, dep)
+      }
+    } else {
+      deps_map[name] = deps
+    }
+  }
+
+  let pkg_list = keys(all_packages)
+  pkg_list = sort(pkg_list)
+
+  let in_degree = {}
+  let dependents = {}
+
+  for pkg in pkg_list {
+    in_degree[pkg] = 0
+    dependents[pkg] = []
+  }
+
+  for pkg in pkg_list {
+    let pkg_deps = if has(deps_map, pkg) { deps_map[pkg] } else { [] }
+    in_degree[pkg] = len(pkg_deps)
+
+    for dep in pkg_deps {
+      push(dependents[dep], pkg)
+    }
+  }
+
+  let queue = []
+  for pkg in pkg_list {
+    if in_degree[pkg] == 0 {
+      push(queue, pkg)
+    }
+  }
+
+  queue = sort(queue)
+
+  let result = []
+
+  while len(queue) > 0 {
+    let current = queue[0]
+    queue = slice(queue, 1, len(queue))
+    push(result, current)
+
+    let curr_dependents = dependents[current]
+    let ready = []
+
+    for dependent in curr_dependents {
+      in_degree[dependent] = in_degree[dependent] - 1
+      if in_degree[dependent] == 0 {
+        push(ready, dependent)
+      }
+    }
+
+    for pkg in ready {
+      push(queue, pkg)
+    }
+    queue = sort(queue)
+  }
+
+  if len(result) != len(pkg_list) {
+    print("error: cycle")
+  } else {
+    print(join(result, " "))
+  }
+}
+
+main()

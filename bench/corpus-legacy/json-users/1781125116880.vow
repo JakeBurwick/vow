@@ -1,0 +1,66 @@
+fn main() {
+  let args_list = args()
+  if len(args_list) != 1 {
+    print("invalid")
+    return ok(0)
+  }
+
+  let json_str = args_list[0]
+  match parseJson(json_str) {
+    ok(j) => {
+      match jsonList(j) {
+        ok(items) => {
+          for item in items {
+            match get(item, "name") {
+              ok(name_json) => {
+                match jsonStr(name_json) {
+                  ok(name) => {
+                    match get(item, "age") {
+                      ok(age_json) => {
+                        match jsonNum(age_json) {
+                          ok(age) => {
+                            if age >= 18 {
+                              print(name)
+                            }
+                          }
+                          err(_) => {
+                            print("invalid")
+                            return ok(0)
+                          }
+                        }
+                      }
+                      err(_) => {
+                        print("invalid")
+                        return ok(0)
+                      }
+                    }
+                  }
+                  err(_) => {
+                    print("invalid")
+                    return ok(0)
+                  }
+                }
+              }
+              err(_) => {
+                print("invalid")
+                return ok(0)
+              }
+            }
+          }
+        }
+        err(_) => {
+          print("invalid")
+        }
+      }
+    }
+    err(_) => {
+      print("invalid")
+    }
+  }
+  return ok(0)
+}
+
+match main() {
+  ok(_) => {}
+  err(_) => {}
+}

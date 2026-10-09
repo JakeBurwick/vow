@@ -1,0 +1,118 @@
+fn parseEdges(edgesStr) {
+  let edges = split(edgesStr, ",")
+  let graph = {}
+
+  for edge in edges {
+    let parts = split(edge, "-")
+    if len(parts) != 2 {
+      continue
+    }
+    let a = parts[0]
+    let b = parts[1]
+
+    if has(graph, a) {
+      push(graph[a], b)
+    } else {
+      graph[a] = [b]
+    }
+    if has(graph, b) {
+      push(graph[b], a)
+    } else {
+      graph[b] = [a]
+    }
+  }
+
+  return graph
+}
+
+fn bfsDistances(graph, start) {
+  let distances = {}
+  let queue = []
+
+  if not has(graph, start) {
+    return distances
+  }
+
+  distances[start] = 0
+  push(queue, start)
+
+  while len(queue) > 0 {
+    let node = queue[0]
+    queue = slice(queue, 1, len(queue))
+
+    let neighbors = graph[node]
+    for neighbor in neighbors {
+      if not has(distances, neighbor) {
+        distances[neighbor] = distances[node] + 1
+        push(queue, neighbor)
+      }
+    }
+  }
+
+  return distances
+}
+
+fn main() {
+  let args_list = args()
+
+  if len(args_list) < 3 {
+    print("no path")
+    return
+  }
+
+  let edgesStr = args_list[0]
+  let start = args_list[1]
+  let goal = args_list[2]
+
+  let graph = parseEdges(edgesStr)
+
+  if start == goal {
+    print(start)
+    return
+  }
+
+  if not has(graph, start) or not has(graph, goal) {
+    print("no path")
+    return
+  }
+
+  let distFromStart = bfsDistances(graph, start)
+  let distFromGoal = bfsDistances(graph, goal)
+
+  if not has(distFromStart, goal) {
+    print("no path")
+    return
+  }
+
+  let path = [start]
+  let current = start
+
+  while current != goal {
+    let neighbors = sort(graph[current])
+    let nextNode = ""
+
+    for neighbor in neighbors {
+      if has(distFromStart, neighbor) and has(distFromGoal, neighbor) {
+        let d1 = distFromStart[neighbor]
+        let d2 = distFromGoal[neighbor]
+        if d1 == distFromStart[current] + 1 and d2 == distFromGoal[current] - 1 {
+          nextNode = neighbor
+          break
+        }
+      }
+    }
+
+    if nextNode == "" {
+      print("no path")
+      return
+    }
+
+    push(path, nextNode)
+    current = nextNode
+  }
+
+  let pathStr = join(path, " -> ")
+  print(pathStr)
+}
+
+main()

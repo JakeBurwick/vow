@@ -1,0 +1,40 @@
+fn applyOp(a, b, op) {
+  if op == "+" { return ok(a + b) }
+  if op == "-" { return ok(a - b) }
+  if op == "*" { return ok(a * b) }
+  if op == "/" {
+    if b == 0 { return err("division by zero") }
+    return ok(a / b)
+  }
+  return err("unknown operator")
+}
+
+fn evalRpn(expr) {
+  let tokens = split(expr, " ")
+  let stack = []
+  for t in tokens {
+    if t == "+" or t == "-" or t == "*" or t == "/" {
+      let b = pop(stack)?
+      let a = pop(stack)?
+      let r = applyOp(a, b, t)?
+      push(stack, r)
+    } else {
+      let n = num(t)?
+      push(stack, n)
+    }
+  }
+  if len(stack) != 1 { return err("leftover operands") }
+  return get(stack, 0)
+}
+
+fn main() {
+  let argv = args()
+  let expr = get(argv, 0)?
+  let result = evalRpn(expr)?
+  return ok(result)
+}
+
+match main() {
+  ok(v)  => print(v)
+  err(e) => print("error")
+}

@@ -1,0 +1,4 @@
+fn toNum(s) {
+  let m = {"1": 1, "2": 2}
+  return m[s]
+}

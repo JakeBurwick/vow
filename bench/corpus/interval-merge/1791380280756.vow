@@ -1,0 +1,98 @@
+struct Interval { start, end }
+
+fn isAllDigits(s) {
+  if len(s) == 0 {
+    return false
+  }
+  for i in range(0, len(s)) {
+    let c = s[i]
+    if not (c >= "0" and c <= "9") {
+      return false
+    }
+  }
+  return true
+}
+
+fn parseInterval(s) {
+  let parts = split(s, "-")
+  if len(parts) != 2 {
+    return err("bad")
+  }
+
+  let startStr = parts[0]
+  let endStr = parts[1]
+
+  if not isAllDigits(startStr) or not isAllDigits(endStr) {
+    return err("bad")
+  }
+
+  match num(startStr) {
+    ok(start) => {
+      match num(endStr) {
+        ok(end) => {
+          if start > end {
+            return err("bad")
+          }
+          return ok(Interval { start: start, end: end })
+        }
+        err(e) => return err("bad")
+      }
+    }
+    err(e) => return err("bad")
+  }
+}
+
+fn mergeIntervals(intervals) {
+  if len(intervals) == 0 {
+    return []
+  }
+
+  let sorted = sortBy(intervals, i => i.start)
+  let merged = []
+  let current = sorted[0]
+
+  for i in range(1, len(sorted)) {
+    let next = sorted[i]
+    if next.start <= current.end + 1 {
+      current = Interval { start: current.start, end: max(current.end, next.end) }
+    } else {
+      push(merged, current)
+      current = next
+    }
+  }
+
+  push(merged, current)
+  return merged
+}
+
+let arg = args()[0]
+
+if arg == "" {
+  print("")
+  return
+}
+
+let parts = split(arg, ",")
+let intervals = []
+let failed = false
+
+for part in parts {
+  if not failed {
+    match parseInterval(part) {
+      ok(interval) => push(intervals, interval)
+      err(e) => {
+        print("error: bad interval " + part)
+        failed = true
+      }
+    }
+  }
+}
+
+if not failed {
+  let merged = mergeIntervals(intervals)
+  let result = []
+  for interval in merged {
+    push(result, str(interval.start) + "-" + str(interval.end))
+  }
+  print(join(result, ","))
+}

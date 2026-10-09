@@ -1,0 +1,102 @@
+fn main() {
+  let args_list = args()
+
+  if len(args_list) == 0 {
+    print("{}")
+    return ok(true)
+  }
+
+  let json_str = args_list[0]
+  let j = parseJson(json_str)?
+
+  if jsonType(j) != "array" {
+    print("{\"error\":\"bad order\"}")
+    return ok(true)
+  }
+
+  let items = jsonList(j)
+  let totals = {}
+
+  for order in items {
+    if jsonType(order) != "object" {
+      print("{\"error\":\"bad order\"}")
+      return ok(true)
+    }
+
+    let item_result = get(order, "item")
+    let qty_result = get(order, "qty")
+    let price_result = get(order, "price")
+
+    let item_json = match item_result {
+      ok(v) => v
+      err(_) => {
+        print("{\"error\":\"bad order\"}")
+        return ok(true)
+      }
+    }
+
+    let qty_json = match qty_result {
+      ok(v) => v
+      err(_) => {
+        print("{\"error\":\"bad order\"}")
+        return ok(true)
+      }
+    }
+
+    let price_json = match price_result {
+      ok(v) => v
+      err(_) => {
+        print("{\"error\":\"bad order\"}")
+        return ok(true)
+      }
+    }
+
+    let item = match jsonStr(item_json) {
+      ok(v) => v
+      err(_) => {
+        print("{\"error\":\"bad order\"}")
+        return ok(true)
+      }
+    }
+
+    let qty = match jsonNum(qty_json) {
+      ok(v) => v
+      err(_) => {
+        print("{\"error\":\"bad order\"}")
+        return ok(true)
+      }
+    }
+
+    let price = match jsonNum(price_json) {
+      ok(v) => v
+      err(_) => {
+        print("{\"error\":\"bad order\"}")
+        return ok(true)
+      }
+    }
+
+    let revenue = qty * price
+
+    if has(totals, item) {
+      totals[item] = totals[item] + revenue
+    } else {
+      totals[item] = revenue
+    }
+  }
+
+  let sorted_items = sort(keys(totals))
+  let json_parts = []
+
+  for item in sorted_items {
+    let total = totals[item]
+    push(json_parts, "\"" + item + "\":" + toJson(total))
+  }
+
+  print("{" + join(json_parts, ",") + "}")
+  return ok(true)
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print("{\"error\":\"bad order\"}")
+}

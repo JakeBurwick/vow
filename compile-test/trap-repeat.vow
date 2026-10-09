@@ -1,0 +1,3 @@
+fn r(n) { return repeat("a", n) }
+print(r(2))
+print(r(0 - 2))

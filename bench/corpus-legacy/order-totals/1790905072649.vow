@@ -1,0 +1,93 @@
+struct Order { item, qty, price }
+
+fn handleOrders() {
+  let args_list = args()
+  if len(args_list) == 0 {
+    print(`{"error":"bad order"}`)
+  } else {
+    let json_str = args_list[0]
+    match processOrders(json_str) {
+      ok(result) => print(result)
+      err(msg) => print(msg)
+    }
+  }
+}
+
+fn processOrders(json_str) {
+  match parseJson(json_str) {
+    ok(json) => {
+      match jsonList(json) {
+        ok(arr) => {
+          let totals = {}
+          for order_json in arr {
+            match extractOrder(order_json) {
+              ok(order) => {
+                let item = order.item
+                let qty = order.qty
+                let price = order.price
+                let revenue = qty * price
+                if has(totals, item) {
+                  totals[item] = totals[item] + revenue
+                } else {
+                  totals[item] = revenue
+                }
+              }
+              err(e) => return err(e)
+            }
+          }
+
+          let keys_list = keys(totals)
+          keys_list = sort(keys_list)
+          let result = "{"
+          for i in range(0, len(keys_list)) {
+            let key = keys_list[i]
+            if i > 0 {
+              result = result + ","
+            }
+            result = result + "\"" + key + "\":" + str(totals[key])
+          }
+          result = result + "}"
+          return ok(result)
+        }
+        err(e) => return err(`{"error":"bad order"}`)
+      }
+    }
+    err(e) => return err(`{"error":"bad order"}`)
+  }
+}
+
+fn extractOrder(order_json) {
+  match get(order_json, "item") {
+    ok(item_json) => {
+      match jsonStr(item_json) {
+        ok(item) => {
+          match get(order_json, "qty") {
+            ok(qty_json) => {
+              match jsonNum(qty_json) {
+                ok(qty) => {
+                  match get(order_json, "price") {
+                    ok(price_json) => {
+                      match jsonNum(price_json) {
+                        ok(price) => {
+                          return ok(Order { item: item, qty: qty, price: price })
+                        }
+                        err(e) => return err(`{"error":"bad order"}`)
+                      }
+                    }
+                    err(e) => return err(`{"error":"bad order"}`)
+                  }
+                }
+                err(e) => return err(`{"error":"bad order"}`)
+              }
+            }
+            err(e) => return err(`{"error":"bad order"}`)
+          }
+        }
+        err(e) => return err(`{"error":"bad order"}`)
+      }
+    }
+    err(e) => return err(`{"error":"bad order"}`)
+  }
+}
+
+handleOrders()

@@ -1,0 +1,142 @@
+fn parseIni(input) {
+  let linesList = lines(input)
+  let sections = {}
+  let currentSection = ""
+
+  for lineNum in range(0, len(linesList)) {
+    let line = linesList[lineNum]
+    let trimmed = trim(line)
+
+    // Skip blank lines and comments
+    if len(trimmed) == 0 {
+      continue
+    }
+
+    if startsWith(trimmed, ";") or startsWith(trimmed, "#") {
+      continue
+    }
+
+    // Check for section header [section]
+    if startsWith(trimmed, "[") and endsWith(trimmed, "]") {
+      let sectionName = slice(trimmed, 1, len(trimmed) - 1)
+      sectionName = trim(sectionName)
+
+      // Validate section name (must be lowercase letters, digits, underscores)
+      if not isValidName(sectionName) {
+        return err("error line " + str(lineNum + 1) + ": bad line")
+      }
+
+      currentSection = sectionName
+      if not has(sections, sectionName) {
+        sections[sectionName] = {}
+      }
+    } else if contains(trimmed, "=") {
+      // key = value line
+      if len(currentSection) == 0 {
+        return err("error line " + str(lineNum + 1) + ": key outside section")
+      }
+
+      // Find the = sign
+      let eqIdx = 0
+      let found = false
+      while eqIdx < len(trimmed) {
+        if trimmed[eqIdx] == "=" {
+          found = true
+          break
+        }
+        eqIdx = eqIdx + 1
+      }
+
+      if not found {
+        return err("error line " + str(lineNum + 1) + ": bad line")
+      }
+
+      let key = trim(slice(trimmed, 0, eqIdx))
+      let value = trim(slice(trimmed, eqIdx + 1, len(trimmed)))
+
+      // Validate key name (must be lowercase letters, digits, underscores)
+      if not isValidName(key) {
+        return err("error line " + str(lineNum + 1) + ": bad line")
+      }
+
+      sections[currentSection][key] = value
+    } else {
+      // Unrecognized line
+      return err("error line " + str(lineNum + 1) + ": bad line")
+    }
+  }
+
+  return ok(sections)
+}
+
+fn isValidName(name) {
+  if len(name) == 0 {
+    return false
+  }
+
+  for c in split(name, "") {
+    let isLower = c >= "a" and c <= "z"
+    let isDigit = c >= "0" and c <= "9"
+    let isUnderscore = c == "_"
+
+    if not (isLower or isDigit or isUnderscore) {
+      return false
+    }
+  }
+
+  return true
+}
+
+fn main() {
+  let argv = args()
+
+  if len(argv) < 1 {
+    return ok(true)
+  }
+
+  let iniContent = argv[0]
+
+  match parseIni(iniContent) {
+    ok(sections) => {
+      // Process queries from remaining args
+      for queryIdx in range(1, len(argv)) {
+        let query = argv[queryIdx]
+
+        // Parse query as section.key
+        let dotIdx = 0
+        let foundDot = false
+        while dotIdx < len(query) {
+          if query[dotIdx] == "." {
+            foundDot = true
+            break
+          }
+          dotIdx = dotIdx + 1
+        }
+
+        if foundDot and dotIdx > 0 and dotIdx < len(query) - 1 {
+          let section = slice(query, 0, dotIdx)
+          let key = slice(query, dotIdx + 1, len(query))
+
+          if has(sections, section) and has(sections[section], key) {
+            let value = sections[section][key]
+            print("${query} = ${value}")
+          } else {
+            print("${query} missing")
+          }
+        } else {
+          print("${query} missing")
+        }
+      }
+    }
+    err(e) => {
+      print(e)
+    }
+  }
+
+  return ok(true)
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

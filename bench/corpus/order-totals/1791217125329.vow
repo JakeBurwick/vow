@@ -1,0 +1,62 @@
+fn main() {
+  let args_list = args()
+
+  if len(args_list) == 0 {
+    print("{}")
+    return ok(true)
+  }
+
+  let input = args_list[0]
+
+  // Parse the JSON
+  let j = parseJson(input)?
+
+  // Check if it's an array
+  let arr = jsonList(j)
+
+  // Map to accumulate totals
+  let totals = {}
+
+  // Process each order
+  for order_json in arr {
+    // Get the item field
+    let item_val = get(order_json, "item")?
+    let item = jsonStr(item_val)?
+
+    // Get the qty field
+    let qty_val = get(order_json, "qty")?
+    let qty = jsonNum(qty_val)?
+
+    // Get the price field
+    let price_val = get(order_json, "price")?
+    let price = jsonNum(price_val)?
+
+    // Calculate total for this order
+    let total = qty * price
+
+    // Add to the map
+    if has(totals, item) {
+      totals[item] = totals[item] + total
+    } else {
+      totals[item] = total
+    }
+  }
+
+  // Sort the keys alphabetically
+  let keys_list = sort(keys(totals))
+
+  // Build output JSON
+  let output_parts = []
+  for key in keys_list {
+    let value = totals[key]
+    push(output_parts, "\"" + key + "\":" + toJson(value))
+  }
+
+  print("{" + join(output_parts, ",") + "}")
+  return ok(true)
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print("{\"error\":\"bad order\"}")
+}

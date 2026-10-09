@@ -1,0 +1,123 @@
+let entries = []
+
+fn flattenInto(j, path) {
+  let t = jsonType(j)
+
+  if t == "object" {
+    match jsonKeys(j) {
+      ok(keys) => {
+        if len(keys) == 0 {
+          let entry = "\"" + escapeJson(path) + "\":" + formatValue(j)
+          push(entries, entry)
+        } else {
+          let sorted = sort(keys)
+          for key in sorted {
+            let newPath = if path == "" { key } else { path + "." + key }
+            match get(j, key) {
+              ok(val) => flattenInto(val, newPath)
+              err(e) => {}
+            }
+          }
+        }
+      }
+      err(e) => {}
+    }
+  } else if t == "array" {
+    match jsonList(j) {
+      ok(list) => {
+        if len(list) == 0 {
+          let entry = "\"" + escapeJson(path) + "\":" + formatValue(j)
+          push(entries, entry)
+        } else {
+          for i in range(0, len(list)) {
+            let item = list[i]
+            let newPath = path + "[" + str(i) + "]"
+            flattenInto(item, newPath)
+          }
+        }
+      }
+      err(e) => {}
+    }
+  } else {
+    let entry = "\"" + escapeJson(path) + "\":" + formatValue(j)
+    push(entries, entry)
+  }
+}
+
+fn formatValue(j) {
+  let t = jsonType(j)
+  if t == "string" {
+    match jsonStr(j) {
+      ok(s) => return "\"" + escapeJson(s) + "\""
+      err(e) => return "null"
+    }
+  } else if t == "number" {
+    match jsonNum(j) {
+      ok(n) => {
+        if n == floor(n) {
+          return str(floor(n))
+        } else {
+          return str(n)
+        }
+      }
+      err(e) => return "null"
+    }
+  } else if t == "bool" {
+    match jsonBool(j) {
+      ok(b) => return if b { "true" } else { "false" }
+      err(e) => return "null"
+    }
+  } else if t == "null" {
+    return "null"
+  } else if t == "object" {
+    return "{}"
+  } else if t == "array" {
+    return "[]"
+  }
+  return "null"
+}
+
+fn escapeJson(s) {
+  let r1 = replace(s, "\\", "\\\\")
+  let r2 = replace(r1, "\"", "\\\"")
+  return r2
+}
+
+let input = args()[0]
+match parseJson(input) {
+  ok(j) => {
+    let t = jsonType(j)
+    if t == "object" {
+      match jsonKeys(j) {
+        ok(keys) => {
+          if len(keys) == 0 {
+            print(`{}`)
+          } else {
+            flattenInto(j, "")
+            let output = join(entries, ",")
+            print(`{` + output + `}`)
+          }
+        }
+        err(e) => print(`{"error":"bad json"}`)
+      }
+    } else if t == "array" {
+      match jsonList(j) {
+        ok(list) => {
+          if len(list) == 0 {
+            print(`{}`)
+          } else {
+            flattenInto(j, "")
+            let output = join(entries, ",")
+            print(`{` + output + `}`)
+          }
+        }
+        err(e) => print(`{"error":"bad json"}`)
+      }
+    } else {
+      print(`{"error":"not a container"}`)
+    }
+  }
+  err(e) => {
+    print(`{"error":"bad json"}`)
+  }
+}

@@ -1,0 +1,64 @@
+fn evaluateRpn(expr) {
+  let tokens = split(expr, " ")
+  let stack = []
+
+  for token in tokens {
+    if token == "+" or token == "-" or token == "*" or token == "/" {
+      if len(stack) < 2 {
+        return err("not enough operands")
+      }
+
+      let b_result = pop(stack)
+      let b = match b_result {
+        ok(v) => v
+        err(e) => return err(e)
+      }
+
+      let a_result = pop(stack)
+      let a = match a_result {
+        ok(v) => v
+        err(e) => return err(e)
+      }
+
+      let result = 0
+      if token == "+" {
+        result = a + b
+      } else if token == "-" {
+        result = a - b
+      } else if token == "*" {
+        result = a * b
+      } else if token == "/" {
+        if b == 0 {
+          return err("division by zero")
+        }
+        result = a / b
+      }
+
+      push(stack, result)
+    } else {
+      match num(token) {
+        ok(n) => push(stack, n)
+        err(e) => return err("invalid token")
+      }
+    }
+  }
+
+  if len(stack) != 1 {
+    return err("invalid expression")
+  }
+
+  let final = pop(stack)
+  match final {
+    ok(n) => return ok(n)
+    err(e) => return err(e)
+  }
+}
+
+let expr = args()[0]
+match evaluateRpn(expr) {
+  ok(result) => {
+    let rounded = round(result, 0)
+    print(str(rounded))
+  }
+  err(e) => print("error")
+}

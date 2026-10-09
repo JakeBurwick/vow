@@ -1,0 +1,138 @@
+fn main() {
+  let argv = args()
+  let ini_str = match get(argv, 0) { ok(s) => s err(e) => "" }
+  let queries = slice(argv, 1, len(argv))
+
+  match parseIni(ini_str) {
+    ok(config) => {
+      for query in queries {
+        match getValue(config, query) {
+          ok(val) => {
+            print("${query} = ${val}")
+          }
+          err(e) => {
+            print("${query} missing")
+          }
+        }
+      }
+    }
+    err(e) => {
+      print(e)
+    }
+  }
+  return ok(true)
+}
+
+fn parseIni(ini_text) {
+  let line_list = lines(ini_text)
+  let current_section = ""
+  let config = {}
+  let line_num = 0
+
+  for line in line_list {
+    line_num = line_num + 1
+    let trimmed = trim(line)
+
+    if len(trimmed) == 0 {
+      continue
+    }
+
+    if startsWith(trimmed, ";") or startsWith(trimmed, "#") {
+      continue
+    }
+
+    if startsWith(trimmed, "[") and endsWith(trimmed, "]") {
+      let section_raw = slice(trimmed, 1, len(trimmed) - 1)
+
+      if not isValidName(section_raw) {
+        return err("error line ${line_num}: bad line")
+      }
+
+      current_section = section_raw
+      if not has(config, current_section) {
+        config[current_section] = {}
+      }
+      continue
+    }
+
+    match indexOf(trimmed, "=") {
+      ok(pos) => {
+        let key = trim(slice(trimmed, 0, pos))
+        let value = trim(slice(trimmed, pos + 1, len(trimmed)))
+
+        if len(key) == 0 {
+          return err("error line ${line_num}: bad line")
+        }
+
+        if not isValidName(key) {
+          return err("error line ${line_num}: bad line")
+        }
+
+        if len(current_section) == 0 {
+          return err("error line ${line_num}: key outside section")
+        }
+
+        match get(config, current_section) {
+          ok(sec) => {
+            sec[key] = value
+          }
+          err(e) => {
+            return err("error line ${line_num}: bad line")
+          }
+        }
+      }
+      err(e) => {
+        return err("error line ${line_num}: bad line")
+      }
+    }
+  }
+
+  return ok(config)
+}
+
+fn isValidName(name) {
+  if len(name) == 0 {
+    return false
+  }
+  for i in range(0, len(name)) {
+    let c = name[i]
+    let is_lower = c >= "a" and c <= "z"
+    let is_digit = c >= "0" and c <= "9"
+    let is_underscore = c == "_"
+    let valid = is_lower or is_digit or is_underscore
+    if not valid {
+      return false
+    }
+  }
+  return true
+}
+
+fn getValue(config, query) {
+  let parts = split(query, ".")
+  if len(parts) != 2 {
+    return err("invalid query")
+  }
+  let section = parts[0]
+  let key = parts[1]
+
+  match get(config, section) {
+    ok(sec) => {
+      match get(sec, key) {
+        ok(val) => {
+          return ok(val)
+        }
+        err(e) => {
+          return err("missing")
+        }
+      }
+    }
+    err(e) => {
+      return err("missing")
+    }
+  }
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

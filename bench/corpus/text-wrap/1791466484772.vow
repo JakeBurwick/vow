@@ -1,0 +1,80 @@
+fn isValidWidth(s) {
+  if len(s) == 0 {
+    return false
+  }
+
+  for i in range(0, len(s)) {
+    let c = s[i]
+    if not (c >= "0" and c <= "9") {
+      return false
+    }
+  }
+
+  match num(s) {
+    ok(n) => {
+      if n > 0 {
+        return true
+      } else {
+        return false
+      }
+    }
+    err(e) => {
+      return false
+    }
+  }
+}
+
+fn wrapText(text, width) {
+  let word_list = words(text)
+
+  if len(word_list) == 0 {
+    return
+  }
+
+  let line_num = 1
+  let current_line = ""
+
+  for word in word_list {
+    let word_len = len(word)
+    let current_len = len(current_line)
+
+    if current_len == 0 {
+      // First word on line
+      current_line = word
+    } else if current_len + 1 + word_len <= width {
+      // Word fits with space
+      current_line = current_line + " " + word
+    } else {
+      // Word doesn't fit, print current line and start new
+      print("${line_num}: ${current_line}")
+      line_num = line_num + 1
+      current_line = word
+    }
+  }
+
+  // Print last line
+  if len(current_line) > 0 {
+    print("${line_num}: ${current_line}")
+  }
+}
+
+fn main() {
+  let args_list = args()
+  let text = match get(args_list, 0) { ok(s) => s err(e) => "" }
+  let width_str = match get(args_list, 1) { ok(s) => s err(e) => "" }
+
+  if not isValidWidth(width_str) {
+    print("error: bad width")
+  } else {
+    match num(width_str) {
+      ok(width_num) => {
+        wrapText(text, width_num)
+      }
+      err(e) => {
+        print("error: bad width")
+      }
+    }
+  }
+}
+
+main()

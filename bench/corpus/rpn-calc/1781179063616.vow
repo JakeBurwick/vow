@@ -1,0 +1,85 @@
+let args_list = args()
+
+if len(args_list) == 0 {
+  print("error")
+} else {
+  let input = args_list[0]
+  let tokens = split(input, " ")
+
+  if len(tokens) == 0 {
+    print("error")
+  } else {
+    let stack = []
+    let i = 0
+    let valid = true
+
+    while i < len(tokens) and valid {
+      let token = tokens[i]
+
+      match num(token) {
+        ok(n) => {
+          push(stack, n)
+        }
+        err(_) => {
+          if token == "+" or token == "-" or token == "*" or token == "/" {
+            if len(stack) < 2 {
+              valid = false
+            } else {
+              let b = pop(stack)
+              match b {
+                ok(b_val) => {
+                  let a = pop(stack)
+                  match a {
+                    ok(a_val) => {
+                      let result = 0
+                      if token == "+" {
+                        result = a_val + b_val
+                      } else if token == "-" {
+                        result = a_val - b_val
+                      } else if token == "*" {
+                        result = a_val * b_val
+                      } else if token == "/" {
+                        if b_val == 0 {
+                          valid = false
+                        } else {
+                          result = a_val / b_val
+                        }
+                      }
+                      if valid {
+                        push(stack, result)
+                      }
+                    }
+                    err(_) => {
+                      valid = false
+                    }
+                  }
+                }
+                err(_) => {
+                  valid = false
+                }
+              }
+            }
+          } else {
+            valid = false
+          }
+        }
+      }
+
+      i = i + 1
+    }
+
+    if valid and len(stack) == 1 {
+      let final = pop(stack)
+      match final {
+        ok(n) => {
+          print(n)
+        }
+        err(_) => {
+          print("error")
+        }
+      }
+    } else {
+      print("error")
+    }
+  }
+}

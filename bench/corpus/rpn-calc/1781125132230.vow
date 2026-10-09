@@ -1,0 +1,71 @@
+fn processToken(stack, token) {
+  let numResult = num(token)
+  match numResult {
+    ok(n) => {
+      push(stack, n)
+      return ok(stack)
+    }
+    err(_) => {}
+  }
+
+  if token != "+" and token != "-" and token != "*" and token != "/" {
+    return err("error")
+  }
+
+  match pop(stack) {
+    ok(b) => {
+      match pop(stack) {
+        ok(a) => {
+          if token == "+" {
+            push(stack, a + b)
+          } else if token == "-" {
+            push(stack, a - b)
+          } else if token == "*" {
+            push(stack, a * b)
+          } else if b == 0 {
+            return err("error")
+          } else {
+            push(stack, a / b)
+          }
+          return ok(stack)
+        }
+        err(_) => {
+          return err("error")
+        }
+      }
+    }
+    err(_) => {
+      return err("error")
+    }
+  }
+}
+
+fn main() {
+  let tokens = args()
+  if len(tokens) != 1 {
+    return err("error")
+  }
+  let parts = split(tokens[0], " ")
+  let stack = []
+
+  for part in parts {
+    match processToken(stack, part) {
+      ok(_) => {}
+      err(e) => {
+        return err(e)
+      }
+    }
+  }
+
+  if len(stack) != 1 {
+    return err("error")
+  }
+
+  let result = stack[0]
+  return ok(result)
+}
+
+match main() {
+  ok(n) => print(n)
+  err(_) => print("error")
+}

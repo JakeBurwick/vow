@@ -1,0 +1,36 @@
+// Project: a class grade report from CSV text.
+struct Student { name, scores }
+
+let csv = `name,hw1,hw2,exam
+ada,95,88,91
+alan,72,,80
+grace,100,97,99
+linus,abc,60,70`
+
+fn parseRow(line) {
+  let cells = split(line, ",")
+  let scores = []
+  for c in slice(cells, 1, len(cells)) {
+    if c == "" { continue }
+    push(scores, num(c)?)
+  }
+  return ok(Student { name: cells[0], scores: scores })
+}
+
+fn letter(avg) {
+  if avg >= 90 { "A" } else if avg >= 80 { "B" } else if avg >= 70 { "C" } else { "F" }
+}
+
+let rows = slice(lines(csv), 1, len(lines(csv)))
+let students = []
+for line in rows {
+  match parseRow(line) {
+    ok(s) => push(students, s)
+    err(e) => print("skipping a bad row: ${e}")
+  }
+}
+
+for s in sortBy(students, s => 0 - sum(s.scores) / len(s.scores)) {
+  let avg = round(sum(s.scores) / len(s.scores), 1)
+  print("${padRight(s.name, 6, " ")} ${avg}  ${letter(avg)}")
+}

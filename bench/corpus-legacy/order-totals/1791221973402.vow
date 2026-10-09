@@ -1,0 +1,108 @@
+fn getItem(order) {
+  let v = get(order, "item")?
+  return ok(jsonStr(v)?)
+}
+
+fn getQty(order) {
+  let v = get(order, "qty")?
+  return ok(jsonNum(v)?)
+}
+
+fn getPrice(order) {
+  let v = get(order, "price")?
+  return ok(jsonNum(v)?)
+}
+
+fn main() {
+  let args_list = args()
+
+  if len(args_list) == 0 {
+    print("{}")
+    return ok(true)
+  }
+
+  let input = args_list[0]
+
+  if input == "" {
+    print("{}")
+    return ok(true)
+  }
+
+  // Parse JSON as a statement match
+  match parseJson(input) {
+    ok(j) => {
+      // Check if it's an array
+      if jsonType(j) != "array" {
+        print("{\"error\":\"bad order\"}")
+        return ok(true)
+      }
+
+      // Convert to list
+      match jsonList(j) {
+        ok(items_list) => {
+          // Process each order
+          let totals = {}
+
+          for order in items_list {
+            match getItem(order) {
+              ok(item_str) => {
+                match getQty(order) {
+                  ok(qty) => {
+                    match getPrice(order) {
+                      ok(price) => {
+                        let revenue = qty * price
+                        if has(totals, item_str) {
+                          totals[item_str] = totals[item_str] + revenue
+                        } else {
+                          totals[item_str] = revenue
+                        }
+                      }
+                      err(e) => {
+                        print("{\"error\":\"bad order\"}")
+                        return ok(true)
+                      }
+                    }
+                  }
+                  err(e) => {
+                    print("{\"error\":\"bad order\"}")
+                    return ok(true)
+                  }
+                }
+              }
+              err(e) => {
+                print("{\"error\":\"bad order\"}")
+                return ok(true)
+              }
+            }
+          }
+
+          // Sort keys and build JSON
+          let keys_list = keys(totals)
+          keys_list = sort(keys_list)
+
+          let json_parts = []
+          for key in keys_list {
+            let val = totals[key]
+            push(json_parts, "\"" + key + "\":" + toJson(val))
+          }
+
+          print("{" + join(json_parts, ",") + "}")
+          return ok(true)
+        }
+        err(e) => {
+          print("{\"error\":\"bad order\"}")
+          return ok(true)
+        }
+      }
+    }
+    err(e) => {
+      print("{\"error\":\"bad order\"}")
+      return ok(true)
+    }
+  }
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

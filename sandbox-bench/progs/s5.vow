@@ -1,0 +1,2 @@
+match env("PRICE_KEY") { ok(v) => print("key ok")  err(e) => print(e) }
+match env("SECRET_TOKEN") { ok(v) => print("leak " + v)  err(e) => print(e) }

@@ -1,0 +1,16 @@
+// A fn that touches the network, files or environment must say so with uses.
+// Anyone reading the signature knows exactly what it can reach.
+fn fetchQuote(symbol) uses net {
+  return httpGet("https://example.com/quote?s=${symbol}")
+}
+
+fn average(xs) {
+  return sum(xs) / len(xs)
+}
+
+print(average([3, 4, 5]))
+// In the browser playground network calls return an err; in the CLI they run.
+match fetchQuote("ACN") {
+  ok(body) => print("got ${len(body)} bytes")
+  err(e) => print("request failed (in the playground, network is always off)")
+}

@@ -1,0 +1,268 @@
+struct ParseResult {
+  html,
+  pos
+}
+
+fn main() {
+  let args_list = args()
+
+  if len(args_list) < 2 {
+    print("error: bad data")
+    return ok(true)
+  }
+
+  let template = args_list[0]
+  let data_str = args_list[1]
+
+  match parseJson(data_str) {
+    ok(data) => {
+      if jsonType(data) != "object" {
+        print("error: bad data")
+        return ok(true)
+      } else {
+        match parseTemplate(template, data, data, 0) {
+          ok(result) => {
+            if result.pos != len(template) {
+              print("error: unclosed if")
+            } else {
+              print(result.html)
+            }
+            return ok(true)
+          }
+          err(e) => {
+            print(e)
+            return ok(true)
+          }
+        }
+      }
+    }
+    err(_) => {
+      print("error: bad data")
+      return ok(true)
+    }
+  }
+}
+
+fn parseTemplate(template, root, context, pos) {
+  let html = ""
+
+  while pos < len(template) {
+    if pos + 1 < len(template) and template[pos] == "{" and template[pos + 1] == "{" {
+      let end_pos = pos + 2
+      while end_pos + 1 < len(template) and not (template[end_pos] == "}" and template[end_pos + 1] == "}") {
+        end_pos = end_pos + 1
+      }
+
+      if end_pos + 1 >= len(template) {
+        return err("error: unclosed if")
+      }
+
+      let tag_content = slice(template, pos + 2, end_pos)
+      let tag = trim(tag_content)
+
+      if startsWith(tag, "#if ") {
+        let cond_name = trim(slice(tag, 4, len(tag)))
+        let cond_value = getValue(cond_name, root, context)
+
+        let block_pos = end_pos + 2
+        match findIfEnd(template, block_pos) {
+          ok(if_end) => {
+            if truthy(cond_value) {
+              match parseTemplate(template, root, context, block_pos) {
+                ok(res) => {
+                  if res.pos != if_end {
+                    return err("error: unexpected /if")
+                  }
+                  html = html + res.html
+                  pos = if_end + 6
+                }
+                err(e) => return err(e)
+              }
+            } else {
+              pos = if_end + 6
+            }
+          }
+          err(e) => return err(e)
+        }
+      } else if startsWith(tag, "#each ") {
+        let list_name = trim(slice(tag, 6, len(tag)))
+        let list_value = getValue(list_name, root, context)
+
+        if jsonType(list_value) != "array" and not isNull(list_value) {
+          return err("error: not a list: " + list_name)
+        }
+
+        let block_pos = end_pos + 2
+        match findEachEnd(template, block_pos) {
+          ok(each_end) => {
+            if jsonType(list_value) == "array" {
+              for item in jsonList(list_value) {
+                match parseTemplate(template, root, item, block_pos) {
+                  ok(res) => {
+                    if res.pos != each_end {
+                      return err("error: unexpected /each")
+                    }
+                    html = html + res.html
+                  }
+                  err(e) => return err(e)
+                }
+              }
+            }
+            pos = each_end + 8
+          }
+          err(e) => return err(e)
+        }
+      } else if startsWith(tag, "/if") {
+        return ok(ParseResult { html: html, pos: pos })
+      } else if startsWith(tag, "/each") {
+        return ok(ParseResult { html: html, pos: pos })
+      } else {
+        match insertValue(tag, root, context) {
+          ok(val) => {
+            html = html + val
+            pos = end_pos + 2
+          }
+          err(e) => return err(e)
+        }
+      }
+    } else {
+      html = html + template[pos]
+      pos = pos + 1
+    }
+  }
+
+  return ok(ParseResult { html: html, pos: pos })
+}
+
+fn findIfEnd(template, start_pos) {
+  let depth = 1
+  let pos = start_pos
+
+  while pos < len(template) {
+    if pos + 1 < len(template) and template[pos] == "{" and template[pos + 1] == "{" {
+      let end_pos = pos + 2
+      while end_pos + 1 < len(template) and not (template[end_pos] == "}" and template[end_pos + 1] == "}") {
+        end_pos = end_pos + 1
+      }
+
+      if end_pos + 1 < len(template) {
+        let tag_content = slice(template, pos + 2, end_pos)
+        let tag = trim(tag_content)
+
+        if startsWith(tag, "#if ") {
+          depth = depth + 1
+        } else if tag == "/if" or startsWith(tag, "/if ") {
+          depth = depth - 1
+          if depth == 0 {
+            return ok(pos)
+          }
+        }
+
+        pos = end_pos + 2
+      } else {
+        return err("error: unclosed if")
+      }
+    } else {
+      pos = pos + 1
+    }
+  }
+
+  return err("error: unclosed if")
+}
+
+fn findEachEnd(template, start_pos) {
+  let depth = 1
+  let pos = start_pos
+
+  while pos < len(template) {
+    if pos + 1 < len(template) and template[pos] == "{" and template[pos + 1] == "{" {
+      let end_pos = pos + 2
+      while end_pos + 1 < len(template) and not (template[end_pos] == "}" and template[end_pos + 1] == "}") {
+        end_pos = end_pos + 1
+      }
+
+      if end_pos + 1 < len(template) {
+        let tag_content = slice(template, pos + 2, end_pos)
+        let tag = trim(tag_content)
+
+        if startsWith(tag, "#each ") {
+          depth = depth + 1
+        } else if tag == "/each" or startsWith(tag, "/each ") {
+          depth = depth - 1
+          if depth == 0 {
+            return ok(pos)
+          }
+        }
+
+        pos = end_pos + 2
+      } else {
+        return err("error: unclosed each")
+      }
+    } else {
+      pos = pos + 1
+    }
+  }
+
+  return err("error: unclosed each")
+}
+
+fn insertValue(name, root, context) {
+  if name == "." {
+    return formatValue(context)
+  } else {
+    let value = getValue(name, root, context)
+    return formatValue(value)
+  }
+}
+
+fn getValue(name, root, context) {
+  if jsonType(context) == "object" {
+    let v = field(context, name)
+    if not isNull(v) {
+      return v
+    }
+  }
+
+  if jsonType(root) == "object" {
+    return field(root, name)
+  }
+
+  return field(root, "missing")
+}
+
+fn formatValue(value) {
+  if isNull(value) {
+    return ok("")
+  } else if jsonType(value) == "string" {
+    match jsonStr(value) {
+      ok(s) => return ok(s)
+      err(_) => return err("error: not printable")
+    }
+  } else if jsonType(value) == "number" {
+    match jsonNum(value) {
+      ok(n) => {
+        let int_part = floor(n)
+        if n == int_part {
+          return ok(str(int_part))
+        } else {
+          return ok(str(n))
+        }
+      }
+      err(_) => return err("error: not printable")
+    }
+  } else if jsonType(value) == "bool" {
+    match jsonBool(value) {
+      ok(b) => return ok(if b { "true" } else { "false" })
+      err(_) => return err("error: not printable")
+    }
+  } else if jsonType(value) == "array" or jsonType(value) == "object" {
+    return err("error: not printable")
+  } else {
+    return err("error: not printable")
+  }
+}
+
+match main() {
+  ok(_) => {}
+  err(e) => print(e)
+}

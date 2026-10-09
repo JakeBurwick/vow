@@ -1,0 +1,69 @@
+fn main() {
+  let argv = args()
+  let text = argv[0]
+  let widthStr = argv[1]
+
+  // Parse width
+  match num(widthStr) {
+    ok(w) => {
+      if w <= 0 {
+        print("error: bad width")
+        return ok(true)
+      }
+
+      let width = w
+
+      // Split into words
+      let words = split(text, " ")
+      let filteredWords = []
+      for word in words {
+        let trimmed = trim(word)
+        if len(trimmed) > 0 {
+          push(filteredWords, trimmed)
+        }
+      }
+
+      if len(filteredWords) == 0 {
+        return ok(true)
+      }
+
+      // Greedy line filling
+      let lines = []
+      let currentLine = ""
+
+      for word in filteredWords {
+        if len(currentLine) == 0 {
+          // First word on line
+          currentLine = word
+        } else if len(currentLine) + 1 + len(word) <= width {
+          // Fits on current line
+          currentLine = currentLine + " " + word
+        } else {
+          // Doesn't fit, start new line
+          push(lines, currentLine)
+          currentLine = word
+        }
+      }
+
+      if len(currentLine) > 0 {
+        push(lines, currentLine)
+      }
+
+      // Print lines
+      for i in range(1, len(lines) + 1) {
+        let line = lines[i - 1]
+        print("${i}: ${line}")
+      }
+    }
+    err(e) => {
+      print("error: bad width")
+    }
+  }
+
+  return ok(true)
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print("error: " + e)
+}

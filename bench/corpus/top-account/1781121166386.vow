@@ -1,0 +1,18 @@
+struct Account { name, amount }
+
+let pairs = split(args()[0], ",")
+let best = Account { name: "", amount: 0 }
+let started = false
+for p in pairs {
+  let bits = split(p, ":")
+  match num(bits[1]) {
+    ok(amt) => {
+      if not started or amt > best.amount {
+        best = Account { name: bits[0], amount: amt }
+        started = true
+      }
+    }
+    err(e) => print("bad: " + e)
+  }
+}
+print("${best.name} ${best.amount}")

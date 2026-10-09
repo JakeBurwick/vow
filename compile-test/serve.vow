@@ -1,0 +1,18 @@
+let hits = 0
+fn handle(req) {
+  hits = hits + 1
+  if req["path"] == "/boom" {
+    let xs = [1]
+    return text(str(xs[9]))
+  }
+  if req["path"] == "/go" { return redirect("/home") }
+  let who = match param(req["query"], "name") {
+    ok(n) => n
+    err(e) => "stranger"
+  }
+  return html("<p>hi " + escape(who) + " #" + str(hits) + "</p>")
+}
+match serve(8080, handle) {
+  ok(v) => print("served " + str(hits))
+  err(e) => print(e)
+}

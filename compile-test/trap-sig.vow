@@ -1,0 +1,2 @@
+let ds = [3, 0]
+for d in ds { print(sig(3.14159, d)) }

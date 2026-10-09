@@ -1,0 +1,3 @@
+let sentence = args()[0]
+let words = split(sentence, " ")
+print(join(reverse(words), " "))

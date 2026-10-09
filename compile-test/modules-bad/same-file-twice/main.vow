@@ -1,0 +1,3 @@
+import "./geo.vow" as g
+import "./geo.vow" as h
+print(1)

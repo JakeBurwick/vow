@@ -1,0 +1,238 @@
+fn col_index(header, col) {
+  let i = 0
+  while i < len(header) {
+    if header[i] == col {
+      return ok(i)
+    }
+    i = i + 1
+  }
+  return err("not found")
+}
+
+fn compare_values(v1, v2, op) {
+  let n1_ok = match num(v1) { ok(n) => true err(e) => false }
+  let n2_ok = match num(v2) { ok(n) => true err(e) => false }
+
+  if n1_ok and n2_ok {
+    // Numeric comparison
+    let n1 = match num(v1) { ok(n) => n err(e) => 0 }
+    let n2 = match num(v2) { ok(n) => n err(e) => 0 }
+
+    match op {
+      "=" => { return ok(n1 == n2) }
+      "!=" => { return ok(n1 != n2) }
+      "<" => { return ok(n1 < n2) }
+      "<=" => { return ok(n1 <= n2) }
+      ">" => { return ok(n1 > n2) }
+      ">=" => { return ok(n1 >= n2) }
+      _ => { return err("bad op") }
+    }
+  } else {
+    // String comparison - only = and != allowed
+    if op != "=" and op != "!=" {
+      return err("bad comparison")
+    }
+
+    match op {
+      "=" => { return ok(v1 == v2) }
+      "!=" => { return ok(v1 != v2) }
+      _ => { return err("bad op") }
+    }
+  }
+}
+
+fn all_numeric(col_idx, data_rows) {
+  for row in data_rows {
+    if col_idx < len(row) {
+      let val = row[col_idx]
+      match num(val) {
+        ok(n) => {}
+        err(e) => { return ok(false) }
+      }
+    }
+  }
+  return ok(true)
+}
+
+fn main() {
+  let argv = args()
+
+  if len(argv) < 2 {
+    print("error: bad query")
+    return ok(true)
+  }
+
+  let csv_data = argv[0]
+  let query = argv[1]
+
+  let rows = split(csv_data, "\n")
+  let header = split(rows[0], ",")
+  let data_rows = []
+
+  for i in range(1, len(rows)) {
+    if rows[i] != "" {
+      push(data_rows, split(rows[i], ","))
+    }
+  }
+
+  let query_parts = split(query, " ")
+
+  if len(query_parts) < 2 or query_parts[0] != "SELECT" {
+    print("error: bad query")
+    return ok(true)
+  }
+
+  let select_cols = split(query_parts[1], ",")
+
+  // Validate select columns and get indices
+  let select_indices = []
+  for col in select_cols {
+    match col_index(header, col) {
+      ok(idx) => { push(select_indices, idx) }
+      err(e) => {
+        print("error: unknown column " + col)
+        return ok(true)
+      }
+    }
+  }
+
+  // Parse WHERE, ORDER BY, LIMIT clauses
+  let where_col_idx = 0 - 1
+  let where_op = ""
+  let where_val = ""
+  let order_col_idx = 0 - 1
+  let order_desc = false
+  let limit_n = 0
+
+  let i = 2
+  while i < len(query_parts) {
+    match query_parts[i] {
+      "WHERE" => {
+        if i + 3 >= len(query_parts) {
+          print("error: bad query")
+          return ok(true)
+        }
+        let col = query_parts[i + 1]
+        match col_index(header, col) {
+          ok(idx) => {
+            where_col_idx = idx
+            where_op = query_parts[i + 2]
+            where_val = query_parts[i + 3]
+            i = i + 4
+          }
+          err(e) => {
+            print("error: unknown column " + col)
+            return ok(true)
+          }
+        }
+      }
+      "ORDER" => {
+        if i + 2 >= len(query_parts) or query_parts[i + 1] != "BY" {
+          print("error: bad query")
+          return ok(true)
+        }
+        let col = query_parts[i + 2]
+        match col_index(header, col) {
+          ok(idx) => {
+            order_col_idx = idx
+            i = i + 3
+            if i < len(query_parts) and query_parts[i] == "DESC" {
+              order_desc = true
+              i = i + 1
+            }
+          }
+          err(e) => {
+            print("error: unknown column " + col)
+            return ok(true)
+          }
+        }
+      }
+      "LIMIT" => {
+        if i + 1 >= len(query_parts) {
+          print("error: bad query")
+          return ok(true)
+        }
+        match num(query_parts[i + 1]) {
+          ok(n) => {
+            limit_n = n
+            i = i + 2
+          }
+          err(e) => {
+            print("error: bad query")
+            return ok(true)
+          }
+        }
+      }
+      _ => {
+        print("error: bad query")
+        return ok(true)
+      }
+    }
+  }
+
+  // Apply WHERE filter
+  let filtered_rows = []
+  for row in data_rows {
+    if where_col_idx == 0 - 1 {
+      push(filtered_rows, row)
+    } else {
+      if where_col_idx < len(row) {
+        let cell = row[where_col_idx]
+        match compare_values(cell, where_val, where_op) {
+          ok(matches) => {
+            if matches {
+              push(filtered_rows, row)
+            }
+          }
+          err(e) => {
+            print("error: " + e)
+            return ok(true)
+          }
+        }
+      }
+    }
+  }
+
+  // Apply ORDER BY
+  let final_rows = filtered_rows
+  if order_col_idx != 0 - 1 {
+    match all_numeric(order_col_idx, final_rows) {
+      ok(is_num) => {
+        if is_num {
+          final_rows = sortBy(final_rows, r => match num(r[order_col_idx]) { ok(n) => n err(e) => 0 })
+        } else {
+          final_rows = sortBy(final_rows, r => r[order_col_idx])
+        }
+
+        if order_desc {
+          final_rows = reverse(final_rows)
+        }
+      }
+      err(e) => {}
+    }
+  }
+
+  // Apply LIMIT
+  if limit_n > 0 and len(final_rows) > limit_n {
+    final_rows = slice(final_rows, 0, limit_n)
+  }
+
+  // Output results
+  print(join(select_cols, ","))
+  for row in final_rows {
+    let output_parts = []
+    for idx in select_indices {
+      if idx < len(row) {
+        push(output_parts, row[idx])
+      }
+    }
+    print(join(output_parts, ","))
+  }
+
+  return ok(true)
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

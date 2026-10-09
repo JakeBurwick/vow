@@ -1,0 +1,3 @@
+fn big(n) { return len(range(0, n)) }
+print(big(10))
+print(big(2000000))

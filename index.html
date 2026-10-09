@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vow: a programming language built for AI agents</title>
+<meta name="description" content="Vow is a programming language built for AI agents to write. Errors are repair instructions, there are no nulls or exceptions, and every function declares what it can reach.">
+<meta name="theme-color" content="#10141d">
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path d='M50 6 94 50 50 94 6 50Z' fill='%2341e0c8'/></svg>">
+</head>
+<body>
+
+<header>
+  <a class="brand" href="#home" data-go="home"><span class="gem" aria-hidden="true">◆</span> Vow <span class="ver">v1.0</span></a>
+  <nav aria-label="Site sections">
+    <button class="tab active" data-view="home" aria-current="page">Home</button>
+    <button class="tab" data-view="learn">Learn</button>
+    <button class="tab" data-view="play">Playground</button>
+    <button class="tab" data-view="docs">Docs</button>
+  </nav>
+</header>
+
+<!-- ====================== HOME ====================== -->
+<section id="view-home" class="page" aria-label="Home">
+  <div class="page-inner">
+
+    <div class="intro">
+      <div class="intro-text">
+        <h1>Vow</h1>
+        <p class="tagline">A programming language built for AI agents to write.</p>
+        <p class="sub">Vow is designed around the loop every coding agent runs: write, run, read the error, fix. Every error says what is wrong, where, and the likely fix. There are no nulls and no exceptions, and every function declares whether it can touch the network, files or environment.</p>
+        <div class="actions">
+          <button class="primary big" data-go="learn">Start the tutorial</button>
+          <button class="big" data-go="play">Open the playground</button>
+        </div>
+      </div>
+
+      <figure class="sample">
+        <figcaption><span class="mono">prices.vow</span><button class="link-btn" id="btn-run-sample">Run this in the playground</button></figcaption>
+        <pre class="codeblock vow" id="home-sample">fn parsePrice(text) {
+  let n = num(text)?
+  if n &lt; 0 { return err("a price can't be negative") }
+  return ok(n)
+}
+
+for raw in ["4.50", "abc", "-2"] {
+  match parsePrice(raw) {
+    ok(p) =&gt; print("${raw}: ${fixed(p, 2)}")
+    err(e) =&gt; print("${raw}: ${e}")
+  }
+}</pre>
+        <div class="sample-out" aria-label="Output">
+          <span class="out-label">Output</span>
+<pre>4.50: 4.50
+abc: "abc" is not a number
+-2: a price can't be negative</pre>
+        </div>
+      </figure>
+    </div>
+
+    <ol class="points">
+      <li><strong>Compiles to JavaScript.</strong> Recursive fib(32) runs in 0.09 s, against 0.14 s for Python.</li>
+      <li><strong>Errors are repair instructions,</strong> written for an agent to act on without a human.</li>
+      <li><strong>Capabilities are checked before anything runs:</strong> <code>--sandbox</code> refuses a program that reaches beyond what you allow.</li>
+    </ol>
+
+    <div class="split">
+      <div>
+        <h2 class="h-small">An error, as Vow prints it</h2>
+<pre class="codeblock err-demo">✗ TypeError: can't add a num and a str
+  → line 6, col 10
+  6 |   return "Total: " + sum
+               ^^^^^^^^^^^^^^^
+  '"Total: "' is a str and 'sum' is a num. Vow never converts types implicitly.
+  Likely fix: convert the number to text first: str(sum)</pre>
+      </div>
+      <div>
+        <h2 class="h-small">A sandbox refusal, before any code runs</h2>
+<pre class="codeblock err-demo">$ node cli.js --sandbox --allow fs=./data app.vow
+✗ SandboxError: this program needs capabilities the sandbox does not grant
+  env: calls fn leak, which declares 'uses env' (line 2)
+  Nothing was run.
+  Likely fix: remove that access, or run with --allow env</pre>
+      </div>
+    </div>
+
+    <p class="honest">Built and measured by Jake Burwick. On new problems, AI agents write correct Vow about as reliably as TypeScript on easy tasks and need about twice as many attempts on hard ones; the code they finish is as correct as TypeScript on fresh hidden tests (99.5% vs 99.3%). <a href="#benchmarks" data-go="benchmarks">See the benchmarks</a>.</p>
+
+    <section id="install" class="install" aria-labelledby="install-h">
+      <h2 id="install-h">Install</h2>
+      <p class="prose">You need <strong>Node.js 20 or newer</strong>. Vow has no other dependencies.</p>
+      <div class="copyable">
+<pre class="codeblock shell" id="install-cmds">git clone <span data-repo>https://github.com/JakeBurwick/vow.git</span>
+cd vow
+echo 'print("Hello, Vow!")' &gt; hello.vow
+node cli.js hello.vow</pre>
+        <button class="copy" data-copy-from="install-cmds">Copy</button>
+      </div>
+      <h3 class="h-small">Command-line flags</h3>
+      <div id="install-flags" class="flags"></div>
+    </section>
+
+    <p class="footer-note">Lexer, parser, type checker, contract prover, compiler and interpreter written by hand in JavaScript, with no dependencies. The playground runs entirely in your browser. Source: <a data-repo-link href="https://github.com/JakeBurwick/vow"><span data-repo-plain>github.com/JakeBurwick/vow</span></a></p>
+  </div>
+</section>
+
+<!-- ====================== LEARN ====================== -->
+<section id="view-learn" class="page" aria-label="Learn" hidden>
+  <div class="learn">
+    <aside class="lesson-nav" aria-label="Lessons">
+      <h2 class="h-small">Tutorial</h2>
+      <ol id="lesson-list"></ol>
+      <label class="lesson-pick">
+        <span class="visually-hidden">Choose a lesson</span>
+        <select id="lesson-select"></select>
+      </label>
+    </aside>
+    <article id="lesson" class="lesson" aria-live="polite">
+      <p class="muted">Loading lessons…</p>
+    </article>
+  </div>
+</section>
+
+<!-- ====================== PLAYGROUND ====================== -->
+<main id="view-play" hidden>
+  <div class="toolbar">
+    <label class="ex-label" for="examples">Example</label>
+    <select id="examples"></select>
+    <button id="btn-run" class="primary">Run</button>
+    <button id="btn-debug">Debug</button>
+    <button id="btn-share" title="Copy a link to this code">Share link</button>
+    <span id="debug-controls" hidden>
+      <button id="btn-step" class="dbg">Step</button>
+      <button id="btn-continue" class="dbg">Continue</button>
+      <button id="btn-stop" class="dbg stop">Stop</button>
+    </span>
+    <span id="status" role="status"></span>
+    <span class="hint">Cmd/Ctrl+Enter runs. Click a line number to set a breakpoint.</span>
+  </div>
+
+  <div class="workspace">
+    <div class="editor panel">
+      <div class="gutter"><div id="gutter-inner"></div></div>
+      <div class="code-area">
+        <pre id="highlight" aria-hidden="true"></pre>
+        <textarea id="code" aria-label="Vow code editor" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off"></textarea>
+      </div>
+    </div>
+    <div class="right">
+      <section class="panel io">
+        <h3>Output</h3>
+        <div id="output" class="scrolly" aria-live="polite"></div>
+      </section>
+      <section class="panel io" id="vars-panel">
+        <h3>Variables <span class="muted" id="vars-hint">start the debugger to watch values live</span></h3>
+        <div id="vars" class="scrolly"></div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<!-- ====================== DOCS ====================== -->
+<section id="view-docs" class="page" aria-label="Docs" hidden>
+  <div class="page-inner docs">
+
+    <h1 class="docs-title">Docs</h1>
+    <p class="prose">A reference for the current language. The complete rules live in the agent guide in the repository (<code>bench/VOW_GUIDE.md</code>); every example below was run with <code>node cli.js</code>.</p>
+    <nav class="toc" aria-label="On this page">
+      <a href="#ref" data-go="ref">Syntax reference</a>
+      <a href="#benchmarks" data-go="benchmarks">Benchmarks</a>
+      <a href="#changelog" data-go="changelog">What got built</a>
+      <a href="#install" data-go="install">Install</a>
+    </nav>
+
+    <h2 id="ref">Syntax reference</h2>
+    <p class="prose">Types are inferred everywhere, so you never write one. Newlines end statements. Booleans use <code>and</code>, <code>or</code>, <code>not</code>.</p>
+
+    <div class="cheats">
+      <div class="cheat">
+        <h3>Variables and types</h3>
+<pre class="codeblock vow" data-check>let count = 3          // num
+let name = "Ada"       // str
+let on = true          // bool
+let xs = [1, 2, 3]     // list of num
+let m = {"a": 1}       // map: str keys, one value type
+count = count + 1      // fine: same type
+count = "four"         // ✗ a variable never changes type</pre>
+      </div>
+
+      <div class="cheat">
+        <h3>Strings</h3>
+<pre class="codeblock vow" data-check>let name = "Ada"
+print("hi ${name}!")              // hi Ada!
+print("2 + 2 = ${2 + 2}")         // any expression
+print("{ plain braces }")         // plain braces are text
+print("{\"name\": \"${name}\"}")  // so JSON needs no escaping
+print("\${not inserted}")         // \$ writes a literal $
+print(`raw: C:\path ${x}`)        // backticks: fully literal
+print(name[0])                    // "A"</pre>
+      </div>
+
+      <div class="cheat">
+        <h3>Functions and lambdas</h3>
+<pre class="codeblock vow" data-check>fn area(w, h) { return w * h }
+
+// no return: the last line is the value
+fn greet(name) {
+  "Hello, ${name}"
+}
+
+// generic automatically
+fn first(xs) { return xs[0] }
+print(first([1, 2]))       // 1
+print(first(["a", "b"]))   // a
+
+let double = x => x * 2
+let add = (a, b) => a + b
+let fact = n => {          // block body:
+  let out = 1              // last line is the value
+  for i in range(1, n + 1) { out = out * i }
+  out
+}
+let base = 10
+let bump = x => x + base   // closures capture</pre>
+      </div>
+
+      <div class="cheat">
+        <h3>Control flow</h3>
+<pre class="codeblock vow" data-check>let x = 4
+if x > 0 {
+  print("pos")
+} else if x &lt; 0 {
+  print("neg")
+} else {
+  print("zero")
+}
+for item in [1, 2, 3] { print(item) }
+for i in range(0, 5) { print(i) }    // 0 to 4
+let lo = 0
+while lo &lt; 10 {
+  lo = lo + 3
+  if lo == 6 { continue }
+  if lo > 8 { break }
+}
+// if/else as a value (else required)
+let size = if x > 5 { "big" } else { "small" }</pre>
+      </div>
+
+      <div class="cheat">
+        <h3>Results, match and ?</h3>
+<pre class="codeblock vow" data-check>// no null, no exceptions: failure is a value
+fn safeDiv(a, b) {
+  if b == 0 { return err("divide by zero") }
+  return ok(a / b)
+}
+match safeDiv(10, 2) {
+  ok(v) => print(v)
+  err(e) => print("failed: ${e}")
+}
+
+// match is an expression; a block arm's
+// last line is its value
+let v = match num("42") {
+  ok(n) => {
+    let d = n * 2
+    d
+  }
+  err(e) => 0
+}
+
+// ? unwraps ok, or returns the err to the
+// caller (inside a fn only)
+fn areaOf(w, h) {
+  let a = num(w)?
+  let b = num(h)?
+  return ok(a * b)
+}</pre>
+      </div>
+
+      <div class="cheat">
+        <h3>Matching plain values</h3>
+<pre class="codeblock vow" data-check>fn label(qty) {
+  match qty {
+    1 => "single"
+    2 => "pair"
+    _ => "bulk"     // _ catches the rest, comes last
+  }
+}
+print(label(2))     // pair
+
+let kind = match "number" {
+  "string" => "text"
+  "number" => "num"
+  _ => "other"
+}</pre>
+      </div>
+
+      <div class="cheat">
+        <h3>Structs</h3>
+<pre class="codeblock vow" data-check>struct Point { x, y }
+
+let p = Point { x: 3, y: 4 }   // all fields required
+print(p.x + p.y)               // 7
+p.x = 10                       // same type for life
+print(p == Point { x: 10, y: 4 })  // value equality: true
+
+// a param's struct is inferred from field use
+fn manhattan(q) { abs(q.x) + abs(q.y) }</pre>
+      </div>
+
+      <div class="cheat">
+        <h3>Lists and maps</h3>
+<pre class="codeblock vow" data-check>let xs = [3, 1, 2]
+let m = {"a": 1, "b": 2}
+m["c"] = 3                    // insert or update
+print(xs[0])                  // traps if out of range
+match get(xs, 9) {            // safe access: Result
+  ok(v) => print(v)
+  err(e) => print("none")
+}
+print(has(m, "a"))            // true
+push(xs, 4)
+xs = sort(xs)                 // sort returns a new list
+print(keys(m))                // insertion order
+print(values(m))              // [1, 2, 3]
+print(map(xs, x => x * 2))
+print(filter(xs, x => x > 1))
+print(any(xs, x => x > 3))    // true
+print(all(xs, x => x > 0))    // true
+print(count(xs, x => x > 1))  // 3
+print(fold(xs, 0, (acc, x) => acc + x))  // 10
+print(uniq([1, 1, 2]))        // [1, 2]</pre>
+      </div>
+
+      <div class="cheat">
+        <h3>Text and patterns</h3>
+<pre class="codeblock vow" data-check>// regex patterns go in backtick strings
+print(words(" a  b\n"))                   // ["a", "b"]
+print(matches("2026", `^\d+$`))           // true
+print(findAll("5 and 12", `\d+`))         // ["5", "12"]
+match find("user=ada", `(\w+)=(\w+)`) {   // ok([whole, g1, g2])
+  ok(m) => print(m[2])                    // ada
+  err(e) => print(e)                      // "no match"
+}
+print(replaceAll("a  b", `\s+`, " "))     // a b
+print(splitOn("a, b;c", `\s*[,;]\s*`))    // ["a", "b", "c"]
+print(replace("a.b", ".", "-"))           // literal: a-b
+print(lines("x\ny"))                      // ["x", "y"]
+print(padLeft("7", 3, "0"))               // 007
+print(trim(" hi "), upper("hi"), lower("HI"))</pre>
+      </div>
+
+      <div class="cheat">
+        <h3>Numbers</h3>
+<pre class="codeblock vow" data-check>match int("42") {        // strict whole-number parse
+  ok(n) => print(n)
+  err(e) => print(e)
+}
+match num("4.5") {       // any number
+  ok(n) => print(n)
+  err(e) => print(e)
+}
+print(isInt(3.5))        // false
+print(sig(1234.5, 2))    // 1200 (significant digits)
+print(round(15.625, 2))  // 15.63
+print(fixed(212.3, 2))   // "212.30" as text
+print(floor(2.7), abs(0 - 3), min(1, 2), max(1, 2), sum([1, 2]))</pre>
+      </div>
+
+      <div class="cheat">
+        <h3>Math, random and dates</h3>
+<pre class="codeblock vow" data-check>print(sqrt(16), pow(2, 10), exp(1), ln(1))  // log = ln
+print(sin(pi() / 2), cos(0), tan(0), atan2(1, 1))
+print(ceil(4.2), trunc(0 - 4.7))   // 5 -4
+print(random())                    // in [0, 1)
+print(randomInt(1, 6))             // 1 to 6, both included
+// --seed 42 makes random repeatable
+
+// times are UTC milliseconds since 1970
+let t = 1791468180000
+print(isoDate(t))     // 2026-10-08T14:03:00Z
+print(dateParts(t).weekday)   // 4 (0 = Sunday)
+match parseDate("2026-12-25") {
+  ok(xmas) => print(daysBetween(t, xmas))  // 78
+  err(e) => print(e)
+}</pre>
+      </div>
+
+      <div class="cheat">
+        <h3>JSON</h3>
+<pre class="codeblock vow" data-check>let text = `{"name": "Ada", "tags": ["x"], "pet": null}`
+match parseJson(text) {          // Result: bad input is an err
+  ok(j) => {
+    print(field(j, "name"))      // Ada (json null if missing)
+    print(at(field(j, "tags"), 0))   // x
+    print(has(j, "pet"), isNull(field(j, "pet")))  // true true
+    print(truthy(field(j, "tags")))  // true; [] and {} are falsy
+    for t in jsonList(field(j, "tags")) { print(t) }
+    print(jsonKeys(j))           // ["name", "tags", "pet"]
+    print("${j}")                // str(j): compact JSON text
+    match get(j, "age") {        // get: missing is an err
+      ok(a) => print(a)
+      err(e) => print("no age")
+    }
+  }
+  err(e) => print("bad JSON: ${e}")
+}
+struct User { name, age }
+print(toJson(User { name: "Ada", age: 36 }))</pre>
+      </div>
+
+      <div class="cheat">
+        <h3>Contracts</h3>
+<pre class="codeblock vow" data-check>fn withdraw(balance, amount)
+  expects amount > 0, amount &lt;= balance
+  ensures result >= 0
+{
+  return balance - amount
+}
+print(withdraw(100, 30))    // 70
+print(withdraw(100, 500))   // ✗ refuses to compile: proven broken
+// values only known at runtime are checked then,
+// and the error says whether caller or fn is at fault</pre>
+      </div>
+
+      <div class="cheat">
+        <h3>Capabilities</h3>
+<pre class="codeblock vow" data-check>fn fetch(url) uses net {      // may reach the network
+  return httpGet(url)
+}
+fn save(p, s) uses fs {       // may touch files
+  return writeFile(p, s)
+}
+fn home() uses env {          // may read env variables
+  return env("HOME")
+}
+fn shout(s) { upper(s) }      // provably touches nothing
+// callers inherit the obligation; declaring a
+// capability you don't use is also an error
+
+// node cli.js --sandbox --allow net=api.example.com,fs=./data app.vow
+// refuses the program before it runs if it reaches further</pre>
+      </div>
+
+      <div class="cheat">
+        <h3>Modules</h3>
+<pre class="codeblock vow">// geometry.vow: only fn, struct and import
+struct Point { x, y }
+fn norm(p) { sqrt(_sq(p.x) + _sq(p.y)) }
+fn _sq(v) { v * v }      // _ = private
+
+// main.vow: node cli.js main.vow
+import "./geometry.vow" as geo
+let p = geo.Point { x: 3, y: 4 }
+print(geo.norm(p))       // 5</pre>
+        <p class="cheat-note">Imports go at the top, with a path starting <code>./</code> or <code>../</code>. Modules run in the CLI; the playground runs one file.</p>
+      </div>
+
+      <div class="cheat">
+        <h3>I/O (CLI only)</h3>
+<pre class="codeblock vow">readFile(path)     // Result: text or err
+writeFile(p, s)    // Result
+httpGet(url)       // Result
+env(name)          // Result
+args()             // list of the user's arguments
+now()              // current time, UTC ms
+// every failure is a Result, so a program
+// that compiles has handled all of them.
+// In the browser these return err(...).</pre>
+      </div>
+
+      <div class="cheat">
+        <h3>Rules the checker enforces</h3>
+<pre class="codeblock vow">num("42")              // ✗ a Result must be used
+match r { ok(v) => v } // ✗ missing err arm
+let x = num(s)?        // ✗ ? only works inside a fn
+print("{x}")           // ✗ use "${x}" to insert x
+if a &amp;&amp; b { }          // ✗ write: if a and b { }
+let m = {"n": "x", "q": 3}  // ✗ one value type per map;
+                            //   use a struct for records</pre>
+      </div>
+    </div>
+
+    <h2 id="benchmarks">Benchmarks</h2>
+    <p class="prose">Agent tests use Claude Haiku in a fresh context per run, judged against answers from Python reference solutions on tasks the language was never tuned on. Vow agents get the language guide and a short pack of example programs; TypeScript agents get nothing. Every number comes from the benchmark logs in the repository.</p>
+
+    <div class="bench">
+      <div class="bench-item">
+        <h3 class="result-h">Speed: recursive fib(32)</h3>
+        <div class="result-wrap"><table class="result">
+          <thead><tr><th scope="col">runtime</th><th scope="col">time</th></tr></thead>
+          <tbody>
+            <tr><td>Vow, compiled</td><td class="best">0.09 s</td></tr>
+            <tr><td>Python 3.14</td><td>0.14 s</td></tr>
+            <tr><td>Vow, old interpreter</td><td>4.59 s</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+
+      <div class="bench-item">
+        <h3 class="result-h">Correctness on fresh hidden tests</h3>
+        <p class="result-note">Agent-written solutions to 8 unseen tasks, 150 fresh inputs each.</p>
+        <div class="result-wrap"><table class="result">
+          <thead><tr><th scope="col">language</th><th scope="col">hidden tests passed</th></tr></thead>
+          <tbody>
+            <tr><td>Vow</td><td class="best">99.5%</td></tr>
+            <tr><td>TypeScript</td><td>99.3%</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+
+      <div class="bench-item">
+        <h3 class="result-h">Failed attempts on hard unseen tasks</h3>
+        <p class="result-note">4 hard tasks, 3 runs each, Claude Haiku. Fewer is better.</p>
+        <div class="result-wrap"><table class="result">
+          <thead><tr><th scope="col">language</th><th scope="col">failed attempts</th></tr></thead>
+          <tbody>
+            <tr><td>TypeScript</td><td class="best">7</td></tr>
+            <tr><td>Vow</td><td>15 <span class="muted">(24 before this month's language changes)</span></td></tr>
+          </tbody>
+        </table></div>
+      </div>
+
+      <div class="bench-item">
+        <h3 class="result-h">Safety: 7 attack programs</h3>
+        <p class="result-note">Each program does a real job plus one attack, under the tightest permissions each runtime supports.</p>
+        <div class="result-wrap"><table class="result">
+          <thead><tr><th scope="col">runtime</th><th scope="col">attacks blocked</th></tr></thead>
+          <tbody>
+            <tr><td>TypeScript in Deno</td><td class="best">7 / 7</td></tr>
+            <tr><td>Vow sandbox</td><td>6 / 7 <span class="muted">(no read-only file grant yet)</span></td></tr>
+            <tr><td>Python in Docker</td><td>6 / 7</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <h2 id="changelog">What got built</h2>
+    <ul class="roadmap">
+      <li><strong>v0.2</strong>: the <code>?</code> propagation operator, breakpoints in the debugger, machine-readable errors ("Copy for AI"), shareable code links.</li>
+      <li><strong>v0.3</strong>: structs, with field types inferred from use (a parameter's struct is deduced from <code>p.x</code> alone), all-fields-required literals and value equality.</li>
+      <li><strong>v0.4</strong>: generics: every function is automatically polymorphic, checked once and instantiated per call site.</li>
+      <li><strong>v0.5</strong>: arrow lambdas with closures (<code>x =&gt; x * 2</code>) and the CLI (<code>node cli.js program.vow</code>) with file, network, environment and argument I/O, every operation returning a Result.</li>
+      <li><strong>v0.6</strong>: JSON as a value type: <code>parseJson</code> returns a Result and <code>toJson</code> serializes structs, maps and lists.</li>
+      <li><strong>v0.7</strong>: static contract proofs: provably broken <code>expects</code>/<code>ensures</code> refuse to compile, and guards and <code>ensures</code> facts prove call sites safe.</li>
+      <li><strong>v0.8</strong>: capabilities: a function can't touch the network, files or environment unless its signature says <code>uses net</code>, <code>fs</code> or <code>env</code>, and callers inherit the obligation.</li>
+      <li><strong>v0.9</strong>: block-bodied match arms, string and number patterns in <code>match</code> with <code>_</code>, and functions and lambdas whose last line is their value.</li>
+      <li><strong>Sandbox mode</strong>: <code>--sandbox</code> with <code>--allow net=host,fs=dir,env=NAME</code> rejects a program before it runs if it can reach anything not granted.</li>
+      <li><strong>Compiler to JavaScript</strong>: the CLI compiles Vow to JavaScript by default, about 50 times faster than the interpreter (<code>--interp</code> still runs it). A differential test checks that both give identical output.</li>
+      <li><strong><code>${}</code> strings</strong>: only <code>"${expr}"</code> inserts a value, so plain braces in templates and JSON need no escaping. Nested functions can now call themselves.</li>
+      <li><strong>Standard library</strong>: 17 builtins picked from a usage count over 96 TypeScript solutions: regex (<code>matches</code>, <code>find</code>, <code>findAll</code>, <code>replaceAll</code>, <code>splitOn</code>), <code>words</code>, <code>sig</code>, <code>int</code>, <code>isInt</code>, and list functions (<code>map</code>, <code>filter</code>, <code>any</code>, <code>all</code>, <code>count</code>, <code>fold</code>, <code>uniq</code>, <code>values</code>).</li>
+      <li><strong>JSON redesign</strong>: <code>field</code> and <code>at</code> give a json null instead of a Result when something is missing, <code>has</code>, <code>isNull</code> and <code>truthy</code> test values, and <code>str(j)</code> renders readable text.</li>
+      <li><strong>Modules</strong>: <code>import "./x.vow" as x</code>, namespaced functions and structs, private <code>_names</code>, and errors that name the file.</li>
+      <li><strong>Math, random and dates</strong>: <code>sqrt</code>, <code>pow</code>, trigonometry, <code>random</code> and <code>randomInt</code> with <code>--seed</code>, and UTC date functions.</li>
+    </ul>
+  </div>
+</section>
+
+<script>
+// Plain script, not a module: navigation must work even if the language bundle fails to load.
+// The repository URL lives here and only here; change it in one edit before launch.
+window.VOW_REPO = 'https://github.com/JakeBurwick/vow.git';
+(function () {
+  var repo = window.VOW_REPO;
+  var web = repo.replace(/\.git$/, '');
+  document.querySelectorAll('[data-repo]').forEach(function (el) { el.textContent = repo; });
+  document.querySelectorAll('[data-repo-link]').forEach(function (el) { el.href = web; });
+  document.querySelectorAll('[data-repo-plain]').forEach(function (el) { el.textContent = web.replace(/^https?:\/\//, ''); });
+})();
+
+var VIEWS = ['home', 'learn', 'play', 'docs'];
+// Anchors that live inside a view: going to them shows the view, then scrolls.
+var ANCHORS = { install: 'home', benchmarks: 'docs', ref: 'docs', changelog: 'docs' };
+var HASH_FOR = { home: 'home', learn: 'learn', play: 'playground', docs: 'docs' };
+
+function showView(view, opts) {
+  opts = opts || {};
+  VIEWS.forEach(function (v) {
+    var el = document.getElementById('view-' + v);
+    el.hidden = v !== view;
+    el.style.display = v === view ? '' : 'none';
+  });
+  document.querySelectorAll('.tab').forEach(function (t) {
+    var on = t.dataset.view === view;
+    t.classList.toggle('active', on);
+    if (on) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current');
+  });
+  if (!opts.keepHash) {
+    var h = opts.hash || HASH_FOR[view];
+    if (location.hash !== '#' + h) history.replaceState(null, '', '#' + h);
+  }
+  if (!opts.anchor) {
+    var page = document.getElementById('view-' + view);
+    if (page && view !== 'play') page.scrollTop = 0;
+  }
+  if (view === 'learn' && window.vowLearn) window.vowLearn.show();
+}
+
+function go(target) {
+  if (ANCHORS[target]) {
+    showView(ANCHORS[target], { hash: target, anchor: true });
+    var a = document.getElementById(target);
+    if (a) a.scrollIntoView({ block: 'start' });
+    return;
+  }
+  showView(target);
+}
+
+function routeFromHash() {
+  var h = location.hash.slice(1);
+  if (h.indexOf('code=') === 0) return showView('play', { keepHash: true });
+  var m = /^learn(?:-(\d+))?$/.exec(h);
+  if (m) {
+    if (m[1] && window.vowLearn) window.vowLearn.select(Number(m[1]), { fromHash: true });
+    return showView('learn', { keepHash: true });
+  }
+  if (h === 'playground') return showView('play', { keepHash: true });
+  if (VIEWS.indexOf(h) >= 0) return showView(h, { keepHash: true });
+  if (ANCHORS[h]) return go(h);
+  showView('home', { keepHash: true });
+}
+
+document.querySelectorAll('.tab').forEach(function (t) {
+  t.addEventListener('click', function () { showView(t.dataset.view); });
+});
+document.addEventListener('click', function (e) {
+  var el = e.target.closest('[data-go]');
+  if (!el) return;
+  e.preventDefault();
+  go(el.dataset.go);
+});
+document.addEventListener('click', function (e) {
+  var btn = e.target.closest('[data-copy-from]');
+  if (!btn) return;
+  var text = document.getElementById(btn.dataset.copyFrom).textContent;
+  navigator.clipboard.writeText(text).then(function () {
+    btn.textContent = 'Copied';
+    setTimeout(function () { btn.textContent = 'Copy'; }, 1500);
+  }, function () { btn.textContent = 'Select and copy'; });
+});
+window.addEventListener('hashchange', routeFromHash);
+
+// If the playground module never boots, say so instead of leaving dead buttons.
+setTimeout(function () {
+  if (window.__vowReady) return;
+  var out = document.getElementById('output');
+  if (out) out.textContent = 'The playground did not load. Reload the page to try again.';
+}, 6000);
+</script>
+<script src="site/learn/lessons.js"></script>
+<script src="learn.js"></script>
+<script>routeFromHash();</script>
+<script type="module" src="app.js"></script>
+</body>
+</html>

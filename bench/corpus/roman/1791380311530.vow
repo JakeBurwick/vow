@@ -1,0 +1,108 @@
+fn isAllDigits(s) {
+  if len(s) == 0 {
+    return false
+  }
+  for i in range(0, len(s)) {
+    let c = s[i]
+    if not (c >= "0" and c <= "9") {
+      return false
+    }
+  }
+  return true
+}
+
+fn decimalToRoman(n) {
+  let values = [1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1]
+  let numerals = ["M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"]
+  let result = ""
+  let current = n
+
+  for i in range(0, len(values)) {
+    let val = values[i]
+    let num = numerals[i]
+    while current >= val {
+      result = result + num
+      current = current - val
+    }
+  }
+
+  return result
+}
+
+fn romanToDecimal(s) {
+  let romanValue = {"I": 1, "V": 5, "X": 10, "L": 50, "C": 100, "D": 500, "M": 1000}
+
+  let total = 0
+  for i in range(0, len(s)) {
+    let c = s[i]
+
+    if not has(romanValue, c) {
+      return err("bad")
+    }
+
+    let val = romanValue[c]
+    let nextVal = 0
+
+    if i + 1 < len(s) {
+      let nextChar = s[i + 1]
+      if has(romanValue, nextChar) {
+        nextVal = romanValue[nextChar]
+      }
+    }
+
+    if nextVal > val {
+      total = total - val
+    } else {
+      total = total + val
+    }
+  }
+
+  return ok(total)
+}
+
+fn isValidRoman(s) {
+  match romanToDecimal(s) {
+    ok(n) => {
+      if n < 1 or n > 3999 {
+        return false
+      }
+      let back = decimalToRoman(n)
+      return back == s
+    }
+    err(e) => return false
+  }
+}
+
+let arg = args()[0]
+
+if arg == "" {
+  print("error")
+  return
+}
+
+if isAllDigits(arg) {
+  if arg[0] == "0" {
+    print("error")
+    return
+  }
+
+  match num(arg) {
+    ok(n) => {
+      if n < 1 or n > 3999 {
+        print("error")
+      } else {
+        print(decimalToRoman(n))
+      }
+    }
+    err(e) => print("error")
+  }
+} else {
+  if isValidRoman(arg) {
+    match romanToDecimal(arg) {
+      ok(n) => print(str(n))
+      err(e) => print("error")
+    }
+  } else {
+    print("error")
+  }
+}

@@ -1,0 +1,310 @@
+fn getValue(data, path) {
+  if jsonType(data) != "object" {
+    return err("not an object")
+  }
+  let parts = split(path, ".")
+  let current = data
+  for part in parts {
+    if jsonType(current) != "object" {
+      return ok(parseJson("null")?)
+    }
+    match get(current, part) {
+      ok(v) => current = v
+      err(e) => return ok(parseJson("null")?)
+    }
+  }
+  return ok(current)
+}
+
+fn isTruthy(j) {
+  let t = jsonType(j)
+  if t == "null" { return false }
+  if t == "bool" {
+    return match jsonBool(j) {
+      ok(b) => b
+      err(e) => false
+    }
+  }
+  if t == "number" {
+    return match jsonNum(j) {
+      ok(n) => n != 0
+      err(e) => false
+    }
+  }
+  if t == "string" {
+    return match jsonStr(j) {
+      ok(s) => len(s) > 0
+      err(e) => false
+    }
+  }
+  if t == "array" {
+    return len(jsonList(j)) > 0
+  }
+  if t == "object" {
+    return len(jsonKeys(j)) > 0
+  }
+  return false
+}
+
+fn valueToString(j) {
+  let t = jsonType(j)
+  if t == "null" { return "" }
+  if t == "string" {
+    return match jsonStr(j) {
+      ok(s) => s
+      err(e) => ""
+    }
+  }
+  if t == "number" {
+    return match jsonNum(j) {
+      ok(n) => {
+        if isInt(n) {
+          str(n)
+        } else {
+          str(n)
+        }
+      }
+      err(e) => ""
+    }
+  }
+  if t == "bool" {
+    return match jsonBool(j) {
+      ok(b) => if b { "true" } else { "false" }
+      err(e) => ""
+    }
+  }
+  return err("not printable")
+}
+
+struct ParseState {
+  template,
+  pos,
+  data,
+  stack
+}
+
+fn parseTemplate(template, data) {
+  let state = ParseState {
+    template: template,
+    pos: 0,
+    data: data,
+    stack: []
+  }
+  match parseBlock(state, "") {
+    ok(result) => return ok(result)
+    err(e) => return err(e)
+  }
+}
+
+fn parseBlock(state, endTag) {
+  let output = ""
+  while state.pos < len(state.template) {
+    if state.pos + 1 < len(state.template) and state.template[state.pos] == "{" and state.template[state.pos + 1] == "{" {
+      state.pos = state.pos + 2
+      let tag = ""
+      while state.pos < len(state.template) and not (state.template[state.pos] == "}" and state.pos + 1 < len(state.template) and state.template[state.pos + 1] == "}") {
+        tag = tag + state.template[state.pos]
+        state.pos = state.pos + 1
+      }
+      if state.pos + 1 >= len(state.template) {
+        return err("unclosed tag")
+      }
+      state.pos = state.pos + 2
+      let trimmedTag = trim(tag)
+      if startsWith(trimmedTag, "#if ") {
+        let condName = trim(slice(trimmedTag, 4, len(trimmedTag)))
+        match parseIfBlock(state, condName) {
+          ok(content) => output = output + content
+          err(e) => return err(e)
+        }
+      } else if startsWith(trimmedTag, "#each ") {
+        let listName = trim(slice(trimmedTag, 6, len(trimmedTag)))
+        match parseEachBlock(state, listName) {
+          ok(content) => output = output + content
+          err(e) => return err(e)
+        }
+      } else if startsWith(trimmedTag, "/if") {
+        if endTag == "if" {
+          return ok(output)
+        } else {
+          return err("unexpected /if")
+        }
+      } else if startsWith(trimmedTag, "/each") {
+        if endTag == "each" {
+          return ok(output)
+        } else {
+          return err("unexpected /each")
+        }
+      } else {
+        let varName = trimmedTag
+        if varName == "." {
+          match state.stack[0] {
+            ok(current) => {
+              match valueToString(current) {
+                ok(s) => output = output + s
+                err(e) => return err(e)
+              }
+            }
+            err(e) => return err("no current element")
+          }
+        } else {
+          match getValue(state.data, varName) {
+            ok(val) => {
+              match valueToString(val) {
+                ok(s) => output = output + s
+                err(e) => return err(e)
+              }
+            }
+            err(e) => return err(e)
+          }
+        }
+      }
+    } else {
+      output = output + state.template[state.pos]
+      state.pos = state.pos + 1
+    }
+  }
+  if endTag != "" {
+    if endTag == "if" {
+      return err("unclosed if")
+    } else if endTag == "each" {
+      return err("unclosed each")
+    }
+  }
+  return ok(output)
+}
+
+fn parseIfBlock(state, condName) {
+  match getValue(state.data, condName) {
+    ok(condVal) => {
+      if isTruthy(condVal) {
+        match parseBlock(state, "if") {
+          ok(content) => return ok(content)
+          err(e) => return err(e)
+        }
+      } else {
+        skipIfBlock(state)?
+        return ok("")
+      }
+    }
+    err(e) => {
+      skipIfBlock(state)?
+      return ok("")
+    }
+  }
+}
+
+fn skipIfBlock(state) {
+  let depth = 1
+  while state.pos < len(state.template) and depth > 0 {
+    if state.pos + 1 < len(state.template) and state.template[state.pos] == "{" and state.template[state.pos + 1] == "{" {
+      state.pos = state.pos + 2
+      let tag = ""
+      while state.pos < len(state.template) and not (state.template[state.pos] == "}" and state.pos + 1 < len(state.template) and state.template[state.pos + 1] == "}") {
+        tag = tag + state.template[state.pos]
+        state.pos = state.pos + 1
+      }
+      if state.pos + 1 < len(state.template) {
+        state.pos = state.pos + 2
+      }
+      let trimmedTag = trim(tag)
+      if startsWith(trimmedTag, "#if ") {
+        depth = depth + 1
+      } else if startsWith(trimmedTag, "/if") {
+        depth = depth - 1
+      }
+    } else {
+      state.pos = state.pos + 1
+    }
+  }
+  return ok(true)
+}
+
+fn parseEachBlock(state, listName) {
+  match getValue(state.data, listName) {
+    ok(listVal) => {
+      let t = jsonType(listVal)
+      if t != "array" {
+        if t == "null" {
+          skipEachBlock(state)?
+          return ok("")
+        } else {
+          return err("not a list: " + listName)
+        }
+      }
+      let items = jsonList(listVal)
+      let output = ""
+      for item in items {
+        push(state.stack, item)
+        match parseBlock(state, "each") {
+          ok(content) => output = output + content
+          err(e) => return err(e)
+        }
+        pop(state.stack)?
+      }
+      return ok(output)
+    }
+    err(e) => {
+      skipEachBlock(state)?
+      return ok("")
+    }
+  }
+}
+
+fn skipEachBlock(state) {
+  let depth = 1
+  while state.pos < len(state.template) and depth > 0 {
+    if state.pos + 1 < len(state.template) and state.template[state.pos] == "{" and state.template[state.pos + 1] == "{" {
+      state.pos = state.pos + 2
+      let tag = ""
+      while state.pos < len(state.template) and not (state.template[state.pos] == "}" and state.pos + 1 < len(state.template) and state.template[state.pos + 1] == "}") {
+        tag = tag + state.template[state.pos]
+        state.pos = state.pos + 1
+      }
+      if state.pos + 1 < len(state.template) {
+        state.pos = state.pos + 2
+      }
+      let trimmedTag = trim(tag)
+      if startsWith(trimmedTag, "#each ") {
+        depth = depth + 1
+      } else if startsWith(trimmedTag, "/each") {
+        depth = depth - 1
+      }
+    } else {
+      state.pos = state.pos + 1
+    }
+  }
+  return ok(true)
+}
+
+fn main() {
+  let args_list = args()
+  if len(args_list) < 2 {
+    return ok(true)
+  }
+
+  let template = args_list[0]
+  let dataStr = args_list[1]
+
+  match parseJson(dataStr) {
+    ok(dataJson) => {
+      if jsonType(dataJson) != "object" {
+        print("error: bad data")
+        return ok(true)
+      }
+      match parseTemplate(template, dataJson) {
+        ok(output) => print(output)
+        err(e) => print("error: " + e)
+      }
+    }
+    err(e) => {
+      print("error: bad data")
+    }
+  }
+  return ok(true)
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

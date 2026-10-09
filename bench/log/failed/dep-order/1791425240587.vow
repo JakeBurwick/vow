@@ -1,0 +1,161 @@
+struct Package {
+  name,
+  deps
+}
+
+fn parseEntry(entry) {
+  let parts = split(entry, ":")
+  if len(parts) != 2 {
+    return err("bad entry " + entry)
+  }
+  let name = parts[0]
+  let depsStr = parts[1]
+
+  // Check if name is all lowercase letters
+  if len(name) == 0 {
+    return err("bad entry " + entry)
+  }
+  for c in split(name, "") {
+    if not (c >= "a" and c <= "z") {
+      return err("bad entry " + entry)
+    }
+  }
+
+  // Parse dependencies
+  let deps = []
+  if depsStr != "" {
+    deps = split(depsStr, ",")
+    for dep in deps {
+      if len(dep) == 0 {
+        return err("bad entry " + entry)
+      }
+      for c in split(dep, "") {
+        if not (c >= "a" and c <= "z") {
+          return err("bad entry " + entry)
+        }
+      }
+    }
+  }
+
+  return ok(Package { name: name, deps: deps })
+}
+
+fn dfs(node, graph, visited, recStack) {
+  if has(recStack, node) and recStack[node] {
+    return err("cycle")
+  }
+  if has(visited, node) and visited[node] {
+    return ok(true)
+  }
+
+  recStack[node] = true
+  let deps = match get(graph, node) {
+    ok(d) => d
+    err(_) => []
+  }
+
+  for dep in deps {
+    match dfs(dep, graph, visited, recStack) {
+      ok(_) => {}
+      err(e) => {
+        return err(e)
+      }
+    }
+  }
+
+  recStack[node] = false
+  visited[node] = true
+  return ok(true)
+}
+
+fn dfsSort(node, graph, visited, result) {
+  if has(visited, node) {
+    return ok(true)
+  }
+  visited[node] = true
+  let deps = match get(graph, node) {
+    ok(d) => d
+    err(_) => []
+  }
+  for dep in deps {
+    match dfsSort(dep, graph, visited, result) {
+      ok(_) => {}
+      err(e) => {
+        return err(e)
+      }
+    }
+  }
+  push(result, node)
+  return ok(true)
+}
+
+fn main() {
+  let input = args()[0]
+  let entries = split(input, ";")
+  let graph = {}
+  let allPackages = {}
+
+  for entry in entries {
+    if entry == "" {
+      continue
+    }
+    match parseEntry(entry) {
+      ok(pkg) => {
+        let name = pkg.name
+        let deps = pkg.deps
+        graph[name] = deps
+        allPackages[name] = true
+        for dep in deps {
+          allPackages[dep] = true
+        }
+      }
+      err(e) => {
+        print(e)
+        return
+      }
+    }
+  }
+
+  // Add missing packages with empty dependencies
+  for pkg in keys(allPackages) {
+    if not has(graph, pkg) {
+      graph[pkg] = []
+    }
+  }
+
+  // Check for cycles
+  let visited = {}
+  let recStack = {}
+  for node in keys(graph) {
+    match dfs(node, graph, visited, recStack) {
+      ok(_) => {}
+      err(e) => {
+        if e == "cycle" {
+          print("error: cycle")
+        } else {
+          print(e)
+        }
+        return
+      }
+    }
+  }
+
+  // Topological sort
+  let sorted = sort(keys(graph))
+  let visited2 = {}
+  let result = []
+
+  for node in sorted {
+    match dfsSort(node, graph, visited2, result) {
+      ok(_) => {}
+      err(e) => {
+        print(e)
+        return
+      }
+    }
+  }
+
+  print(join(result, " "))
+}
+
+main()

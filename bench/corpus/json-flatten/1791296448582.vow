@@ -1,0 +1,106 @@
+fn flatten(val, prefix, result_list) {
+  let json_type = jsonType(val)
+
+  if json_type == "object" {
+    let keys_list = jsonKeys(val)
+    let sorted_keys = sort(keys_list)
+
+    if len(sorted_keys) == 0 {
+      // Empty object is a leaf
+      let json_path = toJson(prefix)
+      push(result_list, json_path + ":{}")
+    } else {
+      for key in sorted_keys {
+        match get(val, key) {
+          ok(child) => {
+            let new_prefix = if prefix == "" { key } else { prefix + "." + key }
+            flatten(child, new_prefix, result_list)
+          }
+          err(e) => {}
+        }
+      }
+    }
+  } else if json_type == "array" {
+    let items = jsonList(val)
+    if len(items) == 0 {
+      // Empty array is a leaf
+      let json_path = toJson(prefix)
+      push(result_list, json_path + ":[]")
+    } else {
+      for i in range(0, len(items)) {
+        let child = items[i]
+        let new_prefix = prefix + "[" + str(i) + "]"
+        flatten(child, new_prefix, result_list)
+      }
+    }
+  } else if json_type == "string" {
+    let str_val = match jsonStr(val) {
+      ok(s) => s
+      err(e) => ""
+    }
+    let json_path = toJson(prefix)
+    let json_val = toJson(str_val)
+    push(result_list, json_path + ":" + json_val)
+  } else if json_type == "number" {
+    let num_val = match jsonNum(val) {
+      ok(n) => n
+      err(e) => 0
+    }
+    let json_path = toJson(prefix)
+    let json_val = str(num_val)
+    push(result_list, json_path + ":" + json_val)
+  } else if json_type == "bool" {
+    let bool_val = match jsonBool(val) {
+      ok(b) => b
+      err(e) => false
+    }
+    let json_path = toJson(prefix)
+    let json_val = if bool_val { "true" } else { "false" }
+    push(result_list, json_path + ":" + json_val)
+  } else if json_type == "null" {
+    let json_path = toJson(prefix)
+    push(result_list, json_path + ":null")
+  }
+}
+
+fn main() {
+  let args_list = args()
+
+  if len(args_list) < 1 {
+    print(`{"error":"bad json"}`)
+    return
+  }
+
+  let json_str = args_list[0]
+
+  match parseJson(json_str) {
+    ok(val) => {
+      let json_type = jsonType(val)
+      if json_type == "object" {
+        let keys_list = jsonKeys(val)
+        if len(keys_list) == 0 {
+          print("{}")
+          return
+        }
+      } else if json_type == "array" {
+        let items = jsonList(val)
+        if len(items) == 0 {
+          print("{}")
+          return
+        }
+      } else {
+        print(`{"error":"not a container"}`)
+        return
+      }
+
+      let result_list = []
+      flatten(val, "", result_list)
+      print("{" + join(result_list, ",") + "}")
+    }
+    err(e) => {
+      print(`{"error":"bad json"}`)
+    }
+  }
+}
+
+main()

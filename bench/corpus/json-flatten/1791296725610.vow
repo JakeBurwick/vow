@@ -1,0 +1,114 @@
+fn flattenJson(value, path, result) {
+  let t = jsonType(value)
+
+  if t == "object" {
+    let keys = jsonKeys(value)
+    keys = sort(keys)
+
+    if len(keys) == 0 {
+      push(result, [path, "{}"])
+    } else {
+      for key in keys {
+        match get(value, key) {
+          ok(v) => {
+            let new_path = if path == "" { key } else { path + "." + key }
+            flattenJson(v, new_path, result)
+          }
+          err(_) => {}
+        }
+      }
+    }
+  } else if t == "array" {
+    let items = jsonList(value)
+
+    if len(items) == 0 {
+      push(result, [path, "[]"])
+    } else {
+      for i in range(0, len(items)) {
+        let v = items[i]
+        let new_path = path + "[" + str(i) + "]"
+        flattenJson(v, new_path, result)
+      }
+    }
+  } else if t == "string" {
+    match jsonStr(value) {
+      ok(s) => {
+        push(result, [path, toJson(s)])
+      }
+      err(_) => {}
+    }
+  } else if t == "number" {
+    match jsonNum(value) {
+      ok(n) => {
+        push(result, [path, str(n)])
+      }
+      err(_) => {}
+    }
+  } else if t == "bool" {
+    match jsonBool(value) {
+      ok(b) => {
+        let formatted = if b { "true" } else { "false" }
+        push(result, [path, formatted])
+      }
+      err(_) => {}
+    }
+  } else if t == "null" {
+    push(result, [path, "null"])
+  }
+}
+
+fn main() {
+  let json_str = args()[0]
+
+  match parseJson(json_str) {
+    ok(j) => {
+      let t = jsonType(j)
+      if t != "object" and t != "array" {
+        print("{\"error\":\"not a container\"}")
+        return ok(true)
+      }
+
+      // Check if root is empty
+      let is_empty = false
+      if t == "object" {
+        let keys = jsonKeys(j)
+        is_empty = len(keys) == 0
+      } else if t == "array" {
+        let items = jsonList(j)
+        is_empty = len(items) == 0
+      }
+
+      if is_empty {
+        print("{}")
+        return ok(true)
+      }
+
+      let entries = []
+      flattenJson(j, "", entries)
+
+      if len(entries) == 0 {
+        print("{}")
+        return ok(true)
+      }
+
+      let parts = []
+      for entry in entries {
+        let path = entry[0]
+        let value = entry[1]
+        push(parts, toJson(path) + ":" + value)
+      }
+
+      print("{" + join(parts, ",") + "}")
+      return ok(true)
+    }
+    err(e) => {
+      print("{\"error\":\"bad json\"}")
+      return ok(true)
+    }
+  }
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

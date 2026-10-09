@@ -1,0 +1,2 @@
+match readFile("data.txt") { ok(t) => print(len(lines(t)))  err(e) => print(e) }
+match writeFile("data.txt", "999") { ok(v) => print("overwrote")  err(e) => print(e) }

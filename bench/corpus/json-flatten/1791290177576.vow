@@ -1,0 +1,174 @@
+fn main() {
+  let argv = args()
+  if len(argv) < 1 {
+    print("{\"error\":\"bad json\"}")
+    return ok(true)
+  }
+
+  let input = argv[0]
+
+  match parseJson(input) {
+    ok(j) => {
+      let jtype = jsonType(j)
+      if jtype != "object" and jtype != "array" {
+        print("{\"error\":\"not a container\"}")
+        return ok(true)
+      }
+
+      // Check if it's an empty container at top level
+      if jtype == "object" {
+        let keys = jsonKeys(j)
+        if len(keys) == 0 {
+          print("{}")
+          return ok(true)
+        }
+      } else if jtype == "array" {
+        let items = jsonList(j)
+        if len(items) == 0 {
+          print("{}")
+          return ok(true)
+        }
+      }
+
+      // Flatten the JSON
+      let result = {}
+      flattenJson(j, "", result)
+
+      // Build output string
+      let entries = []
+      let out_keys = keys(result)
+      let sorted_keys = sort(out_keys)
+
+      for key in sorted_keys {
+        let value = result[key]
+        let key_escaped = escapeJsonString(key)
+        push(entries, key_escaped + ":" + value)
+      }
+
+      print("{" + join(entries, ",") + "}")
+      return ok(true)
+    }
+    err(e) => {
+      print("{\"error\":\"bad json\"}")
+      return ok(true)
+    }
+  }
+}
+
+fn flattenJson(j, path, result) {
+  let jtype = jsonType(j)
+
+  if jtype == "object" {
+    let keys = jsonKeys(j)
+    let sorted_keys = sort(keys)
+
+    for key in sorted_keys {
+      match get(j, key) {
+        ok(value) => {
+          let new_path = if path == "" { key } else { path + "." + key }
+          processValue(value, new_path, result)
+        }
+        err(e) => {}
+      }
+    }
+  } else if jtype == "array" {
+    let items = jsonList(j)
+
+    for i in range(0, len(items)) {
+      let item = items[i]
+      let new_path = path + "[" + str(i) + "]"
+      match processValue(item, new_path, result) {
+        ok(v) => {}
+        err(e) => {}
+      }
+    }
+  }
+
+  return ok(true)
+}
+
+fn processValue(value, path, result) {
+  let value_type = jsonType(value)
+
+  if value_type == "object" {
+    let sub_keys = jsonKeys(value)
+    if len(sub_keys) == 0 {
+      result[path] = "{}"
+    } else {
+      match flattenJson(value, path, result) {
+        ok(v) => {}
+        err(e) => {}
+      }
+    }
+  } else if value_type == "array" {
+    let items = jsonList(value)
+    if len(items) == 0 {
+      result[path] = "[]"
+    } else {
+      match flattenJson(value, path, result) {
+        ok(v) => {}
+        err(e) => {}
+      }
+    }
+  } else if value_type == "string" {
+    match jsonStr(value) {
+      ok(s) => {
+        result[path] = escapeJsonString(s)
+      }
+      err(e) => {}
+    }
+  } else if value_type == "number" {
+    match jsonNum(value) {
+      ok(n) => {
+        result[path] = formatNumber(n)
+      }
+      err(e) => {}
+    }
+  } else if value_type == "bool" {
+    match jsonBool(value) {
+      ok(b) => {
+        result[path] = if b { "true" } else { "false" }
+      }
+      err(e) => {}
+    }
+  } else if value_type == "null" {
+    result[path] = "null"
+  }
+
+  return ok(true)
+}
+
+fn escapeJsonString(s) {
+  let escaped = ""
+  for i in range(0, len(s)) {
+    let c = s[i]
+    if c == "\"" {
+      escaped = escaped + "\\\""
+    } else if c == "\\" {
+      escaped = escaped + "\\\\"
+    } else {
+      escaped = escaped + c
+    }
+  }
+  return "\"" + escaped + "\""
+}
+
+fn formatNumber(n) {
+  // Check if it's a whole number
+  let floored = floor(n)
+  if n == floored {
+    // It's a whole number, format without decimals
+    if n >= 0 {
+      return str(floored)
+    } else {
+      return str(floored)
+    }
+  } else {
+    return str(n)
+  }
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

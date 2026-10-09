@@ -1,0 +1,22 @@
+// nested imports (main -> shapes -> lib/vec -> lib/num), structs and generics across modules,
+// closures returning module fns
+import "./shapes.vow" as shapes
+import "./lib/vec.vow" as vec
+
+let a = vec.V { x: 1, y: 2 }
+let b = vec.add(a, vec.V { x: 3, y: 4 })
+print(b, b.x + b.y, vec.len2(b))
+let sq = shapes.Square { corner: a, side: 2 }
+print(shapes.area(sq), shapes.describe(sq))
+print(vec.pick([1, 2, 3], 1), vec.pick(["x", "y"], 0), vec.pick([a, b], 1).y)
+fn chooser(big) {
+  if big { return vec.len2 }
+  return v => v.x
+}
+let f = chooser(true)
+let g = chooser(false)
+print(f(b), g(b))
+print(map([a, b], vec.len2), sortBy([b, a], vec.len2) == [a, b])
+let p = shapes.Square { corner: vec.V { x: 0, y: 0 }, side: 1 }
+p.side = 5
+print(p == shapes.Square { corner: vec.V { x: 0, y: 0 }, side: 5 }, toJson(p))

@@ -1,0 +1,136 @@
+// portfolio.vow: read holdings, price them live, flag risk, write a report.
+// usage: node cli.js programs/portfolio.vow programs/holdings.json [report.md]
+//
+// Shows off: structs, fs + net capabilities, ? propagation, raw strings for JSON,
+// contracts, sortBy with a lambda key, and no way to crash on bad data.
+
+struct Position { sym, shares, cost }
+struct Book { cap, positions }
+struct Priced { pos, price, value, pnl, pnlPct }
+
+// ---------- small helpers ----------
+
+fn round2(x) { return floor(x * 100 + 0.5) / 100 }
+
+fn money(x) {
+  let r = round2(x)
+  if r < 0 { return "-$" + str(abs(r)) }
+  return "$" + str(r)
+}
+
+fn signed(x) {
+  if x >= 0 { return "+" + str(round2(x)) }
+  return str(round2(x))
+}
+
+fn pad(s, n) {
+  let out = s
+  while len(out) < n { out = out + " " }
+  return out
+}
+
+fn pct(part, whole)
+  expects whole > 0
+{
+  return part / whole * 100
+}
+
+// ---------- loading ----------
+
+fn parsePosition(j) {
+  let sym = jsonStr(get(j, "sym")?)?
+  let shares = jsonNum(get(j, "shares")?)?
+  let cost = jsonNum(get(j, "cost")?)?
+  if shares <= 0 { return err("${sym}: shares must be positive") }
+  return ok(Position { sym: upper(sym), shares: shares, cost: cost })
+}
+
+fn loadHoldings(path) uses fs {
+  let text = readFile(path)?
+  let root = parseJson(text)?
+  let cap = jsonNum(get(root, "cap_pct")?)?
+  let out = []
+  for p in jsonList(get(root, "positions")?) {
+    push(out, parsePosition(p)?)
+  }
+  return ok(Book { cap: cap, positions: out })
+}
+
+fn livePrice(sym) uses net {
+  let body = httpGet("https://query1.finance.yahoo.com/v8/finance/chart/${sym}?range=1d&interval=1d")?
+  let j = parseJson(body)?
+  let first = get(jsonList(get(get(j, "chart")?, "result")?), 0)?
+  return jsonNum(get(get(first, "meta")?, "regularMarketPrice")?)
+}
+
+fn price(p, px) {
+  let value = p.shares * px
+  let basis = p.shares * p.cost
+  return Priced { pos: p, price: px, value: value, pnl: value - basis, pnlPct: pct(value - basis, basis) }
+}
+
+// ---------- main ----------
+
+let argv = args()
+if len(argv) == 0 { argv = ["programs/holdings.json"] }
+
+let book = match loadHoldings(argv[0]) {
+  ok(b) => b
+  err(e) => {
+    print("could not load holdings: ${e}")
+    Book { cap: 0, positions: [] }
+  }
+}
+
+let priced = []
+let failed = []
+for p in book.positions {
+  match livePrice(p.sym) {
+    ok(px) => push(priced, price(p, px))
+    err(e) => push(failed, p.sym)
+  }
+}
+
+if len(priced) > 0 {
+  let total = 0
+  let basis = 0
+  for q in priced {
+    total = total + q.value
+    basis = basis + q.pos.shares * q.pos.cost
+  }
+  let cap = book.cap
+  let ranked = sortBy(priced, q => 0 - q.value) // biggest first
+
+  let lines = []
+  push(lines, pad("SYM", 6) + pad("VALUE", 12) + pad("WEIGHT", 9) + pad("P&L", 12) + "P&L %")
+  let over = []
+  for q in ranked {
+    let w = pct(q.value, total)
+    let flag = ""
+    if w > cap {
+      flag = "  << over ${cap}% cap"
+      push(over, q.pos.sym)
+    }
+    push(lines, pad(q.pos.sym, 6) + pad(money(q.value), 12) + pad(str(round2(w)) + "%", 9) + pad(money(q.pnl), 12) + signed(q.pnlPct) + "%" + flag)
+  }
+  push(lines, "")
+  push(lines, "total ${money(total)}   cost basis ${money(basis)}   P&L ${money(total - basis)} (${signed(pct(total - basis, basis))}%)")
+  if len(over) > 0 { push(lines, "over the cap: " + join(over, ", ")) }
+  if len(failed) > 0 { push(lines, "no price for: " + join(failed, ", ")) }
+
+  for l in lines { print(l) }
+
+  // machine-readable summary, written with a raw string so the braces need no escaping
+  let summary = `{"total":` + str(round2(total)) + `,"pnl":` + str(round2(total - basis)) + `,"over_cap":` + toJson(over) + `}`
+  print("")
+  print(summary)
+
+  if len(argv) > 1 {
+    match writeFile(argv[1], "# Portfolio report\n\n```\n" + join(lines, "\n") + "\n```\n") {
+      ok(w) => print("report written to ${argv[1]}")
+      err(e) => print("could not write report: ${e}")
+    }
+  }
+} else {
+  print("nothing priced")
+}

@@ -1,0 +1,3 @@
+import "./parse.vow" as parse
+print(parse.total(["1", "2"]))
+print(parse.total(["1", "x"]))

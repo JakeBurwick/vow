@@ -1,0 +1,2 @@
+import "./b.vow" as b
+fn fa() { return 1 }

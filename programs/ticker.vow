@@ -1,0 +1,65 @@
+// ticker.vow: live stock check, written in Vow.
+// usage: node cli.js programs/ticker.vow ACN AAPL NVDA
+
+struct Quote { sym, price, first, closes }
+
+fn pctChange(from, to)
+  expects from > 0
+{
+  return (to - from) / from * 100
+}
+
+fn round2(x) {
+  return floor(x * 100 + 0.5) / 100
+}
+
+// one character per day, scaled between the window's low and high
+fn spark(xs) {
+  let bars = ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"]
+  let lo = xs[0]
+  let hi = xs[0]
+  for x in xs {
+    lo = min(lo, x)
+    hi = max(hi, x)
+  }
+  let out = ""
+  for x in xs {
+    let i = 0
+    if hi > lo { i = floor((x - lo) / (hi - lo) * 7) }
+    out = out + bars[i]
+  }
+  return out
+}
+
+fn fetchQuote(sym) uses net {
+  let body = httpGet("https://query1.finance.yahoo.com/v8/finance/chart/${sym}?range=1mo&interval=1d")?
+  let j = parseJson(body)?
+  let result = jsonList(get(get(j, "chart")?, "result")?)
+  let first = get(result, 0)?
+  let price = jsonNum(get(get(first, "meta")?, "regularMarketPrice")?)?
+  let quote0 = get(jsonList(get(get(first, "indicators")?, "quote")?), 0)?
+  let closes = []
+  for c in jsonList(get(quote0, "close")?) {
+    match jsonNum(c) {
+      ok(n) => push(closes, n)
+      err(e) => continue
+    }
+  }
+  if len(closes) == 0 { return err("no price history for ${sym}") }
+  return ok(Quote { sym: sym, price: price, first: closes[0], closes: closes })
+}
+
+let syms = args()
+if len(syms) == 0 { syms = ["ACN", "AAPL", "NVDA"] }
+
+for s in syms {
+  match fetchQuote(upper(s)) {
+    ok(q) => {
+      let chg = round2(pctChange(q.first, q.price))
+      let sign = ""
+      if chg >= 0 { sign = "+" }
+      print("${q.sym}  $${round2(q.price)}  ${sign}${chg}% 1mo  ${spark(q.closes)}")
+    }
+    err(e) => print("${upper(s)}  could not load: ${e}")
+  }
+}

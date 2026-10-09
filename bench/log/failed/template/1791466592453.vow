@@ -1,0 +1,302 @@
+fn main() {
+  let args_list = args()
+  let template = match get(args_list, 0) { ok(s) => s err(_) => "" }
+  let data_str = match get(args_list, 1) { ok(s) => s err(_) => "" }
+
+  match parseJson(data_str) {
+    ok(data) => {
+      if jsonType(data) != "object" {
+        print("error: bad data")
+        return
+      }
+      let empty_context = match parseJson("{}") {
+        ok(j) => j
+        err(_) => data
+      }
+      match processTemplate(template, data, empty_context) {
+        ok(result) => print(result)
+        err(e) => print(e)
+      }
+    }
+    err(_) => {
+      print("error: bad data")
+    }
+  }
+}
+
+fn processTemplate(template, data, context) {
+  let pos = 0
+  let result = ""
+
+  while pos < len(template) {
+    // Find next {{
+    let idx = -1
+    let i = pos
+    while i + 1 < len(template) {
+      if template[i] == "{" and template[i + 1] == "{" {
+        idx = i
+        break
+      }
+      i = i + 1
+    }
+
+    if idx == -1 {
+      result = result + slice(template, pos, len(template))
+      break
+    }
+    result = result + slice(template, pos, idx)
+
+    // Find closing }}
+    let end_idx = -1
+    let j = idx + 2
+    while j + 1 < len(template) {
+      if template[j] == "}" and template[j + 1] == "}" {
+        end_idx = j
+        break
+      }
+      j = j + 1
+    }
+
+    if end_idx == -1 {
+      return err("error: unclosed if")
+    }
+
+    let tag = slice(template, idx + 2, end_idx)
+    let tag_trimmed = trim(tag)
+
+    if startsWith(tag_trimmed, "#if ") {
+      let cond_name = trim(slice(tag_trimmed, 4, len(tag_trimmed)))
+      match findClosingTag(template, end_idx + 2, "if") {
+        ok(close_data) => {
+          let close_pos = close_data[0]
+          let block_body = slice(template, end_idx + 2, close_pos)
+
+          // Find end of closing tag
+          let close_tag_end = -1
+          let k = close_pos + 2
+          while k + 1 < len(template) {
+            if template[k] == "}" and template[k + 1] == "}" {
+              close_tag_end = k
+              break
+            }
+            k = k + 1
+          }
+          if close_tag_end == -1 {
+            return err("error: unclosed if")
+          }
+
+          let cond_value = lookup(data, context, cond_name)
+          if isTruthy(cond_value) {
+            match processTemplate(block_body, data, context) {
+              ok(block_result) => result = result + block_result
+              err(e) => return err(e)
+            }
+          }
+          pos = close_tag_end + 2
+        }
+        err(e) => return err(e)
+      }
+    } else if startsWith(tag_trimmed, "#each ") {
+      let list_name = trim(slice(tag_trimmed, 6, len(tag_trimmed)))
+      match findClosingTag(template, end_idx + 2, "each") {
+        ok(close_data) => {
+          let close_pos = close_data[0]
+          let block_body = slice(template, end_idx + 2, close_pos)
+
+          // Find end of closing tag
+          let close_tag_end = -1
+          let k = close_pos + 2
+          while k + 1 < len(template) {
+            if template[k] == "}" and template[k + 1] == "}" {
+              close_tag_end = k
+              break
+            }
+            k = k + 1
+          }
+          if close_tag_end == -1 {
+            return err("error: unclosed each")
+          }
+
+          let list_value = lookup(data, context, list_name)
+          if jsonType(list_value) == "array" {
+            let items = jsonList(list_value)
+            for item in items {
+              match processTemplate(block_body, data, item) {
+                ok(block_result) => result = result + block_result
+                err(e) => return err(e)
+              }
+            }
+          } else if jsonType(list_value) == "null" {
+            // missing name renders nothing
+          } else {
+            return err("error: not a list: " + list_name)
+          }
+          pos = close_tag_end + 2
+        }
+        err(e) => return err(e)
+      }
+    } else if startsWith(tag_trimmed, "/if") {
+      return err("error: unexpected /if")
+    } else if startsWith(tag_trimmed, "/each") {
+      return err("error: unexpected /each")
+    } else {
+      // Variable substitution
+      let var_name = trim(tag)
+      let value = lookup(data, context, var_name)
+      match formatValue(value) {
+        ok(formatted) => result = result + formatted
+        err(e) => return err(e)
+      }
+      pos = end_idx + 2
+    }
+  }
+
+  return ok(result)
+}
+
+fn findClosingTag(template, start_pos, block_type) {
+  let pos = start_pos
+  let depth = 1
+
+  while pos < len(template) {
+    // Find next {{ tag
+    let next_tag_idx = -1
+    let i = pos
+    while i + 1 < len(template) {
+      if template[i] == "{" and template[i + 1] == "{" {
+        next_tag_idx = i
+        break
+      }
+      i = i + 1
+    }
+
+    if next_tag_idx == -1 {
+      return err("error: unclosed " + block_type)
+    }
+
+    // Find closing }}
+    let tag_end = -1
+    let j = next_tag_idx + 2
+    while j + 1 < len(template) {
+      if template[j] == "}" and template[j + 1] == "}" {
+        tag_end = j
+        break
+      }
+      j = j + 1
+    }
+
+    if tag_end == -1 {
+      return err("error: unclosed " + block_type)
+    }
+
+    let tag_content = slice(template, next_tag_idx + 2, tag_end)
+    let tag_trimmed = trim(tag_content)
+
+    // Check what kind of tag this is
+    if startsWith(tag_trimmed, "#" + block_type) {
+      depth = depth + 1
+      pos = tag_end + 2
+    } else if startsWith(tag_trimmed, "/" + block_type) {
+      depth = depth - 1
+      if depth == 0 {
+        return ok([next_tag_idx])
+      }
+      pos = tag_end + 2
+    } else {
+      pos = tag_end + 2
+    }
+  }
+
+  return err("error: unclosed " + block_type)
+}
+
+fn lookup(data, context, name) {
+  if name == "." {
+    return context
+  }
+
+  if jsonType(context) == "object" {
+    match get(context, name) {
+      ok(v) => {
+        if jsonType(v) != "null" {
+          return v
+        }
+      }
+      err(_) => {}
+    }
+  }
+
+  match get(data, name) {
+    ok(v) => return v
+    err(_) => return ok(null)
+  }
+}
+
+fn isTruthy(value) {
+  let t = jsonType(value)
+  if t == "null" {
+    return false
+  }
+  if t == "bool" {
+    match jsonBool(value) {
+      ok(b) => return b
+      err(_) => return false
+    }
+  }
+  if t == "number" {
+    match jsonNum(value) {
+      ok(n) => return n != 0
+      err(_) => return false
+    }
+  }
+  if t == "string" {
+    match jsonStr(value) {
+      ok(s) => return len(s) > 0
+      err(_) => return false
+    }
+  }
+  if t == "array" {
+    return len(jsonList(value)) > 0
+  }
+  if t == "object" {
+    return len(jsonKeys(value)) > 0
+  }
+  return false
+}
+
+fn formatValue(value) {
+  let t = jsonType(value)
+  if t == "null" {
+    return ok("")
+  }
+  if t == "bool" {
+    match jsonBool(value) {
+      ok(b) => return ok(if b { "true" } else { "false" })
+      err(_) => return err("error: not printable")
+    }
+  }
+  if t == "number" {
+    match jsonNum(value) {
+      ok(n) => {
+        let s = str(n)
+        if endsWith(s, ".0") {
+          return ok(slice(s, 0, len(s) - 2))
+        }
+        return ok(s)
+      }
+      err(_) => return err("error: not printable")
+    }
+  }
+  if t == "string" {
+    match jsonStr(value) {
+      ok(s) => return ok(s)
+      err(_) => return err("error: not printable")
+    }
+  }
+  if t == "array" or t == "object" {
+    return err("error: not printable")
+  }
+  return err("error: not printable")
+}
+
+main()

@@ -1,0 +1,141 @@
+fn main() {
+  let input = args()[0]
+  let entries = split(input, ";")
+
+  // Parse entries
+  let packages = {}
+
+  for entry in entries {
+    let trimmed = trim(entry)
+    if trimmed == "" {
+      continue
+    }
+
+    // Find exactly one colon
+    let colon_pos = -1
+    for i in range(0, len(trimmed)) {
+      if trimmed[i] == ":" {
+        if colon_pos >= 0 {
+          // Multiple colons
+          print("error: bad entry ${entry}")
+          return ok(true)
+        }
+        colon_pos = i
+      }
+    }
+
+    if colon_pos == -1 {
+      print("error: bad entry ${entry}")
+      return ok(true)
+    }
+
+    let name = slice(trimmed, 0, colon_pos)
+    let deps_str = slice(trimmed, colon_pos + 1, len(trimmed))
+
+    // Validate name is non-empty lowercase
+    if len(name) == 0 {
+      print("error: bad entry ${entry}")
+      return ok(true)
+    }
+
+    for i in range(0, len(name)) {
+      let c = name[i]
+      if not (c >= "a" and c <= "z") {
+        print("error: bad entry ${entry}")
+        return ok(true)
+      }
+    }
+
+    // Parse dependencies
+    let deps = []
+    if deps_str != "" {
+      let deps_list = split(deps_str, ",")
+      for dep in deps_list {
+        if len(dep) == 0 {
+          print("error: bad entry ${entry}")
+          return ok(true)
+        }
+
+        for i in range(0, len(dep)) {
+          let c = dep[i]
+          if not (c >= "a" and c <= "z") {
+            print("error: bad entry ${entry}")
+            return ok(true)
+          }
+        }
+
+        push(deps, dep)
+      }
+    }
+
+    // Merge with existing package if already defined
+    if has(packages, name) {
+      let existing = packages[name]
+      for dep in deps {
+        if not contains(existing, dep) {
+          push(existing, dep)
+        }
+      }
+    } else {
+      packages[name] = deps
+    }
+  }
+
+  // Topological sort with cycle detection (DFS)
+  let state = {}  // 0/missing = unseen, 1 = in progress, 2 = visited
+  let result = []
+
+  fn visit(pkg) {
+    let s = match get(state, pkg) {
+      ok(n) => n
+      err(_) => 0
+    }
+
+    if s == 2 {
+      return ok(true)
+    }
+
+    if s == 1 {
+      return err("cycle")
+    }
+
+    state[pkg] = 1
+
+    let deps = match get(packages, pkg) {
+      ok(d) => d
+      err(_) => []
+    }
+
+    let sorted_deps = sort(deps)
+    for dep in sorted_deps {
+      match visit(dep) {
+        ok(_) => {}
+        err(e) => return err(e)
+      }
+    }
+
+    state[pkg] = 2
+    push(result, pkg)
+    return ok(true)
+  }
+
+  // Visit all packages in alphabetical order
+  let all_packages = sort(keys(packages))
+  for pkg in all_packages {
+    match visit(pkg) {
+      ok(_) => {}
+      err(e) => {
+        print("error: ${e}")
+        return ok(true)
+      }
+    }
+  }
+
+  print(join(result, " "))
+  return ok(true)
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

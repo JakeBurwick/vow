@@ -1,0 +1,165 @@
+// json-flatten: flatten a JSON document into a path-value mapping
+
+fn escapeJsonStr(s) {
+  let result = ""
+  let chars = split(s, "")
+  for i in range(0, len(chars)) {
+    let c = chars[i]
+    if c == "\"" {
+      result = result + "\\"
+      result = result + "\""
+    } else if c == "\\" {
+      result = result + "\\"
+      result = result + "\\"
+    } else {
+      result = result + c
+    }
+  }
+  return result
+}
+
+fn formatNum(n) {
+  let s = str(n)
+  // If it's an integer, remove the decimal point if present
+  if contains(s, ".") {
+    // Round to remove decimals only if it's a whole number
+    if n == round(n) {
+      let asInt = round(n)
+      return str(asInt)
+    }
+  }
+  return s
+}
+
+fn flattenJson(j, path, result) {
+  let jtype = jsonType(j)
+
+  if jtype == "object" {
+    let keys_list = jsonKeys(j)
+
+    if len(keys_list) == 0 {
+      // Empty object is a leaf
+      result[path] = "{}"
+      return
+    }
+
+    let sorted_keys = sort(keys_list)
+    for key in sorted_keys {
+      let next = j[key]
+      let next_type = jsonType(next)
+
+      let new_path = if path == "" {
+        key
+      } else {
+        path + "." + key
+      }
+
+      flattenJson(next, new_path, result)
+    }
+  } else if jtype == "array" {
+    let items = jsonList(j)
+
+    if len(items) == 0 {
+      // Empty array is a leaf
+      result[path] = "[]"
+      return
+    }
+
+    for i in range(0, len(items)) {
+      let item = items[i]
+      let new_path = path + "[" + str(i) + "]"
+      flattenJson(item, new_path, result)
+    }
+  } else if jtype == "string" {
+    match jsonStr(j) {
+      ok(s) => {
+        let escaped = escapeJsonStr(s)
+        result[path] = "\"" + escaped + "\""
+      }
+      err(_) => {}
+    }
+  } else if jtype == "number" {
+    match jsonNum(j) {
+      ok(n) => {
+        result[path] = formatNum(n)
+      }
+      err(_) => {}
+    }
+  } else if jtype == "bool" {
+    match jsonBool(j) {
+      ok(b) => {
+        if b {
+          result[path] = "true"
+        } else {
+          result[path] = "false"
+        }
+      }
+      err(_) => {}
+    }
+  } else if jtype == "null" {
+    result[path] = "null"
+  }
+}
+
+fn main() {
+  let args_list = args()
+
+  if len(args_list) < 1 {
+    print("{\"error\":\"bad json\"}")
+    return ok(true)
+  }
+
+  let json_str = args_list[0]
+
+  match parseJson(json_str) {
+    ok(j) => {
+      let jtype = jsonType(j)
+
+      if jtype != "object" and jtype != "array" {
+        print("{\"error\":\"not a container\"}")
+        return ok(true)
+      }
+
+      // Check if it's an empty top-level container
+      if jtype == "object" {
+        let keys_list = jsonKeys(j)
+        if len(keys_list) == 0 {
+          print("{}")
+          return ok(true)
+        }
+      } else if jtype == "array" {
+        let items = jsonList(j)
+        if len(items) == 0 {
+          print("{}")
+          return ok(true)
+        }
+      }
+
+      let result_map = {}
+      flattenJson(j, "", result_map)
+
+      // Build JSON output
+      let output_parts = []
+      let sorted_paths = sort(keys(result_map))
+
+      for path in sorted_paths {
+        let value = result_map[path]
+        let escaped_path = escapeJsonStr(path)
+        let entry = "\"" + escaped_path + "\":" + value
+        push(output_parts, entry)
+      }
+
+      print("{" + join(output_parts, ",") + "}")
+    }
+    err(e) => {
+      print("{\"error\":\"bad json\"}")
+    }
+  }
+
+  return ok(true)
+}
+
+match main() {
+  ok(_) => {}
+  err(e) => print(e)
+}

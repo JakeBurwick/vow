@@ -1,0 +1,5 @@
+fn dig(j) { return j["b"][5] }
+match parseJson(`{"b": [1]}`) {
+  ok(j) => print(dig(j))
+  err(e) => print(e)
+}

@@ -1,0 +1,49 @@
+fn process() {
+  let args_list = args()
+
+  if len(args_list) == 0 {
+    return err("no input")
+  }
+
+  let input = args_list[0]
+  let j = parseJson(input)?
+  let orders = jsonList(j)
+
+  let totals = {}
+
+  for order in orders {
+    let item = jsonStr(get(order, "item")?)?
+    let qty = jsonNum(get(order, "qty")?)?
+    let price = jsonNum(get(order, "price")?)?
+
+    let revenue = qty * price
+    if has(totals, item) {
+      totals[item] = totals[item] + revenue
+    } else {
+      totals[item] = revenue
+    }
+  }
+
+  return ok(totals)
+}
+
+match process() {
+  ok(totals) => {
+    let keys = keys(totals)
+    keys = sort(keys)
+    let output = "{"
+    let first = true
+    for key in keys {
+      if not first {
+        output = output + ","
+      }
+      output = output + "\"" + key + "\":" + str(totals[key])
+      first = false
+    }
+    output = output + "}"
+    print(output)
+  }
+  err(e) => {
+    print(`{"error":"bad order"}`)
+  }
+}

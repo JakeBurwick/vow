@@ -1,0 +1,460 @@
+{
+ "interval-merge": [
+  {
+   "file": "bench/corpus/interval-merge/1791466472399.vow",
+   "lang": "vow",
+   "passed": 146,
+   "n": 150,
+   "example": {
+    "args": [
+     "20-20,25-26, 1-2,9-13,23-25,26-28"
+    ],
+    "expected": "error: bad interval  1-2",
+    "got": "1-2,9-13,20-20,23-28"
+   }
+  },
+  {
+   "file": "bench/corpus/interval-merge/1791466552583.vow",
+   "lang": "vow",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  },
+  {
+   "file": "bench/corpus/interval-merge/1791466761142.vow",
+   "lang": "vow",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  },
+  {
+   "file": "bench/corpus/interval-merge/1791380091444.ts",
+   "lang": "ts",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  },
+  {
+   "file": "bench/corpus/interval-merge/1791380191847.ts",
+   "lang": "ts",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  },
+  {
+   "file": "bench/corpus/interval-merge/1791380276517.ts",
+   "lang": "ts",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  }
+ ],
+ "roman": [
+  {
+   "file": "bench/corpus/roman/1791466504754.vow",
+   "lang": "vow",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  },
+  {
+   "file": "bench/corpus/roman/1791466569177.vow",
+   "lang": "vow",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  },
+  {
+   "file": "bench/corpus/roman/1791466807691.vow",
+   "lang": "vow",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  },
+  {
+   "file": "bench/corpus/roman/1791380104397.ts",
+   "lang": "ts",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  },
+  {
+   "file": "bench/corpus/roman/1791380208213.ts",
+   "lang": "ts",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  },
+  {
+   "file": "bench/corpus/roman/1791380294698.ts",
+   "lang": "ts",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  }
+ ],
+ "csv-diff": [
+  {
+   "file": "bench/corpus/csv-diff/1791466468907.vow",
+   "lang": "vow",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  },
+  {
+   "file": "bench/corpus/csv-diff/1791466619792.vow",
+   "lang": "vow",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  },
+  {
+   "file": "bench/corpus/csv-diff/1791466730078.vow",
+   "lang": "vow",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  },
+  {
+   "file": "bench/corpus/csv-diff/1791380141162.ts",
+   "lang": "ts",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  },
+  {
+   "file": "bench/corpus/csv-diff/1791380236255.ts",
+   "lang": "ts",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  },
+  {
+   "file": "bench/corpus/csv-diff/1791380307611.ts",
+   "lang": "ts",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  }
+ ],
+ "text-wrap": [
+  {
+   "file": "bench/corpus/text-wrap/1791466484772.vow",
+   "lang": "vow",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  },
+  {
+   "file": "bench/corpus/text-wrap/1791466634128.vow",
+   "lang": "vow",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  },
+  {
+   "file": "bench/corpus/text-wrap/1791466762463.vow",
+   "lang": "vow",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  },
+  {
+   "file": "bench/corpus/text-wrap/1791380148298.ts",
+   "lang": "ts",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  },
+  {
+   "file": "bench/corpus/text-wrap/1791380244283.ts",
+   "lang": "ts",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  },
+  {
+   "file": "bench/corpus/text-wrap/1791380314919.ts",
+   "lang": "ts",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  }
+ ],
+ "dep-order": [
+  {
+   "file": "bench/corpus/dep-order/1791466500180.vow",
+   "lang": "vow",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  },
+  {
+   "file": "bench/corpus/dep-order/1791466626440.vow",
+   "lang": "vow",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  },
+  {
+   "file": "bench/corpus/dep-order/1791466650441.vow",
+   "lang": "vow",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  },
+  {
+   "file": "bench/corpus/dep-order/1791466822222.vow",
+   "lang": "vow",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  },
+  {
+   "file": "bench/corpus/dep-order/1791382527377.ts",
+   "lang": "ts",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  },
+  {
+   "file": "bench/corpus/dep-order/1791382995174.ts",
+   "lang": "ts",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  },
+  {
+   "file": "bench/corpus/dep-order/1791383197395.ts",
+   "lang": "ts",
+   "passed": 139,
+   "n": 150,
+   "example": {
+    "args": [
+     "b:;g:b;c:;d:;a:c,d;g:a"
+    ],
+    "expected": "b c d a g",
+    "got": "c d a b g"
+   }
+  }
+ ],
+ "calc-vars": [
+  {
+   "file": "bench/corpus/calc-vars/1791466568387.vow",
+   "lang": "vow",
+   "passed": 147,
+   "n": 150,
+   "example": {
+    "args": [
+     "b = 1.75\nb = 9.25\nc = 1.25 / b / 11\n"
+    ],
+    "expected": "b = 9.25\nc = 0.01228501229",
+    "got": "b = 9.25\nc = 0.0122850123"
+   }
+  },
+  {
+   "file": "bench/corpus/calc-vars/1791466645938.vow",
+   "lang": "vow",
+   "passed": 147,
+   "n": 150,
+   "example": {
+    "args": [
+     "b = 1.75\nb = 9.25\nc = 1.25 / b / 11\n"
+    ],
+    "expected": "b = 9.25\nc = 0.01228501229",
+    "got": "b = 9.25\nc = 0.0122850123"
+   }
+  },
+  {
+   "file": "bench/corpus/calc-vars/1791466650598.vow",
+   "lang": "vow",
+   "passed": 147,
+   "n": 150,
+   "example": {
+    "args": [
+     "b = 1.75\nb = 9.25\nc = 1.25 / b / 11\n"
+    ],
+    "expected": "b = 9.25\nc = 0.01228501229",
+    "got": "b = 9.25\nc = 0.0122850123"
+   }
+  },
+  {
+   "file": "bench/corpus/calc-vars/1791466862021.vow",
+   "lang": "vow",
+   "passed": 147,
+   "n": 150,
+   "example": {
+    "args": [
+     "b = 1.75\nb = 9.25\nc = 1.25 / b / 11\n"
+    ],
+    "expected": "b = 9.25\nc = 0.01228501229",
+    "got": "b = 9.25\nc = 0.0122850123"
+   }
+  },
+  {
+   "file": "bench/corpus/calc-vars/1791382604692.ts",
+   "lang": "ts",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  },
+  {
+   "file": "bench/corpus/calc-vars/1791383040948.ts",
+   "lang": "ts",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  },
+  {
+   "file": "bench/corpus/calc-vars/1791383227663.ts",
+   "lang": "ts",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  }
+ ],
+ "template": [
+  {
+   "file": "bench/corpus/template/1791466621032.vow",
+   "lang": "vow",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  },
+  {
+   "file": "bench/corpus/template/1791466865499.vow",
+   "lang": "vow",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  },
+  {
+   "file": "bench/corpus/template/1791466898289.vow",
+   "lang": "vow",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  },
+  {
+   "file": "bench/corpus/template/1791466987769.vow",
+   "lang": "vow",
+   "passed": 149,
+   "n": 150,
+   "example": {
+    "args": [
+     "{{#each xs}}[{{.}}]{{/each}}{{#if xs}}has{{/if}}{{#if vip}}VIP {{/if}}{{#each vip}}y{{/each}}",
+     "{\"name\": \"Ada\", \"vip\": null, \"xs\": [\"two\", 1, 2], \"users\": [{\"name\": \"c\", \"admin\": true}, {\"name\": \"a\", \"admin\": true}, {\"name\": \"c\", \"admin\": false}], \"n\": 0, \"obj\": {\"a\": 1}}"
+    ],
+    "expected": "[two][1][2]has",
+    "got": "error: not a list: vip"
+   }
+  },
+  {
+   "file": "bench/corpus/template/1791382600427.ts",
+   "lang": "ts",
+   "passed": 142,
+   "n": 150,
+   "example": {
+    "args": [
+     "{{#if xs}}has{{/if}}{{#each users}}{{#if admin}}<{{name}}>{{/if}}{{/each}}",
+     "nope"
+    ],
+    "expected": "error: bad data",
+    "got": "error: Unexpected token 'o', \"nope\" is not valid JSON"
+   }
+  },
+  {
+   "file": "bench/corpus/template/1791382973991.ts",
+   "lang": "ts",
+   "passed": 149,
+   "n": 150,
+   "example": {
+    "args": [
+     "{{#each xs}}[{{.}}]{{/each}}{{#if xs}}has{{/if}}{{#if vip}}VIP {{/if}}{{#each vip}}y{{/each}}",
+     "{\"name\": \"Ada\", \"vip\": null, \"xs\": [\"two\", 1, 2], \"users\": [{\"name\": \"c\", \"admin\": true}, {\"name\": \"a\", \"admin\": true}, {\"name\": \"c\", \"admin\": false}], \"n\": 0, \"obj\": {\"a\": 1}}"
+    ],
+    "expected": "[two][1][2]has",
+    "got": "error: not a list: vip"
+   }
+  },
+  {
+   "file": "bench/corpus/template/1791383320175.ts",
+   "lang": "ts",
+   "passed": 149,
+   "n": 150,
+   "example": {
+    "args": [
+     "{{#each xs}}[{{.}}]{{/each}}{{#if xs}}has{{/if}}{{#if vip}}VIP {{/if}}{{#each vip}}y{{/each}}",
+     "{\"name\": \"Ada\", \"vip\": null, \"xs\": [\"two\", 1, 2], \"users\": [{\"name\": \"c\", \"admin\": true}, {\"name\": \"a\", \"admin\": true}, {\"name\": \"c\", \"admin\": false}], \"n\": 0, \"obj\": {\"a\": 1}}"
+    ],
+    "expected": "[two][1][2]has",
+    "got": "error: not a list: vip"
+   }
+  }
+ ],
+ "ini-config": [
+  {
+   "file": "bench/corpus/ini-config/1791466658335.vow",
+   "lang": "vow",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  },
+  {
+   "file": "bench/corpus/ini-config/1791466895355.vow",
+   "lang": "vow",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  },
+  {
+   "file": "bench/corpus/ini-config/1791466898345.vow",
+   "lang": "vow",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  },
+  {
+   "file": "bench/corpus/ini-config/1791467003711.vow",
+   "lang": "vow",
+   "passed": 146,
+   "n": 150,
+   "example": {
+    "args": [
+     "[app]\nk  =  localhost\nhost  =  a b\nhost  =  localhost\nport=localhost\n[db]\n=x",
+     "x_1.port"
+    ],
+    "expected": "error line 7: bad line",
+    "got": "x_1.port missing"
+   }
+  },
+  {
+   "file": "bench/corpus/ini-config/1791382619102.ts",
+   "lang": "ts",
+   "passed": 146,
+   "n": 150,
+   "example": {
+    "args": [
+     "[app]\nk  =  localhost\nhost  =  a b\nhost  =  localhost\nport=localhost\n[db]\n=x",
+     "x_1.port"
+    ],
+    "expected": "error line 7: bad line",
+    "got": "x_1.port missing"
+   }
+  },
+  {
+   "file": "bench/corpus/ini-config/1791382994081.ts",
+   "lang": "ts",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  },
+  {
+   "file": "bench/corpus/ini-config/1791383341454.ts",
+   "lang": "ts",
+   "passed": 150,
+   "n": 150,
+   "example": null
+  }
+ ]
+}

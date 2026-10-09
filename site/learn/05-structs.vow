@@ -1,0 +1,21 @@
+struct Item { name, price, qty }
+
+let cart = [
+  Item { name: "pen", price: 1.5, qty: 4 },
+  Item { name: "book", price: 12, qty: 1 },
+  Item { name: "mug", price: 8, qty: 2 }
+]
+
+for it in sortBy(cart, it => it.price) {
+  print("${it.name}: ${it.price * it.qty}")
+}
+
+// match also compares plain values; _ catches everything else
+fn label(qty) {
+  match qty {
+    1 => "single"
+    2 => "pair"
+    _ => "bulk"
+  }
+}
+print(label(cart[0].qty))

@@ -1,0 +1,254 @@
+struct Token {
+  type,
+  value
+}
+
+fn tokenize(s) {
+  let tokens = []
+  let i = 0
+
+  while i < len(s) {
+    let c = s[i]
+
+    if c == " " or c == "\t" {
+      i = i + 1
+    } else if c == "(" {
+      push(tokens, Token { type: "lparen", value: "(" })
+      i = i + 1
+    } else if c == ")" {
+      push(tokens, Token { type: "rparen", value: ")" })
+      i = i + 1
+    } else if c == "+" or c == "-" or c == "*" or c == "/" {
+      push(tokens, Token { type: "op", value: c })
+      i = i + 1
+    } else if c >= "0" and c <= "9" {
+      let num_str = ""
+      while i < len(s) and ((s[i] >= "0" and s[i] <= "9") or s[i] == ".") {
+        num_str = num_str + s[i]
+        i = i + 1
+      }
+      push(tokens, Token { type: "num", value: num_str })
+    } else if (c >= "a" and c <= "z") or (c >= "A" and c <= "Z") or c == "_" {
+      let name = ""
+      while i < len(s) and (((s[i] >= "a" and s[i] <= "z") or (s[i] >= "A" and s[i] <= "Z") or s[i] == "_") or (s[i] >= "0" and s[i] <= "9")) {
+        name = name + s[i]
+        i = i + 1
+      }
+      push(tokens, Token { type: "var", value: name })
+    } else {
+      return err("syntax")
+    }
+  }
+
+  push(tokens, Token { type: "eof", value: "" })
+  return ok(tokens)
+}
+
+struct Parser {
+  tokens,
+  pos
+}
+
+fn peek(p) {
+  return p.tokens[p.pos]
+}
+
+fn advance(p) {
+  p.pos = p.pos + 1
+}
+
+fn parseNum(p) {
+  let tok = peek(p)
+  advance(p)
+  match num(tok.value) {
+    ok(n) => return ok(n)
+    err(_) => return err("syntax")
+  }
+}
+
+fn parseVar(p, vars) {
+  let tok = peek(p)
+  let name = tok.value
+  advance(p)
+
+  if has(vars, name) {
+    return ok(vars[name])
+  } else {
+    return err("unknown variable ${name}")
+  }
+}
+
+fn parsePrimary(p, vars) {
+  let tok = peek(p)
+
+  if tok.type == "num" {
+    return parseNum(p)
+  } else if tok.type == "var" {
+    return parseVar(p, vars)
+  } else if tok.type == "lparen" {
+    advance(p)
+    let val = parseExpression(p, vars)?
+    let close = peek(p)
+    if close.type != "rparen" {
+      return err("syntax")
+    }
+    advance(p)
+    return ok(val)
+  } else if tok.type == "op" and tok.value == "-" {
+    advance(p)
+    let val = parsePrimary(p, vars)?
+    return ok(0 - val)
+  } else {
+    return err("syntax")
+  }
+}
+
+fn parseTerm(p, vars) {
+  let left = parsePrimary(p, vars)?
+
+  while true {
+    let tok = peek(p)
+    if tok.type == "op" and (tok.value == "*" or tok.value == "/") {
+      let op = tok.value
+      advance(p)
+      let right = parsePrimary(p, vars)?
+      if op == "*" {
+        left = left * right
+      } else {
+        if right == 0 {
+          return err("division by zero")
+        }
+        left = left / right
+      }
+    } else {
+      break
+    }
+  }
+
+  return ok(left)
+}
+
+fn parseExpression(p, vars) {
+  let left = parseTerm(p, vars)?
+
+  while true {
+    let tok = peek(p)
+    if tok.type == "op" and (tok.value == "+" or tok.value == "-") {
+      let op = tok.value
+      advance(p)
+      let right = parseTerm(p, vars)?
+      if op == "+" {
+        left = left + right
+      } else {
+        left = left - right
+      }
+    } else {
+      break
+    }
+  }
+
+  return ok(left)
+}
+
+fn formatNumber(n) {
+  if isInt(n) {
+    return str(n)
+  } else {
+    let rounded = sig(n, 10)
+    return str(rounded)
+  }
+}
+
+fn main() {
+  let input = args()[0]
+  let all_lines = lines(input)
+  let variables = {}
+
+  for i in range(0, len(all_lines)) {
+    let line_num = i + 1
+    let line = all_lines[i]
+    let trimmed = trim(line)
+
+    if trimmed == "" {
+      continue
+    }
+
+    // Find =
+    let eq_idx = -1
+    for j in range(0, len(trimmed)) {
+      if trimmed[j] == "=" {
+        eq_idx = j
+        break
+      }
+    }
+
+    if eq_idx == -1 {
+      print("error line ${line_num}: syntax")
+      return ok(true)
+    }
+
+    let name = trim(slice(trimmed, 0, eq_idx))
+    let expr_str = trim(slice(trimmed, eq_idx + 1, len(trimmed)))
+
+    // Validate name
+    if len(name) == 0 {
+      print("error line ${line_num}: syntax")
+      return ok(true)
+    }
+
+    let first = name[0]
+    if first >= "0" and first <= "9" {
+      print("error line ${line_num}: syntax")
+      return ok(true)
+    }
+
+    for j in range(0, len(name)) {
+      let c = name[j]
+      let ok_char = ((c >= "a" and c <= "z") or (c >= "A" and c <= "Z") or c == "_" or (c >= "0" and c <= "9"))
+      if not ok_char {
+        print("error line ${line_num}: syntax")
+        return ok(true)
+      }
+    }
+
+    // Evaluate
+    match tokenize(expr_str) {
+      ok(tokens) => {
+        let p = Parser { tokens: tokens, pos: 0 }
+        match parseExpression(p, variables) {
+          ok(result) => {
+            let final = peek(p)
+            if final.type != "eof" {
+              print("error line ${line_num}: syntax")
+              return ok(true)
+            }
+            variables[name] = result
+          }
+          err(e) => {
+            print("error line ${line_num}: ${e}")
+            return ok(true)
+          }
+        }
+      }
+      err(e) => {
+        print("error line ${line_num}: syntax")
+        return ok(true)
+      }
+    }
+  }
+
+  // Output
+  let names = sort(keys(variables))
+  for name in names {
+    let val = variables[name]
+    let formatted = formatNumber(val)
+    print("${name} = ${formatted}")
+  }
+
+  return ok(true)
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

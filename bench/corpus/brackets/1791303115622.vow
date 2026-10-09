@@ -1,0 +1,44 @@
+fn isBalanced(s) {
+  let stack = []
+  let i = 0
+  while i < len(s) {
+    let c = s[i]
+    if c == "(" or c == "[" or c == "{" {
+      push(stack, c)
+    } else if c == ")" or c == "]" or c == "}" {
+      match pop(stack) {
+        ok(open) => {
+          let matches = false
+          if c == ")" and open == "(" {
+            matches = true
+          } else if c == "]" and open == "[" {
+            matches = true
+          } else if c == "}" and open == "{" {
+            matches = true
+          }
+          if not matches {
+            return false
+          }
+        }
+        err(e) => {
+          return false
+        }
+      }
+    } else {
+      return false
+    }
+    i = i + 1
+  }
+  if len(stack) == 0 {
+    return true
+  } else {
+    return false
+  }
+}
+
+let input = args()[0]
+if isBalanced(input) {
+  print("yes")
+} else {
+  print("no")
+}

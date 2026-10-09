@@ -1,0 +1,20 @@
+// Types are inferred: you never write them.
+fn area(w, h) {
+  return w * h
+}
+print(area(3, 4))
+
+// A fn that never says return gives back its last line.
+fn greet(name) {
+  "Hello, ${name}"
+}
+print(greet("Grace"))
+
+// Functions work on any type that fits (generics, automatically).
+fn first(xs) { return xs[0] }
+print(first([10, 20, 30]))
+print(first(["a", "b"]))
+
+// Lambdas are small unnamed functions.
+let double = x => x * 2
+print(double(21))

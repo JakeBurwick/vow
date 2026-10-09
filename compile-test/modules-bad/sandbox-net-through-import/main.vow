@@ -1,0 +1,5 @@
+import "./greeting.vow" as greeting
+match greeting.hello("Ada") {
+  ok(t) => print(t)
+  err(e) => print(e)
+}

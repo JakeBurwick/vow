@@ -1,0 +1,2 @@
+fn roll(n) { return map(range(0, n), i => randomInt(1, 6)) }
+fn coin() { return if random() < 0.5 { "heads" } else { "tails" } }

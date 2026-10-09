@@ -1,0 +1,21 @@
+// expects: what callers must guarantee. ensures: what the fn promises back.
+fn safeSqrtFloor(n) expects n >= 0 ensures result >= 0 {
+  return floor(sqrt(n))
+}
+print(safeSqrtFloor(17))
+
+// Breaking a contract stops the program and blames the right side.
+fn withdraw(balance, amount) expects amount <= balance {
+  return balance - amount
+}
+print(withdraw(100, 30))
+
+// Vow even proves some broken calls before running: try uncommenting this line.
+// print(withdraw(100, 500))
+
+// When the bad value only shows up at runtime, the contract catches it then,
+// and the error says the bug is in the CALLER, not in withdraw.
+match num("500") {
+  ok(amount) => print(withdraw(100, amount))
+  err(e) => print(e)
+}

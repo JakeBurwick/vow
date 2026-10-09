@@ -1,0 +1,2 @@
+import "./geom.vow" as geo
+print(1)

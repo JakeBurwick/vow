@@ -1,0 +1,5 @@
+fn put(xs) {
+  xs[len(xs)] = 1
+  return xs
+}
+print(put([1]))

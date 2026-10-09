@@ -1,0 +1,290 @@
+struct Row {
+  values  // list<str>
+}
+
+struct Query {
+  cols,       // list<str>
+  whereCol,   // str or ""
+  whereOp,    // str or ""
+  whereVal,   // str or ""
+  orderCol,   // str or ""
+  orderDesc,  // bool
+  limit       // num or -1
+}
+
+fn parseQuery(q) {
+  // Parse: SELECT <cols> [WHERE <col> <op> <val>] [ORDER BY <col> [DESC]] [LIMIT <n>]
+  let parts = split(q, " ")
+  let i = 0
+
+  // SELECT
+  if i >= len(parts) or parts[i] != "SELECT" {
+    return err("bad query")
+  }
+  i = i + 1
+
+  if i >= len(parts) {
+    return err("bad query")
+  }
+  let cols = split(parts[i], ",")
+  i = i + 1
+
+  let whereCol = ""
+  let whereOp = ""
+  let whereVal = ""
+
+  if i < len(parts) and parts[i] == "WHERE" {
+    i = i + 1
+    if i >= len(parts) { return err("bad query") }
+    whereCol = parts[i]
+    i = i + 1
+    if i >= len(parts) { return err("bad query") }
+    whereOp = parts[i]
+    i = i + 1
+    if i >= len(parts) { return err("bad query") }
+    whereVal = parts[i]
+    i = i + 1
+  }
+
+  let orderCol = ""
+  let orderDesc = false
+
+  if i < len(parts) and parts[i] == "ORDER" {
+    i = i + 1
+    if i >= len(parts) or parts[i] != "BY" { return err("bad query") }
+    i = i + 1
+    if i >= len(parts) { return err("bad query") }
+    orderCol = parts[i]
+    i = i + 1
+
+    if i < len(parts) and parts[i] == "DESC" {
+      orderDesc = true
+      i = i + 1
+    }
+  }
+
+  let limit = -1
+
+  if i < len(parts) and parts[i] == "LIMIT" {
+    i = i + 1
+    if i >= len(parts) { return err("bad query") }
+    match num(parts[i]) {
+      ok(n) => {
+        limit = n
+        i = i + 1
+      }
+      err(e) => { return err("bad query") }
+    }
+  }
+
+  if i != len(parts) {
+    return err("bad query")
+  }
+
+  return ok(Query { cols: cols, whereCol: whereCol, whereOp: whereOp, whereVal: whereVal, orderCol: orderCol, orderDesc: orderDesc, limit: limit })
+}
+
+fn isNumber(s) {
+  match num(s) {
+    ok(n) => { return true }
+    err(e) => { return false }
+  }
+}
+
+fn compare(a, b, op) {
+  let aIsNum = isNumber(a)
+  let bIsNum = isNumber(b)
+
+  if aIsNum and bIsNum {
+    match num(a) {
+      ok(aNum) => {
+        match num(b) {
+          ok(bNum) => {
+            if op == "=" { return aNum == bNum }
+            if op == "!=" { return aNum != bNum }
+            if op == "<" { return aNum < bNum }
+            if op == ">" { return aNum > bNum }
+            if op == "<=" { return aNum <= bNum }
+            if op == ">=" { return aNum >= bNum }
+          }
+          err(e) => { return false }
+        }
+      }
+      err(e) => { return false }
+    }
+  } else {
+    if op == "=" { return a == b }
+    if op == "!=" { return a != b }
+    return false
+  }
+  return false
+}
+
+fn rowMatches(row, rowMap, query) {
+  if query.whereCol == "" {
+    return true
+  }
+
+  match get(rowMap, query.whereCol) {
+    ok(idx) => {
+      if idx >= len(row.values) {
+        return false
+      }
+      let val = row.values[idx]
+      return compare(val, query.whereVal, query.whereOp)
+    }
+    err(e) => { return false }
+  }
+}
+
+fn getRowValues(row, colIndices) {
+  let result = []
+  for idx in colIndices {
+    if idx < len(row.values) {
+      push(result, row.values[idx])
+    }
+  }
+  return result
+}
+
+fn main() {
+  let args_list = args()
+
+  if len(args_list) < 2 {
+    print("error: bad query")
+    return
+  }
+
+  let csv = args_list[0]
+  let queryStr = args_list[1]
+
+  let lines = split(csv, "\n")
+  if len(lines) == 0 {
+    print("error: bad query")
+    return
+  }
+
+  let header = split(lines[0], ",")
+  let headerMap = {}
+  for i in range(0, len(header)) {
+    headerMap[header[i]] = i
+  }
+
+  let rows = []
+  for i in range(1, len(lines)) {
+    if lines[i] != "" {
+      let fields = split(lines[i], ",")
+      push(rows, Row { values: fields })
+    }
+  }
+
+  match parseQuery(queryStr) {
+    ok(query) => {
+      let colIndices = []
+      for col in query.cols {
+        match get(headerMap, col) {
+          ok(idx) => {
+            push(colIndices, idx)
+          }
+          err(e) => {
+            print("error: unknown column {col}")
+            return
+          }
+        }
+      }
+
+      if query.whereCol != "" {
+        match get(headerMap, query.whereCol) {
+          ok(_) => {}
+          err(e) => {
+            print("error: unknown column {query.whereCol}")
+            return
+          }
+        }
+      }
+
+      if query.orderCol != "" {
+        match get(headerMap, query.orderCol) {
+          ok(_) => {}
+          err(e) => {
+            print("error: unknown column {query.orderCol}")
+            return
+          }
+        }
+      }
+
+      let filtered = []
+      for row in rows {
+        if rowMatches(row, headerMap, query) {
+          push(filtered, row)
+        }
+      }
+
+      if query.orderCol != "" {
+        match get(headerMap, query.orderCol) {
+          ok(orderIdx) => {
+            let allNumeric = true
+            for row in filtered {
+              if orderIdx < len(row.values) and not isNumber(row.values[orderIdx]) {
+                allNumeric = false
+              }
+            }
+
+            if allNumeric {
+              filtered = sortBy(filtered, row => {
+                if orderIdx < len(row.values) {
+                  match num(row.values[orderIdx]) {
+                    ok(n) => {
+                      if query.orderDesc {
+                        return 0 - n
+                      } else {
+                        return n
+                      }
+                    }
+                    err(e) => { return 0 }
+                  }
+                }
+                return 0
+              })
+            } else {
+              filtered = sortBy(filtered, row => {
+                if orderIdx < len(row.values) {
+                  let val = row.values[orderIdx]
+                  if query.orderDesc {
+                    return val
+                  } else {
+                    return val
+                  }
+                }
+                return ""
+              })
+              if query.orderDesc {
+                filtered = reverse(filtered)
+              }
+            }
+          }
+          err(e) => {}
+        }
+      }
+
+      let outputLimit = len(filtered)
+      if query.limit >= 0 {
+        outputLimit = query.limit
+      }
+
+      print(join(query.cols, ","))
+
+      for i in range(0, outputLimit) {
+        if i < len(filtered) {
+          let values = getRowValues(filtered[i], colIndices)
+          print(join(values, ","))
+        }
+      }
+    }
+    err(e) => {
+      print("error: {e}")
+    }
+  }
+}
+
+main()

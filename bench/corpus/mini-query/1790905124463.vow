@@ -1,0 +1,278 @@
+fn main() {
+  let csv_str = args()[0]
+  let query_str = args()[1]
+
+  let csv_lines = split(csv_str, "\n")
+  let header = split(csv_lines[0], ",")
+  let rows = []
+  for i in range(1, len(csv_lines)) {
+    if csv_lines[i] != "" {
+      push(rows, split(csv_lines[i], ","))
+    }
+  }
+
+  let query_parts = split(query_str, " ")
+  let idx = 0
+
+  if idx >= len(query_parts) or query_parts[idx] != "SELECT" {
+    print("error: bad query")
+    return
+  }
+  idx = idx + 1
+
+  if idx >= len(query_parts) {
+    print("error: bad query")
+    return
+  }
+
+  let select_cols = split(query_parts[idx], ",")
+  idx = idx + 1
+
+  for col in select_cols {
+    let found = false
+    for hcol in header {
+      if hcol == col {
+        found = true
+        break
+      }
+    }
+    if not found {
+      print("error: unknown column " + col)
+      return
+    }
+  }
+
+  let where_col = ""
+  let where_op = ""
+  let where_value = ""
+
+  if idx < len(query_parts) and query_parts[idx] == "WHERE" {
+    idx = idx + 1
+
+    if idx + 2 >= len(query_parts) {
+      print("error: bad query")
+      return
+    }
+
+    where_col = query_parts[idx]
+    where_op = query_parts[idx + 1]
+    where_value = query_parts[idx + 2]
+    idx = idx + 3
+
+    let found = false
+    for hcol in header {
+      if hcol == where_col {
+        found = true
+        break
+      }
+    }
+    if not found {
+      print("error: unknown column " + where_col)
+      return
+    }
+  }
+
+  let order_col = ""
+  let order_desc = false
+
+  if idx < len(query_parts) and query_parts[idx] == "ORDER" {
+    idx = idx + 1
+
+    if idx >= len(query_parts) or query_parts[idx] != "BY" {
+      print("error: bad query")
+      return
+    }
+    idx = idx + 1
+
+    if idx >= len(query_parts) {
+      print("error: bad query")
+      return
+    }
+
+    order_col = query_parts[idx]
+    idx = idx + 1
+
+    let found = false
+    for hcol in header {
+      if hcol == order_col {
+        found = true
+        break
+      }
+    }
+    if not found {
+      print("error: unknown column " + order_col)
+      return
+    }
+
+    if idx < len(query_parts) and query_parts[idx] == "DESC" {
+      order_desc = true
+      idx = idx + 1
+    }
+  }
+
+  let limit_n = 999999
+
+  if idx < len(query_parts) and query_parts[idx] == "LIMIT" {
+    idx = idx + 1
+
+    if idx >= len(query_parts) {
+      print("error: bad query")
+      return
+    }
+
+    match num(query_parts[idx]) {
+      ok(n) => {
+        limit_n = n
+        idx = idx + 1
+      }
+      err(e) => {
+        print("error: bad query")
+        return
+      }
+    }
+  }
+
+  if idx < len(query_parts) {
+    print("error: bad query")
+    return
+  }
+
+  let filtered_rows = []
+  for row in rows {
+    if where_col == "" {
+      push(filtered_rows, row)
+    } else {
+      let col_idx = 0
+      for j in range(0, len(header)) {
+        if header[j] == where_col {
+          col_idx = j
+          break
+        }
+      }
+
+      let cell_value = row[col_idx]
+      let cell_num_result = num(cell_value)
+      let where_num_result = num(where_value)
+
+      let should_include = false
+
+      match cell_num_result {
+        ok(cell_n) => {
+          match where_num_result {
+            ok(where_n) => {
+              if where_op == "=" {
+                should_include = cell_n == where_n
+              } else if where_op == "!=" {
+                should_include = cell_n != where_n
+              } else if where_op == "<" {
+                should_include = cell_n < where_n
+              } else if where_op == ">" {
+                should_include = cell_n > where_n
+              } else if where_op == "<=" {
+                should_include = cell_n <= where_n
+              } else if where_op == ">=" {
+                should_include = cell_n >= where_n
+              }
+            }
+            err(e) => {
+              if where_op == "=" {
+                should_include = false
+              } else if where_op == "!=" {
+                should_include = true
+              } else {
+                print("error: bad comparison")
+                return
+              }
+            }
+          }
+        }
+        err(e) => {
+          match where_num_result {
+            ok(where_n) => {
+              if where_op == "=" {
+                should_include = false
+              } else if where_op == "!=" {
+                should_include = true
+              } else {
+                print("error: bad comparison")
+                return
+              }
+            }
+            err(e2) => {
+              if where_op == "=" {
+                should_include = cell_value == where_value
+              } else if where_op == "!=" {
+                should_include = cell_value != where_value
+              } else {
+                print("error: bad comparison")
+                return
+              }
+            }
+          }
+        }
+      }
+
+      if should_include {
+        push(filtered_rows, row)
+      }
+    }
+  }
+
+  if order_col != "" {
+    let col_idx = 0
+    for j in range(0, len(header)) {
+      if header[j] == order_col {
+        col_idx = j
+        break
+      }
+    }
+
+    let all_numbers = true
+    for row in filtered_rows {
+      match num(row[col_idx]) {
+        ok(n) => {}
+        err(e) => {
+          all_numbers = false
+          break
+        }
+      }
+    }
+
+    if all_numbers {
+      filtered_rows = sortBy(filtered_rows, row => (
+        match num(row[col_idx]) {
+          ok(n) => n
+          err(e) => 0
+        }
+      ))
+    } else {
+      filtered_rows = sortBy(filtered_rows, row => row[col_idx])
+    }
+
+    if order_desc {
+      filtered_rows = reverse(filtered_rows)
+    }
+  }
+
+  if limit_n < len(filtered_rows) {
+    filtered_rows = slice(filtered_rows, 0, limit_n)
+  }
+
+  print(join(select_cols, ","))
+  for row in filtered_rows {
+    let output_values = []
+    for col in select_cols {
+      let col_idx = 0
+      for j in range(0, len(header)) {
+        if header[j] == col {
+          col_idx = j
+          break
+        }
+      }
+      push(output_values, row[col_idx])
+    }
+    print(join(output_values, ","))
+  }
+}
+
+main()

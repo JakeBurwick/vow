@@ -1,0 +1,113 @@
+fn parseGraph(edgesStr) {
+  let graph = {}
+  if edgesStr == "" {
+    return graph
+  }
+  let edges = split(edgesStr, ",")
+
+  for edge in edges {
+    if edge == "" {
+      continue
+    }
+    let parts = split(edge, "-")
+    if len(parts) != 2 {
+      continue
+    }
+    let a = parts[0]
+    let b = parts[1]
+
+    if not has(graph, a) {
+      graph[a] = []
+    }
+    if not has(graph, b) {
+      graph[b] = []
+    }
+
+    push(graph[a], b)
+    push(graph[b], a)
+  }
+
+  return graph
+}
+
+fn bfsDistances(graph, start) {
+  let distances = {}
+  let queue = [start]
+  distances[start] = 0
+
+  while len(queue) > 0 {
+    let node = queue[0]
+    queue = slice(queue, 1, len(queue))
+
+    if has(graph, node) {
+      let neighbors = graph[node]
+      for neighbor in neighbors {
+        if not has(distances, neighbor) {
+          distances[neighbor] = distances[node] + 1
+          push(queue, neighbor)
+        }
+      }
+    }
+  }
+
+  return distances
+}
+
+fn findPath(graph, start, goal) {
+  if start == goal {
+    return [start]
+  }
+
+  if not has(graph, start) or not has(graph, goal) {
+    return []
+  }
+
+  let distFromStart = bfsDistances(graph, start)
+  if not has(distFromStart, goal) {
+    return []
+  }
+
+  let distFromGoal = bfsDistances(graph, goal)
+  let shortestDist = distFromStart[goal]
+
+  let path = []
+  let current = start
+  while current != goal {
+    push(path, current)
+
+    let neighbors = graph[current]
+    neighbors = sort(neighbors)
+
+    let found = false
+    for neighbor in neighbors {
+      if has(distFromStart, neighbor) and has(distFromGoal, neighbor) {
+        if distFromStart[neighbor] > distFromStart[current] and distFromStart[neighbor] + distFromGoal[neighbor] == shortestDist {
+          current = neighbor
+          found = true
+          break
+        }
+      }
+    }
+
+    if not found {
+      return []
+    }
+  }
+
+  push(path, goal)
+  return path
+}
+
+let argv = args()
+let graphStr = argv[0]
+let start = argv[1]
+let goal = argv[2]
+
+let graph = parseGraph(graphStr)
+let path = findPath(graph, start, goal)
+
+if len(path) == 0 {
+  print("no path")
+} else {
+  print(join(path, " -> "))
+}

@@ -1,0 +1,6 @@
+// the main file's own map/count/len2 never leak into a module
+import "./lists.vow" as lists
+fn map(xs, f) { return "main's map" }
+let count = 99
+fn helper() { return "main helper" }
+print(lists.doubled([1, 2]), lists.howMany([1, 2, 3]), map([1], x => x), count, helper(), lists.helper())

@@ -1,0 +1,250 @@
+fn main() {
+  let argv = args()
+  let template_str = match get(argv, 0) { ok(s) => s err(e) => "" }
+  let data_str = match get(argv, 1) { ok(s) => s err(e) => "{}" }
+
+  match parseJson(data_str) {
+    ok(data_json) => {
+      if jsonType(data_json) != "object" {
+        print("error: bad data")
+        return ok(true)
+      }
+      match render(template_str, data_json) {
+        ok(result) => {
+          print(result)
+        }
+        err(e) => {
+          print(e)
+        }
+      }
+    }
+    err(e) => {
+      print("error: bad data")
+    }
+  }
+  return ok(true)
+}
+
+fn render(template, data) {
+  let result = ""
+  let i = 0
+  match renderLoop(template, data, i, "") {
+    ok(r) => {
+      return ok(r.output)
+    }
+    err(e) => {
+      return err(e)
+    }
+  }
+}
+
+struct RenderState {
+  output,
+  pos
+}
+
+fn renderLoop(template, data, pos, output) {
+  let i = pos
+  while i < len(template) {
+    if template[i] == "{" and i + 1 < len(template) and template[i + 1] == "{" {
+      let closePos = findClose(template, i)
+      if closePos == -1 {
+        return err("unclosed tag")
+      }
+      let tagContent = slice(template, i + 2, closePos)
+      tagContent = trim(tagContent)
+
+      if startsWith(tagContent, "#if ") {
+        let ifName = trim(slice(tagContent, 4, len(tagContent)))
+        let ifEndPos = findIfEnd(template, closePos + 2)
+        if ifEndPos == -1 {
+          return err("error: unclosed if")
+        }
+        let ifBody = slice(template, closePos + 2, ifEndPos)
+        let endTagPos = closePos + 2 + len(ifBody)
+        let endTag = slice(template, endTagPos, endTagPos + 7)
+        if endTag != "{{/if}}" {
+          return err("error: unexpected /if")
+        }
+
+        let cond = isValueTruthy(data, ifName)
+        if cond {
+          match renderLoop(ifBody, data, 0, "") {
+            ok(r) => {
+              output = output + r.output
+            }
+            err(e) => {
+              return err(e)
+            }
+          }
+        }
+        i = endTagPos + 7
+      } else if startsWith(tagContent, "#each ") {
+        let eachName = trim(slice(tagContent, 6, len(tagContent)))
+        let eachEndPos = findEachEnd(template, closePos + 2)
+        if eachEndPos == -1 {
+          return err("error: unclosed each")
+        }
+        let eachBody = slice(template, closePos + 2, eachEndPos)
+        let endTagPos = closePos + 2 + len(eachBody)
+        let endTag = slice(template, endTagPos, endTagPos + 9)
+        if endTag != "{{/each}}" {
+          return err("error: unexpected /each")
+        }
+
+        let value = getValue(data, eachName)
+        if jsonType(value) == "array" {
+          for item in jsonList(value) {
+            match renderLoop(eachBody, item, 0, "") {
+              ok(r) => {
+                output = output + r.output
+              }
+              err(e) => {
+                return err(e)
+              }
+            }
+          }
+        } else if jsonType(value) != "null" {
+          return err("error: not a list: " + eachName)
+        }
+        i = endTagPos + 9
+      } else if startsWith(tagContent, "/if") {
+        return err("error: unexpected /if")
+      } else if startsWith(tagContent, "/each") {
+        return err("error: unexpected /each")
+      } else {
+        match insertValue(data, tagContent) {
+          ok(val) => {
+            output = output + val
+          }
+          err(e) => {
+            return err(e)
+          }
+        }
+        i = closePos + 2
+      }
+    } else {
+      output = output + template[i]
+      i = i + 1
+    }
+  }
+  return ok(RenderState { output: output, pos: i })
+}
+
+fn findClose(template, start) {
+  let i = start + 2
+  while i + 1 < len(template) {
+    if template[i] == "}" and template[i + 1] == "}" {
+      return i
+    }
+    i = i + 1
+  }
+  return -1
+}
+
+fn findIfEnd(template, start) {
+  let i = start
+  let depth = 1
+  while i < len(template) {
+    if i + 6 < len(template) and slice(template, i, i + 7) == "{{#if " {
+      depth = depth + 1
+      i = i + 7
+    } else if i + 6 < len(template) and slice(template, i, i + 7) == "{{/if}}" {
+      depth = depth - 1
+      if depth == 0 {
+        return i
+      }
+      i = i + 7
+    } else {
+      i = i + 1
+    }
+  }
+  return -1
+}
+
+fn findEachEnd(template, start) {
+  let i = start
+  let depth = 1
+  while i < len(template) {
+    if i + 7 < len(template) and slice(template, i, i + 8) == "{{#each " {
+      depth = depth + 1
+      i = i + 8
+    } else if i + 8 < len(template) and slice(template, i, i + 9) == "{{/each}}" {
+      depth = depth - 1
+      if depth == 0 {
+        return i
+      }
+      i = i + 9
+    } else {
+      i = i + 1
+    }
+  }
+  return -1
+}
+
+fn getValue(data, name) {
+  if name == "." {
+    return data
+  }
+  return field(data, name)
+}
+
+fn isValueTruthy(data, name) {
+  let v = getValue(data, name)
+  return truthy(v)
+}
+
+fn insertValue(data, name) {
+  if name == "." {
+    return formatValue(data)
+  }
+  let v = getValue(data, name)
+  return formatValue(v)
+}
+
+fn formatValue(v) {
+  match jsonType(v) {
+    "string" => {
+      match jsonStr(v) {
+        ok(s) => { return ok(s) }
+        err(e) => { return err("error: not printable") }
+      }
+    }
+    "number" => {
+      match jsonNum(v) {
+        ok(n) => {
+          if isInt(n) {
+            return ok(str(n))
+          } else {
+            return ok(str(n))
+          }
+        }
+        err(e) => { return err("error: not printable") }
+      }
+    }
+    "bool" => {
+      if truthy(v) {
+        return ok("true")
+      } else {
+        return ok("false")
+      }
+    }
+    "null" => {
+      return ok("")
+    }
+    "array" => {
+      return err("error: not printable")
+    }
+    "object" => {
+      return err("error: not printable")
+    }
+    _ => {
+      return err("error: not printable")
+    }
+  }
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

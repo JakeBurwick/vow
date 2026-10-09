@@ -1,0 +1,93 @@
+let args_list = args()
+
+if len(args_list) < 1 {
+  return
+}
+
+let ini_str = args_list[0]
+let ini_lines = lines(ini_str)
+
+let sections = {}
+let currentSection = ""
+let hasError = false
+let errorMsg = ""
+let lineNum = 0
+
+for line in ini_lines {
+  lineNum = lineNum + 1
+  let trimmed = trim(line)
+
+  if trimmed == "" {
+    continue
+  }
+
+  if startsWith(trimmed, ";") or startsWith(trimmed, "#") {
+    continue
+  }
+
+  if startsWith(trimmed, "[") and endsWith(trimmed, "]") {
+    currentSection = slice(trimmed, 1, len(trimmed) - 1)
+    if not has(sections, currentSection) {
+      sections[currentSection] = {}
+    }
+  } else if contains(trimmed, "=") {
+    if currentSection == "" {
+      print("error line " + str(lineNum) + ": key outside section")
+      hasError = true
+      break
+    }
+
+    let eqIdx = indexOf(trimmed, "=")
+    let eqResult = eqIdx
+
+    match eqResult {
+      ok(idx) => {
+        let key = trim(slice(trimmed, 0, idx))
+        let value = trim(slice(trimmed, idx + 1, len(trimmed)))
+
+        let section_map = sections[currentSection]
+        section_map[key] = value
+      }
+      err(_) => {
+        print("error line " + str(lineNum) + ": bad line")
+        hasError = true
+        break
+      }
+    }
+  } else {
+    print("error line " + str(lineNum) + ": bad line")
+    hasError = true
+    break
+  }
+}
+
+if not hasError {
+  let query_start = 1
+  let query_idx = query_start
+
+  while query_idx < len(args_list) {
+    let query = args_list[query_idx]
+    let dotIdx = indexOf(query, ".")
+
+    match dotIdx {
+      ok(idx) => {
+        let sect = slice(query, 0, idx)
+        let key = slice(query, idx + 1, len(query))
+
+        if has(sections, sect) {
+          let sect_map = sections[sect]
+          if has(sect_map, key) {
+            print(query + " = " + sect_map[key])
+          } else {
+            print(query + " missing")
+          }
+        } else {
+          print(query + " missing")
+        }
+      }
+      err(_) => {}
+    }
+
+    query_idx = query_idx + 1
+  }
+}

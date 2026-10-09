@@ -1,0 +1,160 @@
+fn parseEntries(s) {
+  let entries = split(s, ";")
+  let packages = {}
+
+  for entry in entries {
+    // Skip empty entries
+    if entry == "" {
+      continue
+    }
+
+    // Check for exactly one colon
+    let colonCount = 0
+    for i in range(0, len(entry)) {
+      if entry[i] == ":" {
+        colonCount = colonCount + 1
+      }
+    }
+
+    if colonCount != 1 {
+      return err("error: bad entry " + entry)
+    }
+
+    let parts = split(entry, ":")
+    let name = parts[0]
+    let depsStr = parts[1]
+
+    // Validate name (lowercase letters only, non-empty)
+    if name == "" {
+      return err("error: bad entry " + entry)
+    }
+
+    for i in range(0, len(name)) {
+      let c = name[i]
+      if not (c >= "a" and c <= "z") {
+        return err("error: bad entry " + entry)
+      }
+    }
+
+    // Parse dependencies
+    let deps = []
+    if depsStr != "" {
+      let depList = split(depsStr, ",")
+      for dep in depList {
+        // Validate each dep
+        if dep == "" {
+          return err("error: bad entry " + entry)
+        }
+
+        for i in range(0, len(dep)) {
+          let c = dep[i]
+          if not (c >= "a" and c <= "z") {
+            return err("error: bad entry " + entry)
+          }
+        }
+        push(deps, dep)
+      }
+    }
+
+    // Store or union dependencies
+    if has(packages, name) {
+      // Union with existing dependencies
+      for dep in deps {
+        if not contains(packages[name], dep) {
+          push(packages[name], dep)
+        }
+      }
+    } else {
+      packages[name] = deps
+    }
+  }
+
+  return ok(packages)
+}
+
+fn topologicalSort(packages) {
+  // Collect all packages mentioned
+  let allPackages = {}
+
+  // Add all package names
+  for name in keys(packages) {
+    allPackages[name] = true
+  }
+
+  // Add all dependencies as packages with empty deps if not present
+  for name in keys(packages) {
+    for dep in packages[name] {
+      if not has(packages, dep) {
+        packages[dep] = []
+      }
+      allPackages[dep] = true
+    }
+  }
+
+  // Kahn's algorithm: track in-degree
+  let inDegree = {}
+  for pkg in keys(allPackages) {
+    inDegree[pkg] = 0
+  }
+
+  // Calculate in-degrees (how many dependencies each package has)
+  for pkg in keys(packages) {
+    inDegree[pkg] = len(packages[pkg])
+  }
+
+  // Find packages with in-degree 0
+  let queue = []
+  for pkg in keys(allPackages) {
+    if inDegree[pkg] == 0 {
+      push(queue, pkg)
+    }
+  }
+
+  let sorted = []
+  while len(queue) > 0 {
+    // Sort queue alphabetically
+    queue = sort(queue)
+
+    // Take the first (alphabetically smallest)
+    let pkg = queue[0]
+
+    // Remove from queue
+    let newQueue = []
+    for i in range(1, len(queue)) {
+      push(newQueue, queue[i])
+    }
+    queue = newQueue
+
+    push(sorted, pkg)
+
+    // Find packages that depend on this one and decrement their in-degree
+    for other in keys(packages) {
+      if contains(packages[other], pkg) {
+        inDegree[other] = inDegree[other] - 1
+        if inDegree[other] == 0 {
+          push(queue, other)
+        }
+      }
+    }
+  }
+
+  // Check for cycles
+  if len(sorted) != len(keys(allPackages)) {
+    return err("error: cycle")
+  }
+
+  return ok(sorted)
+}
+
+let input = args()[0]
+match parseEntries(input) {
+  ok(packages) => {
+    match topologicalSort(packages) {
+      ok(sorted) => {
+        print(join(sorted, " "))
+      }
+      err(e) => print(e)
+    }
+  }
+  err(e) => print(e)
+}

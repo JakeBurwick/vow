@@ -1,0 +1,297 @@
+struct Query {
+  select_cols,
+  where_col,
+  where_op,
+  where_val,
+  order_col,
+  order_desc,
+  limit_n
+}
+
+struct Row {
+  values
+}
+
+fn parseQuery(q) {
+  let parts = split(q, " ")
+
+  if len(parts) < 2 or parts[0] != "SELECT" {
+    return err("bad query")
+  }
+
+  let select_cols = split(parts[1], ",")
+  let idx = 2
+
+  let where_col = ""
+  let where_op = ""
+  let where_val = ""
+  let order_col = ""
+  let order_desc = false
+  let limit_n = -1
+
+  if idx < len(parts) and parts[idx] == "WHERE" {
+    if idx + 3 >= len(parts) {
+      return err("bad query")
+    }
+    where_col = parts[idx + 1]
+    where_op = parts[idx + 2]
+    where_val = parts[idx + 3]
+    idx = idx + 4
+
+    if not is_valid_op(where_op) {
+      return err("bad query")
+    }
+  }
+
+  if idx < len(parts) and parts[idx] == "ORDER" {
+    if idx + 1 >= len(parts) or parts[idx + 1] != "BY" {
+      return err("bad query")
+    }
+    if idx + 2 >= len(parts) {
+      return err("bad query")
+    }
+    order_col = parts[idx + 2]
+    idx = idx + 3
+
+    if idx < len(parts) and parts[idx] == "DESC" {
+      order_desc = true
+      idx = idx + 1
+    }
+  }
+
+  if idx < len(parts) and parts[idx] == "LIMIT" {
+    if idx + 1 >= len(parts) {
+      return err("bad query")
+    }
+    match num(parts[idx + 1]) {
+      ok(n) => {
+        limit_n = n
+        idx = idx + 2
+      }
+      err(e) => {
+        return err("bad query")
+      }
+    }
+  }
+
+  if idx != len(parts) {
+    return err("bad query")
+  }
+
+  return ok(Query {
+    select_cols: select_cols,
+    where_col: where_col,
+    where_op: where_op,
+    where_val: where_val,
+    order_col: order_col,
+    order_desc: order_desc,
+    limit_n: limit_n
+  })
+}
+
+fn is_valid_op(op) {
+  return op == "=" or op == "!=" or op == "<" or op == ">" or op == "<=" or op == ">="
+}
+
+fn has_col(header, col) {
+  for h in header {
+    if h == col {
+      return true
+    }
+  }
+  return false
+}
+
+fn find_col_index(header, col) {
+  for i in range(0, len(header)) {
+    if header[i] == col {
+      return i
+    }
+  }
+  return -1
+}
+
+fn is_number(s) {
+  match num(s) {
+    ok(n) => { return true }
+    err(e) => { return false }
+  }
+}
+
+fn compare_nums(a, b, op) {
+  if op == "=" { return a == b }
+  if op == "!=" { return a != b }
+  if op == "<" { return a < b }
+  if op == ">" { return a > b }
+  if op == "<=" { return a <= b }
+  return a >= b
+}
+
+fn row_matches(row_vals, col_idx, where_op, where_val) {
+  let cell_val = row_vals[col_idx]
+
+  let is_num_cell = is_number(cell_val)
+  let is_num_where = is_number(where_val)
+
+  if is_num_cell and is_num_where {
+    match num(cell_val) {
+      ok(cell) => {
+        match num(where_val) {
+          ok(where) => {
+            return ok(compare_nums(cell, where, where_op))
+          }
+          err(e) => { return err("parse") }
+        }
+      }
+      err(e) => { return err("parse") }
+    }
+  } else {
+    if where_op != "=" and where_op != "!=" {
+      return err("bad comparison")
+    }
+    let matches = if where_op == "=" { cell_val == where_val } else { cell_val != where_val }
+    return ok(matches)
+  }
+}
+
+fn is_col_numeric(header, rows, col_idx) {
+  for row_vals in rows {
+    if not is_number(row_vals[col_idx]) {
+      return false
+    }
+  }
+  return true
+}
+
+fn compare_rows_numeric(a_vals, b_vals, col_idx) {
+  match num(a_vals[col_idx]) {
+    ok(a) => {
+      match num(b_vals[col_idx]) {
+        ok(b) => {
+          if a < b { return true }
+          return false
+        }
+        err(e) => { return false }
+      }
+    }
+    err(e) => { return false }
+  }
+}
+
+fn compare_rows_string(a_vals, b_vals, col_idx) {
+  return a_vals[col_idx] < b_vals[col_idx]
+}
+
+let csv = args()[0]
+let query_str = args()[1]
+
+match parseQuery(query_str) {
+  ok(query) => {
+    let csv_lines = lines(csv)
+
+    if len(csv_lines) == 0 {
+      print("error: bad query")
+      return
+    }
+
+    let header = split(csv_lines[0], ",")
+
+    for col in query.select_cols {
+      if not has_col(header, col) {
+        print("error: unknown column " + col)
+        return
+      }
+    }
+
+    if query.where_col != "" and not has_col(header, query.where_col) {
+      print("error: unknown column " + query.where_col)
+      return
+    }
+
+    if query.order_col != "" and not has_col(header, query.order_col) {
+      print("error: unknown column " + query.order_col)
+      return
+    }
+
+    let rows = []
+    let where_col_idx = -1
+    if query.where_col != "" {
+      where_col_idx = find_col_index(header, query.where_col)
+    }
+
+    for i in range(1, len(csv_lines)) {
+      if csv_lines[i] != "" {
+        let row_vals = split(csv_lines[i], ",")
+        let should_include = true
+
+        if query.where_col != "" {
+          match row_matches(row_vals, where_col_idx, query.where_op, query.where_val) {
+            ok(matches) => {
+              should_include = matches
+            }
+            err(e) => {
+              if e == "bad comparison" {
+                print("error: bad comparison")
+                return
+              }
+            }
+          }
+        }
+
+        if should_include {
+          push(rows, row_vals)
+        }
+      }
+    }
+
+    if query.order_col != "" {
+      let order_col_idx = find_col_index(header, query.order_col)
+      let is_numeric = is_col_numeric(header, rows, order_col_idx)
+
+      if is_numeric {
+        rows = sortBy(rows, row_vals => {
+          match num(row_vals[order_col_idx]) {
+            ok(n) => { n }
+            err(e) => { 0 }
+          }
+        })
+      } else {
+        rows = sortBy(rows, row_vals => {
+          row_vals[order_col_idx]
+        })
+      }
+
+      if query.order_desc {
+        rows = reverse(rows)
+      }
+    }
+
+    if query.limit_n >= 0 {
+      let new_rows = []
+      for i in range(0, len(rows)) {
+        if i < query.limit_n {
+          push(new_rows, rows[i])
+        }
+      }
+      rows = new_rows
+    }
+
+    let output_cols = []
+    for col in query.select_cols {
+      push(output_cols, col)
+    }
+    print(join(output_cols, ","))
+
+    for row_vals in rows {
+      let output_vals = []
+      for col in query.select_cols {
+        let col_idx = find_col_index(header, col)
+        push(output_vals, row_vals[col_idx])
+      }
+      print(join(output_vals, ","))
+    }
+  }
+  err(e) => {
+    print("error: bad query")
+  }
+}

@@ -1,0 +1,4 @@
+import "./stats.vow" as stats
+print(stats.mean([2, 4]))
+print(stats.spread([1, 5]))
+print(stats.spread([5, 1]))

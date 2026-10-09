@@ -1,0 +1,101 @@
+fn escape_string(s) {
+  let result = ""
+  for c in split(s, "") {
+    if c == "\"" {
+      result = result + "\\\""
+    } else if c == "\\" {
+      result = result + "\\\\"
+    } else {
+      result = result + c
+    }
+  }
+  return result
+}
+
+fn walkJson(j, path, entries) {
+  let t = jsonType(j)
+  let json_path = "\"" + escape_string(path) + "\""
+
+  if t == "object" {
+    let keys_list = jsonKeys(j)
+    if len(keys_list) == 0 {
+      push(entries, json_path + ":{}")
+    } else {
+      keys_list = sort(keys_list)
+      for key in keys_list {
+        let val = get(j, key)
+        match val {
+          ok(v) => {
+            let new_path = if path == "" { key } else { path + "." + key }
+            walkJson(v, new_path, entries)
+          }
+          err(e) => {}
+        }
+      }
+    }
+  } else if t == "array" {
+    let items = jsonList(j)
+    if len(items) == 0 {
+      push(entries, json_path + ":[]")
+    } else {
+      for i in range(0, len(items)) {
+        let item = items[i]
+        let new_path = if path == "" { "[" + str(i) + "]" } else { path + "[" + str(i) + "]" }
+        walkJson(item, new_path, entries)
+      }
+    }
+  } else if t == "string" {
+    match jsonStr(j) {
+      ok(s) => {
+        let json_value = "\"" + escape_string(s) + "\""
+        push(entries, json_path + ":" + json_value)
+      }
+      err(e) => {}
+    }
+  } else if t == "number" {
+    match jsonNum(j) {
+      ok(n) => {
+        push(entries, json_path + ":" + str(n))
+      }
+      err(e) => {}
+    }
+  } else if t == "bool" {
+    match jsonBool(j) {
+      ok(b) => {
+        let json_value = if b { "true" } else { "false" }
+        push(entries, json_path + ":" + json_value)
+      }
+      err(e) => {}
+    }
+  } else if t == "null" {
+    push(entries, json_path + ":null")
+  }
+}
+
+let input = args()[0]
+match parseJson(input) {
+  ok(j) => {
+    let t = jsonType(j)
+    if t != "object" and t != "array" {
+      print("{\"error\":\"not a container\"}")
+    } else {
+      let items_count = 0
+      if t == "object" {
+        items_count = len(jsonKeys(j))
+      } else {
+        items_count = len(jsonList(j))
+      }
+
+      if items_count == 0 {
+        print("{}")
+      } else {
+        let entries = []
+        walkJson(j, "", entries)
+        print("{" + join(entries, ",") + "}")
+      }
+    }
+  }
+  err(e) => {
+    print("{\"error\":\"bad json\"}")
+  }
+}

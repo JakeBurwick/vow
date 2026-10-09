@@ -1,0 +1,33 @@
+// Count words, then sort by count (highest first). sortBy is stable, so ties keep
+// first-appearance order. Helper fns live at the top level; Vow has no nested fns.
+fn countWords(words) {
+  let counts = {}
+  let order = []
+  for w in words {
+    if has(counts, w) {
+      counts[w] = counts[w] + 1
+    } else {
+      counts[w] = 1
+      push(order, w)
+    }
+  }
+  // a block lambda can span lines; its last line is the sort key
+  let ranked = sortBy(order, w => {
+    let c = counts[w]
+    0 - c
+  })
+  return ranked
+}
+
+let words = split(args()[0], " ")
+let ranked = countWords(words)
+let top = ranked[0]
+let label = match len(ranked) {
+  1 => "only word"
+  _ => "most frequent"
+}
+if label == "only word" {
+  print(top)
+  return
+}
+print(top)

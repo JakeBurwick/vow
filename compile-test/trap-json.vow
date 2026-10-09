@@ -1,0 +1,7 @@
+match parseJson(`{"a": 1, "b": [1]}`) {
+  ok(j) => {
+    print(j["b"][0])
+    print(j["missing"])
+  }
+  err(e) => print(e)
+}

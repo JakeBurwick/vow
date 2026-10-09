@@ -1,0 +1,158 @@
+fn main() {
+  let args_list = args()
+  let iniContent = args_list[0]
+  let iniLines = lines(iniContent)
+
+  let sections = {}
+  let currentSection = ""
+  let hasError = false
+
+  let lineNum = 0
+  for line in iniLines {
+    lineNum = lineNum + 1
+
+    if hasError {
+      break
+    }
+
+    let trimmed = trim(line)
+
+    if len(trimmed) == 0 {
+      continue
+    }
+
+    if trimmed[0] == ";" or trimmed[0] == "#" {
+      continue
+    }
+
+    if trimmed[0] == "[" {
+      if trimmed[len(trimmed) - 1] == "]" {
+        let sectionName = trim(substr(trimmed, 1, len(trimmed) - 1))
+        if isValidName(sectionName) {
+          currentSection = sectionName
+          if not has(sections, currentSection) {
+            sections[currentSection] = {}
+          }
+        } else {
+          print("error line " + str(lineNum) + ": bad line")
+          hasError = true
+        }
+      } else {
+        print("error line " + str(lineNum) + ": bad line")
+        hasError = true
+      }
+    } else {
+      if currentSection == "" {
+        print("error line " + str(lineNum) + ": key outside section")
+        hasError = true
+      } else {
+        match parseKeyValue(trimmed) {
+          ok(kv) => {
+            let keyName = kv.key
+            let value = kv.value
+            if isValidName(keyName) {
+              sections[currentSection][keyName] = value
+            } else {
+              print("error line " + str(lineNum) + ": bad line")
+              hasError = true
+            }
+          }
+          err(_) => {
+            print("error line " + str(lineNum) + ": bad line")
+            hasError = true
+          }
+        }
+      }
+    }
+  }
+
+  if not hasError {
+    let queryStart = 1
+    while queryStart < len(args_list) {
+      let query = args_list[queryStart]
+      match parseQuery(query) {
+        ok(qry) => {
+          let sec = qry.section
+          let key = qry.key
+          if has(sections, sec) and has(sections[sec], key) {
+            print(query + " = " + sections[sec][key])
+          } else {
+            print(query + " missing")
+          }
+        }
+        err(_) => {
+          print(query + " missing")
+        }
+      }
+      queryStart = queryStart + 1
+    }
+  }
+}
+
+fn substr(s, from, to) {
+  let result = ""
+  let i = from
+  while i < to and i < len(s) {
+    result = result + s[i]
+    i = i + 1
+  }
+  return result
+}
+
+struct KeyValue {
+  key,
+  value
+}
+
+fn parseKeyValue(line) {
+  let eqPos = indexOf(line, "=")
+  match eqPos {
+    ok(pos) => {
+      let key = trim(substr(line, 0, pos))
+      let value = trim(substr(line, pos + 1, len(line)))
+      return ok(KeyValue { key: key, value: value })
+    }
+    err(_) => {
+      return err("no equals")
+    }
+  }
+}
+
+struct Query {
+  section,
+  key
+}
+
+fn parseQuery(q) {
+  let dotPos = indexOf(q, ".")
+  match dotPos {
+    ok(pos) => {
+      let section = substr(q, 0, pos)
+      let key = substr(q, pos + 1, len(q))
+      return ok(Query { section: section, key: key })
+    }
+    err(_) => {
+      return err("no dot")
+    }
+  }
+}
+
+fn isValidName(name) {
+  if len(name) == 0 {
+    return false
+  }
+
+  for i in range(0, len(name)) {
+    let c = name[i]
+    let isLower = c >= "a" and c <= "z"
+    let isDigit = c >= "0" and c <= "9"
+    let isUnderscore = c == "_"
+    if not (isLower or isDigit or isUnderscore) {
+      return false
+    }
+  }
+
+  return true
+}
+
+main()

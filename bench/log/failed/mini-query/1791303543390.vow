@@ -1,0 +1,346 @@
+fn parseCsv(csv_str) {
+  let rows_list = lines(csv_str)
+  let result = []
+  for row in rows_list {
+    push(result, split(row, ","))
+  }
+  return result
+}
+
+fn findKeyword(q, keyword, start_pos) {
+  let needle = keyword + " "
+  let pos = indexOf(q, needle)?
+  if pos >= start_pos { return ok(pos) }
+  return err("not found")
+}
+
+fn parseQuery(q) {
+  let select_cols = []
+  let where_col = ""
+  let where_op = ""
+  let where_val = ""
+  let order_col = ""
+  let order_desc = false
+  let limit_n = 0
+
+  // Parse SELECT
+  let select_start = 7
+  let where_pos = match findKeyword(q, "WHERE", select_start) {
+    ok(p) => p
+    err(e) => match findKeyword(q, "ORDER", select_start) {
+      ok(p) => p
+      err(e) => match findKeyword(q, "LIMIT", select_start) {
+        ok(p) => p
+        err(e) => len(q)
+      }
+    }
+  }
+
+  let select_str = slice(q, select_start, where_pos)
+  select_str = trim(select_str)
+  select_cols = split(select_str, ",")
+
+  // Parse WHERE if present
+  if startsWith(slice(q, where_pos, len(q)), "WHERE") {
+    let order_pos = match findKeyword(q, "ORDER", where_pos + 6) {
+      ok(p) => p
+      err(e) => match findKeyword(q, "LIMIT", where_pos + 6) {
+        ok(p) => p
+        err(e) => len(q)
+      }
+    }
+
+    let where_str = slice(q, where_pos + 6, order_pos)
+    where_str = trim(where_str)
+    let where_parts = split(where_str, " ")
+
+    if len(where_parts) >= 3 {
+      where_col = where_parts[0]
+      where_op = where_parts[1]
+      where_val = slice(where_str, len(where_col) + 1 + len(where_op) + 1, len(where_str))
+      where_val = trim(where_val)
+    }
+    where_pos = order_pos
+  }
+
+  // Parse ORDER BY if present
+  if startsWith(slice(q, where_pos, len(q)), "ORDER") {
+    let limit_pos = match findKeyword(q, "LIMIT", where_pos + 8) {
+      ok(p) => p
+      err(e) => len(q)
+    }
+
+    let order_str = slice(q, where_pos + 9, limit_pos)
+    order_str = trim(order_str)
+
+    if endsWith(order_str, " DESC") {
+      order_col = slice(order_str, 0, len(order_str) - 5)
+      order_desc = true
+    } else {
+      order_col = order_str
+      order_desc = false
+    }
+    where_pos = limit_pos
+  }
+
+  // Parse LIMIT if present
+  if startsWith(slice(q, where_pos, len(q)), "LIMIT") {
+    let limit_str = slice(q, where_pos + 6, len(q))
+    limit_str = trim(limit_str)
+    match num(limit_str) {
+      ok(n) => limit_n = n
+      err(e) => {}
+    }
+  }
+
+  return ok([select_cols, where_col, where_op, where_val, order_col, order_desc, limit_n])
+}
+
+fn getColumnIndex(header, col_name) {
+  let i = 0
+  for col in header {
+    if col == col_name {
+      return ok(i)
+    }
+    i = i + 1
+  }
+  return err("not found")
+}
+
+fn tryParseNum(s) {
+  match num(s) {
+    ok(n) => ok(n)
+    err(e) => err("not a number")
+  }
+}
+
+fn compareValues(val1, val2, op) {
+  let num1 = tryParseNum(val1)
+  let num2 = tryParseNum(val2)
+
+  match (num1, num2) {
+    (ok(n1), ok(n2)) => {
+      // Numeric comparison
+      let result = match op {
+        "=" => n1 == n2
+        "!=" => n1 != n2
+        "<" => n1 < n2
+        ">" => n1 > n2
+        "<=" => n1 <= n2
+        ">=" => n1 >= n2
+        _ => false
+      }
+      return ok(result)
+    }
+    _ => {
+      // String comparison - only = and != allowed
+      if op == "=" or op == "!=" {
+        let result = match op {
+          "=" => val1 == val2
+          "!=" => val1 != val2
+          _ => false
+        }
+        return ok(result)
+      } else {
+        return err("bad comparison")
+      }
+    }
+  }
+}
+
+fn isNumericColumn(rows, col_idx) {
+  for row in rows {
+    match get(row, col_idx) {
+      ok(cell) => {
+        match tryParseNum(cell) {
+          ok(n) => {}
+          err(e) => return ok(false)
+        }
+      }
+      err(e) => return ok(false)
+    }
+  }
+  return ok(true)
+}
+
+fn main() {
+  let args_list = args()
+
+  if len(args_list) < 2 {
+    print("error: bad query")
+    return ok(true)
+  }
+
+  let csv_str = args_list[0]
+  let query_str = args_list[1]
+
+  let rows_data = parseCsv(csv_str)
+
+  if len(rows_data) == 0 {
+    print("error: bad query")
+    return ok(true)
+  }
+
+  let header = rows_data[0]
+  let data_rows = slice(rows_data, 1, len(rows_data))
+
+  match parseQuery(query_str) {
+    ok(parsed) => {
+      let select_cols = parsed[0]
+      let where_col = parsed[1]
+      let where_op = parsed[2]
+      let where_val = parsed[3]
+      let order_col = parsed[4]
+      let order_desc = match get(parsed, 5) {
+        ok(v) => v
+        err(e) => false
+      }
+      let limit_n = match get(parsed, 6) {
+        ok(v) => v
+        err(e) => 0
+      }
+
+      // Check all columns exist
+      for col in select_cols {
+        match getColumnIndex(header, col) {
+          ok(idx) => {}
+          err(e) => {
+            print("error: unknown column " + col)
+            return ok(true)
+          }
+        }
+      }
+
+      if where_col != "" {
+        match getColumnIndex(header, where_col) {
+          ok(idx) => {}
+          err(e) => {
+            print("error: unknown column " + where_col)
+            return ok(true)
+          }
+        }
+      }
+
+      if order_col != "" {
+        match getColumnIndex(header, order_col) {
+          ok(idx) => {}
+          err(e) => {
+            print("error: unknown column " + order_col)
+            return ok(true)
+          }
+        }
+      }
+
+      // Filter rows by WHERE
+      let filtered_rows = []
+      for row in data_rows {
+        let include_row = true
+
+        if where_col != "" {
+          match getColumnIndex(header, where_col) {
+            ok(col_idx) => {
+              match get(row, col_idx) {
+                ok(cell) => {
+                  match compareValues(cell, where_val, where_op) {
+                    ok(matches) => {
+                      include_row = matches
+                    }
+                    err(e) => {
+                      print("error: bad comparison")
+                      return ok(true)
+                    }
+                  }
+                }
+                err(e) => include_row = false
+              }
+            }
+            err(e) => include_row = false
+          }
+        }
+
+        if include_row {
+          push(filtered_rows, row)
+        }
+      }
+
+      // Sort if ORDER BY specified
+      if order_col != "" {
+        match getColumnIndex(header, order_col) {
+          ok(col_idx) => {
+            match isNumericColumn(filtered_rows, col_idx) {
+              ok(is_numeric) => {
+                if is_numeric {
+                  filtered_rows = sortBy(filtered_rows, row => {
+                    let cell_val = match get(row, col_idx) {
+                      ok(c) => c
+                      err(e) => "0"
+                    }
+                    let n = match num(cell_val) {
+                      ok(v) => v
+                      err(e) => 0
+                    }
+                    if order_desc { return 0 - n }
+                    return n
+                  })
+                } else {
+                  filtered_rows = sortBy(filtered_rows, row => {
+                    let cell_val = match get(row, col_idx) {
+                      ok(c) => c
+                      err(e) => ""
+                    }
+                    if order_desc {
+                      // Can't negate strings, so we reverse after sorting
+                      return cell_val
+                    }
+                    return cell_val
+                  })
+                  if order_desc {
+                    filtered_rows = reverse(filtered_rows)
+                  }
+                }
+              }
+              err(e) => {}
+            }
+          }
+          err(e) => {}
+        }
+      }
+
+      // Apply LIMIT
+      if limit_n > 0 and limit_n < len(filtered_rows) {
+        filtered_rows = slice(filtered_rows, 0, limit_n)
+      }
+
+      // Output header
+      print(join(select_cols, ","))
+
+      // Output rows
+      for row in filtered_rows {
+        let output_cells = []
+        for col in select_cols {
+          match getColumnIndex(header, col) {
+            ok(col_idx) => {
+              match get(row, col_idx) {
+                ok(cell) => push(output_cells, cell)
+                err(e) => {}
+              }
+            }
+            err(e) => {}
+          }
+        }
+        print(join(output_cells, ","))
+      }
+
+      return ok(true)
+    }
+    err(e) => {
+      print("error: bad query")
+      return ok(true)
+    }
+  }
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print("error: bad query")
+}

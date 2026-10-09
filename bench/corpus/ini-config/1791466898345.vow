@@ -1,0 +1,119 @@
+fn isValidName(name) {
+  if len(name) == 0 {
+    return false
+  }
+  for c in split(name, "") {
+    let isLower = c >= "a" and c <= "z"
+    let isDigit = c >= "0" and c <= "9"
+    let isUnderscore = c == "_"
+    if not (isLower or isDigit or isUnderscore) {
+      return false
+    }
+  }
+  return true
+}
+
+fn parseIni(content) {
+  let lines_list = lines(content)
+  let config = {}
+  let currentSection = ""
+  let lineNum = 1
+
+  for line in lines_list {
+    let trimmedLine = trim(line)
+
+    if trimmedLine == "" {
+      lineNum = lineNum + 1
+      continue
+    }
+
+    if startsWith(trimmedLine, ";") or startsWith(trimmedLine, "#") {
+      lineNum = lineNum + 1
+      continue
+    }
+
+    if startsWith(trimmedLine, "[") and endsWith(trimmedLine, "]") {
+      let sectionName = slice(trimmedLine, 1, len(trimmedLine) - 1)
+      if not isValidName(sectionName) {
+        return err("error line " + str(lineNum) + ": bad line")
+      }
+      currentSection = sectionName
+      lineNum = lineNum + 1
+      continue
+    }
+
+    let parts = split(trimmedLine, "=")
+    if len(parts) == 2 {
+      if currentSection == "" {
+        return err("error line " + str(lineNum) + ": key outside section")
+      }
+
+      let key = trim(parts[0])
+      let value = trim(parts[1])
+
+      if not isValidName(key) {
+        return err("error line " + str(lineNum) + ": bad line")
+      }
+
+      if not has(config, currentSection) {
+        config[currentSection] = {}
+      }
+
+      let section = config[currentSection]
+      section[key] = value
+      lineNum = lineNum + 1
+    } else {
+      return err("error line " + str(lineNum) + ": bad line")
+    }
+  }
+
+  return ok(config)
+}
+
+fn main() {
+  let args_list = args()
+  if len(args_list) < 1 {
+    return ok(true)
+  }
+
+  let iniContent = args_list[0]
+
+  match parseIni(iniContent) {
+    ok(config) => {
+      for i in range(1, len(args_list)) {
+        let query = args_list[i]
+        let parts = split(query, ".")
+
+        if len(parts) != 2 {
+          print(query + " missing")
+          continue
+        }
+
+        let section = parts[0]
+        let key = parts[1]
+
+        if has(config, section) {
+          let sectionConfig = config[section]
+          if has(sectionConfig, key) {
+            let value = sectionConfig[key]
+            print(query + " = " + value)
+          } else {
+            print(query + " missing")
+          }
+        } else {
+          print(query + " missing")
+        }
+      }
+    }
+    err(e) => {
+      print(e)
+    }
+  }
+
+  return ok(true)
+}
+
+match main() {
+  ok(_) => {}
+  err(e) => print(e)
+}

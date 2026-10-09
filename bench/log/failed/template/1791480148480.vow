@@ -1,0 +1,142 @@
+fn main() {
+  let args_list = args()
+
+  if len(args_list) < 2 {
+    print("error: bad data")
+    return ok(true)
+  }
+
+  let template = args_list[0]
+  let data_str = args_list[1]
+
+  match parseJson(data_str) {
+    ok(data) => {
+      if jsonType(data) != "object" {
+        print("error: bad data")
+      } else {
+        match render(template, data, {}) {
+          ok(result) => print(result)
+          err(e) => print(e)
+        }
+      }
+    }
+    err(_) => {
+      print("error: bad data")
+    }
+  }
+}
+
+fn render(template, root_data, current_data) {
+  let result = ""
+  let i = 0
+  let stack = []
+
+  while i < len(template) {
+    if i + 1 < len(template) and template[i] == "{" and template[i + 1] == "{" {
+      let j = i + 2
+      while j + 1 < len(template) and not (template[j] == "}" and template[j + 1] == "}") {
+        j = j + 1
+      }
+
+      if j + 1 >= len(template) {
+        return err("error: unclosed tag")
+      }
+
+      let tag_content = slice(template, i + 2, j)
+      let tag_trimmed = trim(tag_content)
+
+      match parseTag(tag_trimmed, root_data, current_data) {
+        ok(tag_result) => {
+          match tag_result {
+            "if" => {
+              // This shouldn't happen in simple render
+              return err("error: unexpected tag")
+            }
+            "each" => {
+              return err("error: unexpected tag")
+            }
+            _ => {
+              result = result + tag_result
+            }
+          }
+        }
+        err(e) => {
+          return err(e)
+        }
+      }
+
+      i = j + 2
+    } else {
+      result = result + template[i]
+      i = i + 1
+    }
+  }
+
+  return ok(result)
+}
+
+fn parseTag(tag, root_data, current_data) {
+  if startsWith(tag, "#if ") {
+    return err("error: block in simple render")
+  } else if startsWith(tag, "#each ") {
+    return err("error: block in simple render")
+  } else if startsWith(tag, "/if") or startsWith(tag, "/each") {
+    return err("error: unexpected tag")
+  } else if tag == "." {
+    return formatValue(current_data)
+  } else {
+    let value = lookupValue(tag, root_data, current_data)
+    return formatValue(value)
+  }
+}
+
+fn formatValue(value) {
+  if isNull(value) {
+    return ok("")
+  } else if jsonType(value) == "string" {
+    match jsonStr(value) {
+      ok(s) => return ok(s)
+      err(_) => return err("error: not printable")
+    }
+  } else if jsonType(value) == "number" {
+    match jsonNum(value) {
+      ok(n) => {
+        if n == 0 - floor(0 - n) {
+          return ok(str(floor(n)))
+        } else {
+          return ok(str(n))
+        }
+      }
+      err(_) => return err("error: not printable")
+    }
+  } else if jsonType(value) == "bool" {
+    match jsonBool(value) {
+      ok(b) => return ok(if b { "true" } else { "false" })
+      err(_) => return err("error: not printable")
+    }
+  } else if jsonType(value) == "array" or jsonType(value) == "object" {
+    return err("error: not printable")
+  } else {
+    return err("error: not printable")
+  }
+}
+
+fn lookupValue(name, root_data, current_data) {
+  if jsonType(current_data) == "object" {
+    let v = field(current_data, name)
+    if not isNull(v) {
+      return v
+    }
+  }
+
+  if jsonType(root_data) == "object" {
+    return field(root_data, name)
+  }
+
+  return parseJson("null")?
+}
+
+match main() {
+  ok(_) => {}
+  err(e) => print(e)
+}

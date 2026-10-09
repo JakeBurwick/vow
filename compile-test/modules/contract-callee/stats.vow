@@ -1,0 +1,6 @@
+fn mean(xs) expects len(xs) > 0 { return sum(xs) / len(xs) }
+fn spread(xs)
+  ensures result >= 0
+{
+  return xs[len(xs) - 1] - xs[0]
+}

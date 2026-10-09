@@ -1,0 +1,2 @@
+import "./geo" as geo
+print(1)

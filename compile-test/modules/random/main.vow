@@ -1,0 +1,3 @@
+import "./dice.vow" as dice
+print(dice.roll(5), dice.coin())
+print(dice.roll(3))

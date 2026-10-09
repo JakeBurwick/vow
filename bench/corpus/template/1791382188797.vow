@@ -1,0 +1,235 @@
+fn isTruthy(v) {
+  match jsonType(v) {
+    "null" => false
+    "bool" => {
+      match jsonBool(v) {
+        ok(b) => b
+        err(_) => false
+      }
+    }
+    "number" => {
+      match jsonNum(v) {
+        ok(n) => n != 0
+        err(_) => false
+      }
+    }
+    "string" => {
+      match jsonStr(v) {
+        ok(s) => len(s) > 0
+        err(_) => false
+      }
+    }
+    "array" => len(jsonList(v)) > 0
+    "object" => len(jsonKeys(v)) > 0
+    _ => false
+  }
+}
+
+fn valueToStr(v) {
+  match jsonType(v) {
+    "null" => ""
+    "bool" => {
+      match jsonBool(v) {
+        ok(b) => if b { "true" } else { "false" }
+        err(_) => ""
+      }
+    }
+    "number" => {
+      match jsonNum(v) {
+        ok(n) => str(n)
+        err(_) => ""
+      }
+    }
+    "string" => {
+      match jsonStr(v) {
+        ok(s) => s
+        err(_) => ""
+      }
+    }
+    "array" => ""
+    "object" => ""
+    _ => ""
+  }
+}
+
+fn getFromJson(data, key) {
+  if jsonType(data) != "object" {
+    return err("not object")
+  }
+  return get(data, key)
+}
+
+fn substring(s, start, end) {
+  let result = ""
+  let i = start
+  while i < end and i < len(s) {
+    result = result + s[i]
+    i = i + 1
+  }
+  return result
+}
+
+struct ParseState {
+  template,
+  pos,
+  data,
+  error_msg
+}
+
+fn parseUntil(state, endTag) {
+  let result = ""
+  while state.pos < len(state.template) and state.error_msg == "" {
+    if state.pos + 1 < len(state.template) and state.template[state.pos] == "{" and state.template[state.pos + 1] == "{" {
+      let closePos = state.pos + 2
+      while closePos + 1 < len(state.template) {
+        if state.template[closePos] == "}" and state.template[closePos + 1] == "}" {
+          break
+        }
+        closePos = closePos + 1
+      }
+
+      if closePos + 1 >= len(state.template) {
+        if endTag != "" {
+          state.error_msg = "error: unclosed " + endTag
+        } else {
+          state.error_msg = "error: unclosed if"
+        }
+        return ok(result)
+      }
+
+      let tagContent = substring(state.template, state.pos + 2, closePos)
+      let tagTrimmed = trim(tagContent)
+
+      if startsWith(tagTrimmed, "/") {
+        if endTag != "" and tagTrimmed == "/" + endTag {
+          state.pos = closePos + 2
+          return ok(result)
+        } else {
+          state.error_msg = "error: unexpected " + tagTrimmed
+          return ok(result)
+        }
+      }
+
+      if startsWith(tagTrimmed, "#if ") {
+        let condName = trim(substring(tagTrimmed, 4, len(tagTrimmed)))
+        state.pos = closePos + 2
+        match parseUntil(state, "if") {
+          ok(body) => {
+            if state.error_msg == "" {
+              let val = getFromJson(state.data, condName)
+              match val {
+                ok(v) => {
+                  if isTruthy(v) {
+                    result = result + body
+                  }
+                }
+                err(_) => {}
+              }
+            }
+          }
+          err(_) => {}
+        }
+      } else if startsWith(tagTrimmed, "#each ") {
+        let listName = trim(substring(tagTrimmed, 6, len(tagTrimmed)))
+        state.pos = closePos + 2
+        let val = getFromJson(state.data, listName)
+        match val {
+          ok(v) => {
+            if jsonType(v) != "array" {
+              state.error_msg = "error: not a list: " + listName
+              match parseUntil(state, "each") {
+                ok(_) => {}
+                err(_) => {}
+              }
+            } else {
+              let items = jsonList(v)
+              let savedPos = state.pos
+              for item in items {
+                state.pos = savedPos
+                let oldData = state.data
+                state.data = item
+                match parseUntil(state, "each") {
+                  ok(body) => {
+                    if state.error_msg == "" {
+                      result = result + body
+                    }
+                  }
+                  err(_) => {}
+                }
+                state.data = oldData
+                if state.error_msg != "" {
+                  break
+                }
+              }
+            }
+          }
+          err(_) => {
+            match parseUntil(state, "each") {
+              ok(_body) => {}
+              err(_) => {}
+            }
+          }
+        }
+      } else {
+        let varName = tagTrimmed
+        let val = if varName == "." {
+          ok(state.data)
+        } else {
+          getFromJson(state.data, varName)
+        }
+        state.pos = closePos + 2
+        match val {
+          ok(v) => {
+            let typ = jsonType(v)
+            if typ == "array" or typ == "object" {
+              state.error_msg = "error: not printable"
+            } else {
+              result = result + valueToStr(v)
+            }
+          }
+          err(_) => {}
+        }
+      }
+    } else {
+      result = result + state.template[state.pos]
+      state.pos = state.pos + 1
+    }
+  }
+
+  if endTag != "" and state.error_msg == "" {
+    state.error_msg = "error: unclosed " + endTag
+  }
+  return ok(result)
+}
+
+fn processTemplate(template, data) {
+  match jsonType(data) {
+    "object" => {
+      let state = ParseState { template: template, pos: 0, data: data, error_msg: "" }
+      match parseUntil(state, "") {
+        ok(result) => {
+          if state.error_msg != "" {
+            print(state.error_msg)
+          } else {
+            print(result)
+          }
+        }
+        err(e) => {
+          print("error: " + e)
+        }
+      }
+    }
+    _ => {
+      print("error: bad data")
+    }
+  }
+}
+
+let args_list = args()
+let template = match get(args_list, 0) { ok(s) => s err(_) => "" }
+let data_str = match get(args_list, 1) { ok(s) => s err(_) => "" }
+
+match parseJson(data_str) {
+  ok(data) => processTemplate(template, data)
+  err(_) => print("error: bad data")
+}

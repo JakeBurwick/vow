@@ -1,0 +1,116 @@
+struct Pair { path, value }
+
+fn flattenJson(j, path, pairs) {
+  let t = jsonType(j)
+
+  if t == "object" {
+    match jsonKeys(j) {
+      ok(objKeys) => {
+        objKeys = sort(objKeys)
+        if len(objKeys) == 0 {
+          push(pairs, Pair { path: path, value: "{}" })
+        } else {
+          for key in objKeys {
+            match get(j, key) {
+              ok(val) => {
+                let newPath = if path == "" { key } else { path + "." + key }
+                flattenJson(val, newPath, pairs)
+              }
+              err(e) => {}
+            }
+          }
+        }
+      }
+      err(e) => {}
+    }
+  } else if t == "array" {
+    match jsonList(j) {
+      ok(list) => {
+        if len(list) == 0 {
+          push(pairs, Pair { path: path, value: "[]" })
+        } else {
+          for i in range(0, len(list)) {
+            match get(list, i) {
+              ok(val) => {
+                let newPath = path + "[" + str(i) + "]"
+                flattenJson(val, newPath, pairs)
+              }
+              err(e) => {}
+            }
+          }
+        }
+      }
+      err(e) => {}
+    }
+  } else if t == "string" {
+    match jsonStr(j) {
+      ok(s) => push(pairs, Pair { path: path, value: toJson(s) })
+      err(e) => {}
+    }
+  } else if t == "number" {
+    match jsonNum(j) {
+      ok(n) => push(pairs, Pair { path: path, value: str(n) })
+      err(e) => {}
+    }
+  } else if t == "bool" {
+    match jsonBool(j) {
+      ok(b) => {
+        let val = if b { "true" } else { "false" }
+        push(pairs, Pair { path: path, value: val })
+      }
+      err(e) => {}
+    }
+  } else if t == "null" {
+    push(pairs, Pair { path: path, value: "null" })
+  }
+}
+
+let jsonStr = args()[0]
+
+match parseJson(jsonStr) {
+  ok(j) => {
+    let t = jsonType(j)
+    if t == "object" or t == "array" {
+      let isEmpty = false
+      if t == "object" {
+        match jsonKeys(j) {
+          ok(keys) => {
+            if len(keys) == 0 {
+              isEmpty = true
+            }
+          }
+          err(e) => {}
+        }
+      } else {
+        match jsonList(j) {
+          ok(list) => {
+            if len(list) == 0 {
+              isEmpty = true
+            }
+          }
+          err(e) => {}
+        }
+      }
+
+      if isEmpty {
+        print("{}")
+      } else {
+        let pairs = []
+        flattenJson(j, "", pairs)
+
+        let output = ""
+        for pair in pairs {
+          if output == "" {
+            output = toJson(pair.path) + ":" + pair.value
+          } else {
+            output = output + "," + toJson(pair.path) + ":" + pair.value
+          }
+        }
+        print("{" + output + "}")
+      }
+    } else {
+      print("{\"error\":\"not a container\"}")
+    }
+  }
+  err(e) => print("{\"error\":\"bad json\"}")
+}

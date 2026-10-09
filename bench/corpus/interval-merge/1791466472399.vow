@@ -1,0 +1,77 @@
+fn main() {
+  let input = args()[0]
+
+  if input == "" {
+    print("")
+    return
+  }
+
+  let pieces = split(input, ",")
+  let intervals = []
+
+  // Parse and validate intervals
+  for piece in pieces {
+    let parts = split(piece, "-")
+    if len(parts) != 2 {
+      print("error: bad interval ${piece}")
+      return
+    }
+
+    let aStr = parts[0]
+    let bStr = parts[1]
+
+    match num(aStr) {
+      ok(a) => {
+        match num(bStr) {
+          ok(b) => {
+            if a > b {
+              print("error: bad interval ${piece}")
+              return
+            }
+            push(intervals, [a, b])
+          }
+          err(_) => {
+            print("error: bad interval ${piece}")
+            return
+          }
+        }
+      }
+      err(_) => {
+        print("error: bad interval ${piece}")
+        return
+      }
+    }
+  }
+
+  // Sort intervals by start
+  intervals = sortBy(intervals, iv => iv[0])
+
+  // Merge intervals
+  let merged = []
+  for iv in intervals {
+    if len(merged) == 0 {
+      push(merged, [iv[0], iv[1]])
+    } else {
+      let lastIdx = len(merged) - 1
+      let last = merged[lastIdx]
+      // Check if iv overlaps or touches last
+      // Touching means: iv[0] <= last[1] + 1
+      if iv[0] <= last[1] + 1 {
+        // Merge by updating the last interval
+        merged[lastIdx] = [last[0], max(last[1], iv[1])]
+      } else {
+        // No overlap, add new interval
+        push(merged, [iv[0], iv[1]])
+      }
+    }
+  }
+
+  // Output
+  let result = []
+  for iv in merged {
+    push(result, str(iv[0]) + "-" + str(iv[1]))
+  }
+  print(join(result, ","))
+}
+
+main()

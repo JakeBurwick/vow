@@ -1,0 +1,95 @@
+fn main() {
+  let argv = args()
+  if len(argv) < 3 {
+    print("no path")
+    return
+  }
+
+  let edges_str = argv[0]
+  let start = argv[1]
+  let goal = argv[2]
+
+  if start == goal {
+    print(start)
+    return
+  }
+
+  let graph = {}
+  let edges = split(edges_str, ",")
+
+  for edge in edges {
+    let parts = split(edge, "-")
+    if len(parts) != 2 {
+      continue
+    }
+    let a = parts[0]
+    let b = parts[1]
+
+    if not has(graph, a) {
+      graph[a] = []
+    }
+    if not has(graph, b) {
+      graph[b] = []
+    }
+
+    push(graph[a], b)
+    push(graph[b], a)
+  }
+
+  if not has(graph, start) or not has(graph, goal) {
+    print("no path")
+    return
+  }
+
+  let result = bfs(graph, start, goal)
+  match result {
+    ok(path) => {
+      print(join(path, " -> "))
+    }
+    err(e) => {
+      print("no path")
+    }
+  }
+}
+
+fn bfs(graph, start, goal) {
+  let queue = []
+  let visited = {}
+  let parent = {}
+
+  push(queue, start)
+  visited[start] = true
+  parent[start] = ""
+
+  let head = 0
+  while head < len(queue) {
+    let current = queue[head]
+    head = head + 1
+
+    if current == goal {
+      let path = []
+      let node = goal
+      while node != "" {
+        push(path, node)
+        node = parent[node]
+      }
+      let reversed = reverse(path)
+      return ok(reversed)
+    }
+
+    let neighbors = graph[current]
+    let sorted_neighbors = sort(neighbors)
+
+    for neighbor in sorted_neighbors {
+      if not has(visited, neighbor) {
+        visited[neighbor] = true
+        parent[neighbor] = current
+        push(queue, neighbor)
+      }
+    }
+  }
+
+  return err("no path")
+}
+
+main()

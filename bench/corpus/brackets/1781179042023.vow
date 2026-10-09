@@ -1,0 +1,33 @@
+fn isBalanced(s) {
+  let stack = []
+  let chars = split(s, "")
+  for char in chars {
+    if char == "(" or char == "[" or char == "{" {
+      push(stack, char)
+    } else if char == ")" or char == "]" or char == "}" {
+      match pop(stack) {
+        ok(top) => {
+          let valid = false
+          if char == ")" and top == "(" { valid = true }
+          if char == "]" and top == "[" { valid = true }
+          if char == "}" and top == "{" { valid = true }
+          if not valid { return ok(false) }
+        }
+        err(e) => {
+          return ok(false)
+        }
+      }
+    }
+  }
+  return ok(len(stack) == 0)
+}
+
+let input = args()[0]
+match isBalanced(input) {
+  ok(result) => {
+    if result { print("yes") } else { print("no") }
+  }
+  err(e) => {
+    print("no")
+  }
+}

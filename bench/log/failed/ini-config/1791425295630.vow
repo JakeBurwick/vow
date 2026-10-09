@@ -1,0 +1,131 @@
+// INI file parser: [section], key = value
+
+struct Ini {
+  sections
+}
+
+fn parseIni(content) {
+  let ini_lines = split(content, "\n")
+  let sections = {}
+  let current_section = ""
+  let line_num = 0
+
+  for line in ini_lines {
+    line_num = line_num + 1
+    let trimmed = trim(line)
+
+    // Skip blank lines and comments
+    if trimmed == "" {
+      continue
+    }
+    if startsWith(trimmed, ";") {
+      continue
+    }
+    if startsWith(trimmed, "#") {
+      continue
+    }
+
+    // Check for section header
+    if startsWith(trimmed, "[") and endsWith(trimmed, "]") {
+      let section_name = slice(trimmed, 1, len(trimmed) - 1)
+      let section_trimmed = trim(section_name)
+      // Validate section name: lowercase letters, digits, underscores
+      let valid = true
+      let i = 0
+      while i < len(section_trimmed) {
+        let c = section_trimmed[i]
+        if not ((c >= "a" and c <= "z") or (c >= "0" and c <= "9") or c == "_") {
+          valid = false
+        }
+        i = i + 1
+      }
+      if not valid {
+        return err("line " + str(line_num) + ": bad line")
+      }
+      current_section = section_trimmed
+      if not has(sections, current_section) {
+        sections[current_section] = {}
+      }
+      continue
+    }
+
+    // Check for key = value
+    match indexOf(trimmed, "=") {
+      ok(eq_pos) => {
+        if current_section == "" {
+          return err("line " + str(line_num) + ": key outside section")
+        }
+        let key_part = slice(trimmed, 0, eq_pos)
+        let key = trim(key_part)
+        let value_part = slice(trimmed, eq_pos + 1, len(trimmed))
+        let value = trim(value_part)
+
+        // Validate key name: lowercase letters, digits, underscores
+        let valid = true
+        let i = 0
+        while i < len(key) {
+          let c = key[i]
+          if not ((c >= "a" and c <= "z") or (c >= "0" and c <= "9") or c == "_") {
+            valid = false
+          }
+          i = i + 1
+        }
+        if not valid {
+          return err("line " + str(line_num) + ": bad line")
+        }
+
+        let section_map = sections[current_section]
+        section_map[key] = value
+      }
+      err(_) => {
+        return err("line " + str(line_num) + ": bad line")
+      }
+    }
+  }
+
+  return ok(Ini { sections: sections })
+}
+
+fn main() {
+  let args_list = args()
+  if len(args_list) < 1 {
+    return
+  }
+
+  let ini_content = args_list[0]
+
+  match parseIni(ini_content) {
+    ok(ini) => {
+      let i = 1
+      while i < len(args_list) {
+        let query = args_list[i]
+        match indexOf(query, ".") {
+          ok(dot_pos) => {
+            let section = slice(query, 0, dot_pos)
+            let key = slice(query, dot_pos + 1, len(query))
+
+            if has(ini.sections, section) {
+              let section_map = ini.sections[section]
+              if has(section_map, key) {
+                print("${query} = ${section_map[key]}")
+              } else {
+                print("${query} missing")
+              }
+            } else {
+              print("${query} missing")
+            }
+          }
+          err(_) => {
+            print("${query} missing")
+          }
+        }
+        i = i + 1
+      }
+    }
+    err(e) => {
+      print(e)
+    }
+  }
+}
+
+main()

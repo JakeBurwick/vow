@@ -1,0 +1,17 @@
+import "./lib/vec.vow" as v
+
+struct Square { corner, side }
+
+fn area(s)
+  expects s.side >= 0
+  ensures result >= 0
+{
+  return s.side * s.side
+}
+
+fn describe(s) {
+  let c = s.corner
+  return "square at ${c.x},${c.y} with area ${area(s)} (corner length ${_round1(sqrt(v.len2(c)))})"
+}
+
+fn _round1(x) { return round(x, 1) }

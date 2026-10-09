@@ -1,0 +1,124 @@
+fn bfs_dist(graph, start) {
+  let queue = []
+  let dist = {}
+
+  push(queue, start)
+  dist[start] = 0
+
+  while len(queue) > 0 {
+    let curr = queue[0]
+    queue = slice(queue, 1, len(queue))
+
+    let neighbors = match get(graph, curr) { ok(n) => n err(e) => [] }
+    for neighbor in neighbors {
+      if not has(dist, neighbor) {
+        dist[neighbor] = dist[curr] + 1
+        push(queue, neighbor)
+      }
+    }
+  }
+
+  return dist
+}
+
+fn main() {
+  let argv = args()
+  let edges_str = match get(argv, 0) { ok(s) => s err(e) => "" }
+  let start = match get(argv, 1) { ok(s) => s err(e) => "" }
+  let goal = match get(argv, 2) { ok(s) => s err(e) => "" }
+
+  if start == "" or goal == "" {
+    print("no path")
+    return ok(true)
+  }
+
+  if start == goal {
+    print(start)
+    return ok(true)
+  }
+
+  // Build adjacency list
+  let graph = {}
+  let edges = split(edges_str, ",")
+
+  for edge in edges {
+    if edge == "" {
+      continue
+    }
+    let parts = split(edge, "-")
+    if len(parts) != 2 {
+      continue
+    }
+    let a = parts[0]
+    let b = parts[1]
+
+    // Add a -> b
+    if has(graph, a) {
+      push(graph[a], b)
+    } else {
+      graph[a] = [b]
+    }
+
+    // Add b -> a (undirected)
+    if has(graph, b) {
+      push(graph[b], a)
+    } else {
+      graph[b] = [a]
+    }
+  }
+
+  // Check if nodes exist
+  if not has(graph, start) or not has(graph, goal) {
+    print("no path")
+    return ok(true)
+  }
+
+  // Compute distances from start and from goal
+  let dist_from_start = bfs_dist(graph, start)
+  let dist_from_goal = bfs_dist(graph, goal)
+
+  if not has(dist_from_start, goal) {
+    print("no path")
+    return ok(true)
+  }
+
+  let shortest_dist = dist_from_start[goal]
+
+  // Reconstruct lexicographically smallest shortest path
+  let path = []
+  let curr = start
+  push(path, curr)
+
+  while curr != goal {
+    let neighbors = match get(graph, curr) { ok(n) => n err(e) => [] }
+    let valid_neighbors = []
+    let curr_dist_to_goal = match get(dist_from_goal, curr) { ok(d) => d err(e) => -1 }
+
+    for neighbor in neighbors {
+      let d_from_start = match get(dist_from_start, neighbor) { ok(d) => d err(e) => -1 }
+      let d_from_goal = match get(dist_from_goal, neighbor) { ok(d) => d err(e) => -1 }
+
+      // Check if this neighbor is on a shortest path AND moves closer to goal
+      if d_from_start >= 0 and d_from_goal >= 0 and d_from_start + d_from_goal == shortest_dist and d_from_goal < curr_dist_to_goal {
+        push(valid_neighbors, neighbor)
+      }
+    }
+
+    // Sort and pick the smallest
+    valid_neighbors = sort(valid_neighbors)
+    if len(valid_neighbors) == 0 {
+      print("no path")
+      return ok(true)
+    }
+    curr = valid_neighbors[0]
+    push(path, curr)
+  }
+
+  print(join(path, " -> "))
+  return ok(true)
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

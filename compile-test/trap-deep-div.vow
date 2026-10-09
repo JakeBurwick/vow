@@ -1,0 +1,6 @@
+fn d(n, x, z) {
+  if n == 0 { return x / z }
+  return d(n - 1, x, z) + 1
+}
+print("start")
+print(d(12, 5, len(args()) - 2))

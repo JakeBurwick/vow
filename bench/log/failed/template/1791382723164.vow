@@ -1,0 +1,237 @@
+fn isTruthy(v) {
+  let t = jsonType(v)
+  if t == "null" { return false }
+  if t == "bool" {
+    match jsonBool(v) {
+      ok(b) => return b
+      err(e) => return false
+    }
+  }
+  if t == "number" {
+    match jsonNum(v) {
+      ok(n) => return n != 0
+      err(e) => return false
+    }
+  }
+  if t == "string" {
+    match jsonStr(v) {
+      ok(s) => return len(s) > 0
+      err(e) => return false
+    }
+  }
+  if t == "array" {
+    let items = jsonList(v)
+    return len(items) > 0
+  }
+  if t == "object" {
+    let keys = jsonKeys(v)
+    return len(keys) > 0
+  }
+  return false
+}
+
+fn valueToStr(v) {
+  let t = jsonType(v)
+  if t == "null" { return "" }
+  if t == "bool" {
+    match jsonBool(v) {
+      ok(b) => { if b { return "true" } else { return "false" } }
+      err(e) => return ""
+    }
+  }
+  if t == "number" {
+    match jsonNum(v) {
+      ok(n) => return str(n)
+      err(e) => return ""
+    }
+  }
+  if t == "string" {
+    match jsonStr(v) {
+      ok(s) => return s
+      err(e) => return ""
+    }
+  }
+  return ""
+}
+
+fn lookupPath(ctx, path) {
+  let parts = split(path, ".")
+  let current = ctx
+  for part in parts {
+    if jsonType(current) != "object" {
+      return err("not found")
+    }
+    match get(current, part) {
+      ok(v) => current = v
+      err(e) => return err("not found")
+    }
+  }
+  return ok(current)
+}
+
+fn findClosing(template, start, blockType) {
+  let i = start
+  let len_t = len(template)
+  let depth = 1
+
+  while i < len_t and depth > 0 {
+    if i + 1 < len_t and template[i] == "{" and template[i + 1] == "{" {
+      let j = i + 2
+      while j + 1 < len_t and not (template[j] == "}" and template[j + 1] == "}") {
+        j = j + 1
+      }
+      if j + 1 < len_t {
+        let tag = slice(template, i + 2, j)
+        let trimmed = trim(tag)
+        if startsWith(trimmed, blockType) {
+          depth = depth + 1
+        }
+        if trimmed == "/" + blockType {
+          depth = depth - 1
+          if depth == 0 {
+            return ok(i)
+          }
+        }
+        i = j + 2
+      } else {
+        i = i + 1
+      }
+    } else {
+      i = i + 1
+    }
+  }
+
+  if blockType == "if" {
+    return err("unclosed if")
+  } else {
+    return err("unclosed each")
+  }
+}
+
+fn render(template, data, ctx) {
+  let output = ""
+  let i = 0
+  let len_t = len(template)
+
+  while i < len_t {
+    if i + 1 < len_t and template[i] == "{" and template[i + 1] == "{" {
+      let j = i + 2
+      while j + 1 < len_t and not (template[j] == "}" and template[j + 1] == "}") {
+        j = j + 1
+      }
+      if j + 1 >= len_t {
+        return err("unclosed tag")
+      }
+
+      let tag = slice(template, i + 2, j)
+      let trimmed = trim(tag)
+
+      if startsWith(trimmed, "#if ") {
+        let varname = trim(slice(trimmed, 4, len(trimmed)))
+        match findClosing(template, j + 2, "if") {
+          ok(end_pos) => {
+            let body = slice(template, j + 2, end_pos)
+            match lookupPath(ctx, varname) {
+              ok(v) => {
+                if isTruthy(v) {
+                  match render(body, data, ctx) {
+                    ok(r) => output = output + r
+                    err(e) => return err(e)
+                  }
+                }
+              }
+              err(e) => {}
+            }
+            i = end_pos + 7
+          }
+          err(e) => return err(e)
+        }
+      } else if startsWith(trimmed, "#each ") {
+        let varname = trim(slice(trimmed, 6, len(trimmed)))
+        match findClosing(template, j + 2, "each") {
+          ok(end_pos) => {
+            let body = slice(template, j + 2, end_pos)
+            match lookupPath(ctx, varname) {
+              ok(v) => {
+                if jsonType(v) != "array" {
+                  return err("not a list: " + varname)
+                }
+                let items = jsonList(v)
+                for item in items {
+                  match render(body, data, item) {
+                    ok(r) => output = output + r
+                    err(e) => return err(e)
+                  }
+                }
+              }
+              err(e) => {}
+            }
+            i = end_pos + 9
+          }
+          err(e) => return err(e)
+        }
+      } else if trimmed == "/if" {
+        return err("unexpected /if")
+      } else if trimmed == "/each" {
+        return err("unexpected /each")
+      } else {
+        if trimmed == "." {
+          if jsonType(ctx) == "array" or jsonType(ctx) == "object" {
+            return err("not printable")
+          }
+          output = output + valueToStr(ctx)
+        } else {
+          match lookupPath(ctx, trimmed) {
+            ok(v) => {
+              if jsonType(v) == "array" or jsonType(v) == "object" {
+                return err("not printable")
+              }
+              output = output + valueToStr(v)
+            }
+            err(e) => {}
+          }
+        }
+        i = j + 2
+      }
+    } else {
+      output = output + template[i]
+      i = i + 1
+    }
+  }
+
+  return ok(output)
+}
+
+fn main() {
+  let args_list = args()
+
+  if len(args_list) < 2 {
+    return
+  }
+
+  let template = args_list[0]
+  let data_str = args_list[1]
+
+  match parseJson(data_str) {
+    ok(j) => {
+      if jsonType(j) != "object" {
+        print("error: bad data")
+        return
+      }
+
+      match render(template, j, j) {
+        ok(result) => print(result)
+        err(e) => {
+          if startsWith(e, "error:") {
+            print(e)
+          } else {
+            print("error: " + e)
+          }
+        }
+      }
+    }
+    err(e) => print("error: bad data")
+  }
+}
+
+main()

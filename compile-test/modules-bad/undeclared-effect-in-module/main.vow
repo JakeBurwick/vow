@@ -1,0 +1,2 @@
+import "./net.vow" as net
+print(1)

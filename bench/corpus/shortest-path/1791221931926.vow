@@ -1,0 +1,139 @@
+fn buildGraph(edges) {
+  let graph = {}
+  for edge in edges {
+    let parts = split(edge, "-")
+    if len(parts) == 2 {
+      let a = parts[0]
+      let b = parts[1]
+
+      if has(graph, a) {
+        push(graph[a], b)
+      } else {
+        graph[a] = [b]
+      }
+
+      if has(graph, b) {
+        push(graph[b], a)
+      } else {
+        graph[b] = [a]
+      }
+    }
+  }
+
+  // Sort adjacency lists for consistent ordering
+  for node in keys(graph) {
+    graph[node] = sort(graph[node])
+  }
+
+  return graph
+}
+
+fn copyList(xs) {
+  let copy = []
+  for x in xs {
+    push(copy, x)
+  }
+  return copy
+}
+
+fn comparePaths(p1, p2) {
+  let minLen = if len(p1) < len(p2) { len(p1) } else { len(p2) }
+
+  for i in range(0, minLen) {
+    let n1 = p1[i]
+    let n2 = p2[i]
+    if n1 < n2 {
+      return -1
+    }
+    if n1 > n2 {
+      return 1
+    }
+  }
+
+  if len(p1) < len(p2) {
+    return -1
+  } else if len(p1) > len(p2) {
+    return 1
+  } else {
+    return 0
+  }
+}
+
+fn bfs(graph, start, goal) {
+  if start == goal {
+    return ok([start])
+  }
+
+  if not has(graph, start) or not has(graph, goal) {
+    return err("not in graph")
+  }
+
+  let queue = [[start]]
+  let visited = {}
+  visited[start] = true
+  let shortestPaths = []
+  let goalDistance = 0
+  let found = false
+
+  while len(queue) > 0 {
+    let path = queue[0]
+    queue = slice(queue, 1, len(queue))
+
+    // If we already found goal and this path is longer, stop
+    if found and len(path) > goalDistance {
+      break
+    }
+
+    let current = path[len(path) - 1]
+    let neighbors = match get(graph, current) {
+      ok(n) => n
+      err(e) => []
+    }
+
+    for neighbor in neighbors {
+      if neighbor == goal {
+        let resultPath = copyList(path)
+        push(resultPath, neighbor)
+        if not found {
+          found = true
+          goalDistance = len(resultPath)
+          push(shortestPaths, resultPath)
+        } else if len(resultPath) == goalDistance {
+          push(shortestPaths, resultPath)
+        }
+      } else if not has(visited, neighbor) {
+        visited[neighbor] = true
+        let newPath = copyList(path)
+        push(newPath, neighbor)
+        push(queue, newPath)
+      }
+    }
+  }
+
+  if len(shortestPaths) == 0 {
+    return err("no path")
+  }
+
+  // Find lexicographically smallest path
+  let bestPath = shortestPaths[0]
+  for path in shortestPaths {
+    if comparePaths(path, bestPath) < 0 {
+      bestPath = path
+    }
+  }
+
+  return ok(bestPath)
+}
+
+let argv = args()
+let graphStr = argv[0]
+let start = argv[1]
+let goal = argv[2]
+
+let edges = split(graphStr, ",")
+let graph = buildGraph(edges)
+
+match bfs(graph, start, goal) {
+  ok(path) => print(join(path, " -> "))
+  err(e) => print("no path")
+}

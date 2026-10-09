@@ -1,0 +1,101 @@
+struct Interval { start, end }
+
+fn parseInterval(s) {
+  let parts = split(s, "-")
+
+  if len(parts) != 2 {
+    return err("not a valid interval")
+  }
+
+  let a_str = parts[0]
+  let b_str = parts[1]
+
+  match num(a_str) {
+    ok(a) => {
+      match num(b_str) {
+        ok(b) => {
+          if a > b {
+            return err("a > b")
+          }
+          return ok(Interval { start: a, end: b })
+        }
+        err(e) => {
+          return err("bad b")
+        }
+      }
+    }
+    err(e) => {
+      return err("bad a")
+    }
+  }
+}
+
+fn main() {
+  let args_list = args()
+
+  let input = match get(args_list, 0) {
+    ok(s) => s
+    err(e) => ""
+  }
+
+  if input == "" {
+    print("")
+    return
+  }
+
+  let parts = split(input, ",")
+  let intervals = []
+
+  for part in parts {
+    match parseInterval(part) {
+      ok(interval) => {
+        push(intervals, interval)
+      }
+      err(e) => {
+        print("error: bad interval " + part)
+        return
+      }
+    }
+  }
+
+  // Sort intervals by start
+  let sorted = sortBy(intervals, i => i.start)
+
+  // Merge overlapping intervals
+  let merged = []
+
+  if len(sorted) > 0 {
+    let current_start = sorted[0].start
+    let current_end = sorted[0].end
+
+    for i in range(1, len(sorted)) {
+      let next = sorted[i]
+      let next_start = next.start
+      let next_end = next.end
+
+      // Check if they overlap or touch (next_start <= current_end + 1)
+      if next_start <= current_end + 1 {
+        // Merge
+        current_end = max(current_end, next_end)
+      } else {
+        // No overlap, save current and start new one
+        push(merged, Interval { start: current_start, end: current_end })
+        current_start = next_start
+        current_end = next_end
+      }
+    }
+
+    // Don't forget the last interval
+    push(merged, Interval { start: current_start, end: current_end })
+  }
+
+  // Format output
+  let output_parts = []
+  for interval in merged {
+    push(output_parts, str(interval.start) + "-" + str(interval.end))
+  }
+
+  print(join(output_parts, ","))
+}
+
+main()

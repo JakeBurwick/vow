@@ -1,0 +1,56 @@
+fn isMatchingPair(open, close) {
+  if open == "(" and close == ")" {
+    return true
+  }
+  if open == "[" and close == "]" {
+    return true
+  }
+  if open == "{" and close == "}" {
+    return true
+  }
+  return false
+}
+
+fn main() {
+  let input = args()[0]
+  let stack = []
+  let valid = true
+  let lparen = "("
+  let rparen = ")"
+  let lbracket = "["
+  let rbracket = "]"
+  let lbrace = "{"
+  let rbrace = "}"
+
+  for i in range(0, len(input)) {
+    let char = slice(input, i, i + 1)
+
+    if char == lparen or char == lbracket or char == lbrace {
+      push(stack, char)
+    } else if char == rparen or char == rbracket or char == rbrace {
+      if len(stack) == 0 {
+        valid = false
+        break
+      }
+
+      match pop(stack) {
+        ok(top) => {
+          if not isMatchingPair(top, char) {
+            valid = false
+          }
+        }
+        err(e) => {
+          valid = false
+        }
+      }
+    }
+  }
+
+  if valid and len(stack) == 0 {
+    print("yes")
+  } else {
+    print("no")
+  }
+}
+
+main()

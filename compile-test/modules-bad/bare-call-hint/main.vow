@@ -1,0 +1,2 @@
+import "./geo.vow" as geo
+print(area(2))

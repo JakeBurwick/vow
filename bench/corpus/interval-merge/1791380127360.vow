@@ -1,0 +1,85 @@
+struct Interval {
+  start,
+  end
+}
+
+fn main() {
+  let argv = args()
+  let input = match get(argv, 0) { ok(s) => s err(e) => "" }
+
+  if input == "" {
+    print("")
+    return
+  }
+
+  let pieces = split(input, ",")
+  let intervals = []
+
+  for piece in pieces {
+    let parts = split(piece, "-")
+
+    if len(parts) != 2 {
+      print("error: bad interval ${piece}")
+      return
+    }
+
+    let a_str = parts[0]
+    let b_str = parts[1]
+
+    match num(a_str) {
+      ok(a) => {
+        match num(b_str) {
+          ok(b) => {
+            if a > b {
+              print("error: bad interval ${piece}")
+              return
+            }
+            push(intervals, Interval { start: a, end: b })
+          }
+          err(e) => {
+            print("error: bad interval ${piece}")
+            return
+          }
+        }
+      }
+      err(e) => {
+        print("error: bad interval ${piece}")
+        return
+      }
+    }
+  }
+
+  // Sort by start
+  let sorted = sortBy(intervals, interval => {
+    interval.start
+  })
+
+  // Merge intervals
+  let merged = []
+  for interval in sorted {
+    if len(merged) == 0 {
+      push(merged, interval)
+    } else {
+      let last_idx = len(merged) - 1
+      let last = merged[last_idx]
+
+      if interval.start <= last.end + 1 {
+        // Create merged interval and replace last
+        let merged_end = max(last.end, interval.end)
+        merged[last_idx] = Interval { start: last.start, end: merged_end }
+      } else {
+        push(merged, interval)
+      }
+    }
+  }
+
+  // Format output
+  let output_parts = []
+  for interval in merged {
+    push(output_parts, str(interval.start) + "-" + str(interval.end))
+  }
+
+  print(join(output_parts, ","))
+}
+
+main()

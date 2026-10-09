@@ -1,0 +1,2 @@
+import "./text.vow" as text
+print(1)

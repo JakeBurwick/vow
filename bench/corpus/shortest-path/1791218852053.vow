@@ -1,0 +1,98 @@
+fn main() {
+  let args_list = args()
+
+  if len(args_list) < 3 {
+    print("no path")
+    return ok(true)
+  }
+
+  let edges_str = args_list[0]
+  let start = args_list[1]
+  let goal = args_list[2]
+
+  if start == goal {
+    print(start)
+    return ok(true)
+  }
+
+  let edges = split(edges_str, ",")
+  let graph = {}
+  let all_nodes = {}
+
+  for edge in edges {
+    let parts = split(edge, "-")
+    if len(parts) == 2 {
+      let a = parts[0]
+      let b = parts[1]
+
+      all_nodes[a] = true
+      all_nodes[b] = true
+
+      if not has(graph, a) {
+        graph[a] = []
+      }
+      if not has(graph, b) {
+        graph[b] = []
+      }
+
+      push(graph[a], b)
+      push(graph[b], a)
+    }
+  }
+
+  if not has(all_nodes, start) or not has(all_nodes, goal) {
+    print("no path")
+    return ok(true)
+  }
+
+  let visited = {}
+  let queue = []
+  let parent = {}
+
+  push(queue, start)
+  visited[start] = true
+
+  let found = false
+  while len(queue) > 0 {
+    let current = queue[0]
+    queue = slice(queue, 1, len(queue))
+
+    if current == goal {
+      found = true
+      break
+    }
+
+    let neighbors = graph[current]
+    let sorted_neighbors = sort(neighbors)
+
+    for neighbor in sorted_neighbors {
+      if not has(visited, neighbor) {
+        visited[neighbor] = true
+        parent[neighbor] = current
+        push(queue, neighbor)
+      }
+    }
+  }
+
+  if not found {
+    print("no path")
+    return ok(true)
+  }
+
+  let path = []
+  let node = goal
+  while node != start {
+    push(path, node)
+    node = parent[node]
+  }
+  push(path, start)
+
+  path = reverse(path)
+  print(join(path, " -> "))
+  return ok(true)
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

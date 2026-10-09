@@ -1,0 +1,115 @@
+fn main() {
+  let argv = args()
+  if len(argv) < 3 {
+    print("no path")
+    return ok(true)
+  }
+
+  let edges_str = argv[0]
+  let start = argv[1]
+  let goal = argv[2]
+
+  // If start equals goal, return just that node
+  if start == goal {
+    print(start)
+    return ok(true)
+  }
+
+  // Parse edges and build adjacency list
+  let adj = {}
+  let edges = split(edges_str, ",")
+
+  for edge in edges {
+    let parts = split(edge, "-")
+    if len(parts) == 2 {
+      let a = parts[0]
+      let b = parts[1]
+
+      // Ensure both nodes exist in adjacency list
+      if not has(adj, a) {
+        adj[a] = []
+      }
+      if not has(adj, b) {
+        adj[b] = []
+      }
+
+      // Add undirected edges
+      push(adj[a], b)
+      push(adj[b], a)
+    }
+  }
+
+  // Check if start or goal exist in graph
+  if not has(adj, start) or not has(adj, goal) {
+    print("no path")
+    return ok(true)
+  }
+
+  // BFS to find shortest path
+  let queue = []
+  let visited = {}
+  let parent = {}
+
+  push(queue, start)
+  visited[start] = true
+
+  let found = false
+
+  while len(queue) > 0 and not found {
+    let curr = queue[0]
+    queue = slice(queue, 1, len(queue))
+
+    if curr == goal {
+      found = true
+      break
+    }
+
+    let neighbors = adj[curr]
+    // Sort neighbors alphabetically for lexicographically smallest path
+    neighbors = sort(neighbors)
+
+    for neighbor in neighbors {
+      if not has(visited, neighbor) {
+        visited[neighbor] = true
+        parent[neighbor] = curr
+        push(queue, neighbor)
+      }
+    }
+  }
+
+  if not found {
+    print("no path")
+    return ok(true)
+  }
+
+  // Reconstruct path
+  let path = []
+  let node = goal
+  while true {
+    push(path, node)
+    if node == start {
+      break
+    }
+    node = parent[node]
+  }
+
+  // Reverse path
+  let i = 0
+  let j = len(path) - 1
+  while i < j {
+    let temp = path[i]
+    path[i] = path[j]
+    path[j] = temp
+    i = i + 1
+    j = j - 1
+  }
+
+  // Print path
+  print(join(path, " -> "))
+  return ok(true)
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

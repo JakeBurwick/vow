@@ -1,0 +1,76 @@
+fn evaluateRPN(expr) {
+  let tokens = split(expr, " ")
+  let stack = []
+
+  for token in tokens {
+    if token == "+" or token == "-" or token == "*" or token == "/" {
+      if len(stack) < 2 {
+        return err("not enough operands")
+      }
+      match pop(stack) {
+        ok(b) => {
+          match pop(stack) {
+            ok(a) => {
+              let result = 0
+              if token == "+" {
+                result = a + b
+              } else if token == "-" {
+                result = a - b
+              } else if token == "*" {
+                result = a * b
+              } else if token == "/" {
+                if b == 0 {
+                  return err("division by zero")
+                }
+                result = a / b
+              }
+              push(stack, result)
+            }
+            err(e) => {
+              return err("not enough operands")
+            }
+          }
+        }
+        err(e) => {
+          return err("not enough operands")
+        }
+      }
+    } else {
+      match num(token) {
+        ok(n) => {
+          push(stack, n)
+        }
+        err(e) => {
+          return err("unknown token")
+        }
+      }
+    }
+  }
+
+  if len(stack) != 1 {
+    return err("leftover operands")
+  }
+
+  match pop(stack) {
+    ok(result) => {
+      return ok(result)
+    }
+    err(e) => {
+      return err("empty stack")
+    }
+  }
+}
+
+fn main() {
+  let input = args()[0]
+  match evaluateRPN(input) {
+    ok(result) => {
+      print(str(result))
+    }
+    err(e) => {
+      print("error")
+    }
+  }
+}
+
+main()

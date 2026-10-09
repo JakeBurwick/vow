@@ -1,0 +1,5 @@
+fn hello(name) uses net {
+  let page = _fetch("https://example.com/?name=" + name)?
+  return ok(len(page))
+}
+fn _fetch(url) uses net { return httpGet(url) }

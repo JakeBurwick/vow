@@ -1,0 +1,195 @@
+struct Q { cols, wcol, wop, wval, ocol, desc, lim }
+
+fn bad() {
+  return err("error: bad query")
+}
+
+fn isOp(s) {
+  return s == "=" or s == "!=" or s == "<" or s == ">" or s == "<=" or s == ">="
+}
+
+fn parse(q) {
+  let t = split(q, " ")
+  let n = len(t)
+  if n < 2 { return bad() }
+  if t[0] != "SELECT" { return bad() }
+  if t[1] == "" { return bad() }
+  let cols = split(t[1], ",")
+  let wcol = ""
+  let wop = ""
+  let wval = ""
+  let ocol = ""
+  let desc = false
+  let lim = 0 - 1
+  let i = 2
+  if i < n {
+    if t[i] == "WHERE" {
+      if i + 3 >= n { return bad() }
+      if not isOp(t[i + 2]) { return bad() }
+      wcol = t[i + 1]
+      wop = t[i + 2]
+      wval = t[i + 3]
+      i = i + 4
+    }
+  }
+  if i < n {
+    if t[i] == "ORDER" {
+      if i + 2 >= n { return bad() }
+      if t[i + 1] != "BY" { return bad() }
+      ocol = t[i + 2]
+      i = i + 3
+      if i < n {
+        if t[i] == "DESC" {
+          desc = true
+          i = i + 1
+        }
+      }
+    }
+  }
+  if i < n {
+    if t[i] == "LIMIT" {
+      if i + 1 >= n { return bad() }
+      match num(t[i + 1]) {
+        ok(v) => { lim = v }
+        err(e) => { return bad() }
+      }
+      i = i + 2
+    }
+  }
+  if i != n { return bad() }
+  return ok(Q { cols: cols, wcol: wcol, wop: wop, wval: wval, ocol: ocol, desc: desc, lim: lim })
+}
+
+fn idx(header, name) {
+  let k = 0
+  for h in header {
+    if h == name { return k }
+    k = k + 1
+  }
+  return 0 - 1
+}
+
+fn isNum(s) {
+  return match num(s) { ok(v) => true err(e) => false }
+}
+
+fn cell(row, i) {
+  return match get(row, i) { ok(v) => v err(e) => "" }
+}
+
+fn cmpStr(a, op, b) {
+  if op == "=" { return a == b }
+  return a != b
+}
+
+fn cmpNum(a, op, b) {
+  if op == "=" { return a == b }
+  if op == "!=" { return a != b }
+  if op == "<" { return a < b }
+  if op == ">" { return a > b }
+  if op == "<=" { return a <= b }
+  return a >= b
+}
+
+fn toNum(s) {
+  return match num(s) { ok(v) => v err(e) => 0 }
+}
+
+fn run(csv, query) {
+  let q = parse(query)?
+  let lines = []
+  for l in split(csv, "\n") {
+    if l != "" { push(lines, l) }
+  }
+  if len(lines) == 0 { return err("error: bad query") }
+  let header = split(lines[0], ",")
+  let sel = []
+  for c in q.cols {
+    let k = idx(header, c)
+    if k < 0 { return err("error: unknown column " + c) }
+    push(sel, k)
+  }
+  let wi = 0 - 1
+  if q.wcol != "" {
+    wi = idx(header, q.wcol)
+    if wi < 0 { return err("error: unknown column " + q.wcol) }
+  }
+  let oi = 0 - 1
+  if q.ocol != "" {
+    oi = idx(header, q.ocol)
+    if oi < 0 { return err("error: unknown column " + q.ocol) }
+  }
+  let rows = []
+  let first = true
+  for l in lines {
+    if first {
+      first = false
+      continue
+    }
+    let row = split(l, ",")
+    if wi >= 0 {
+      let c = cell(row, wi)
+      let ok2 = false
+      if isNum(c) and isNum(q.wval) {
+        ok2 = cmpNum(toNum(c), q.wop, toNum(q.wval))
+      } else {
+        if q.wop != "=" and q.wop != "!=" { return err("error: bad comparison") }
+        ok2 = cmpStr(c, q.wop, q.wval)
+      }
+      if not ok2 { continue }
+    }
+    push(rows, row)
+  }
+  if oi >= 0 {
+    let allNum = true
+    for r in rows {
+      if not isNum(cell(r, oi)) { allNum = false }
+    }
+    let sorted = []
+    for r in rows {
+      let pos = len(sorted)
+      let j = 0
+      while j < len(sorted) {
+        let a = cell(r, oi)
+        let b = cell(sorted[j], oi)
+        let before = false
+        if allNum {
+          if q.desc { before = toNum(a) > toNum(b) } else { before = toNum(a) < toNum(b) }
+        } else {
+          if q.desc { before = a > b } else { before = a < b }
+        }
+        if before {
+          pos = j
+          break
+        }
+        j = j + 1
+      }
+      let out = []
+      let m = 0
+      for s in sorted {
+        if m == pos { push(out, r) }
+        push(out, s)
+        m = m + 1
+      }
+      if pos >= len(sorted) { push(out, r) }
+      sorted = out
+    }
+    rows = sorted
+  }
+  let lines2 = [join(q.cols, ",")]
+  let count = 0
+  for r in rows {
+    if q.lim >= 0 and count >= q.lim { break }
+    let vals = []
+    for k in sel { push(vals, cell(r, k)) }
+    push(lines2, join(vals, ","))
+    count = count + 1
+  }
+  return ok(join(lines2, "\n"))
+}
+
+let a = args()
+match run(a[0], a[1]) {
+  ok(s) => print(s)
+  err(e) => print(e)
+}

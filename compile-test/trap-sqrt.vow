@@ -1,0 +1,4 @@
+fn hyp(a, b) { return sqrt(a * a - b * b) }
+fn sides(xs) { return map(xs, x => hyp(x, 5)) }
+print(sides([13, 5]))
+print(sides([3]))

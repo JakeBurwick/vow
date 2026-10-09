@@ -1,0 +1,1 @@
+fn sq(n) { return n * n }

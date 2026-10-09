@@ -1,0 +1,102 @@
+// Order totals: parse JSON and calculate revenue per item
+
+fn buildSortedJson(totals) {
+  let item_keys = keys(totals)
+  item_keys = sort(item_keys)
+
+  let json_str = ""
+  json_str = json_str + `{`
+  for i in range(0, len(item_keys)) {
+    let key = item_keys[i]
+    let value = totals[key]
+    if i > 0 {
+      json_str = json_str + `,`
+    }
+    json_str = json_str + `"` + key + `":` + str(value)
+  }
+  json_str = json_str + `}`
+  return json_str
+}
+
+fn processOrders(json_str) {
+  let j = parseJson(json_str)?
+
+  // Check if it's an array
+  match jsonList(j) {
+    ok(orders) => {
+      let totals = {}
+      for order_json in orders {
+        // Validate order structure
+        match get(order_json, "item") {
+          ok(item_val) => {
+            match jsonStr(item_val) {
+              ok(item) => {
+                match get(order_json, "qty") {
+                  ok(qty_val) => {
+                    match jsonNum(qty_val) {
+                      ok(qty) => {
+                        match get(order_json, "price") {
+                          ok(price_val) => {
+                            match jsonNum(price_val) {
+                              ok(price) => {
+                                let revenue = qty * price
+
+                                // Add to totals
+                                match get(totals, item) {
+                                  ok(existing) => {
+                                    totals[item] = existing + revenue
+                                  }
+                                  err(e) => {
+                                    totals[item] = revenue
+                                  }
+                                }
+                              }
+                              err(e) => {
+                                return err("bad order")
+                              }
+                            }
+                          }
+                          err(e) => {
+                            return err("bad order")
+                          }
+                        }
+                      }
+                      err(e) => {
+                        return err("bad order")
+                      }
+                    }
+                  }
+                  err(e) => {
+                    return err("bad order")
+                  }
+                }
+              }
+              err(e) => {
+                return err("bad order")
+              }
+            }
+          }
+          err(e) => {
+            return err("bad order")
+          }
+        }
+      }
+
+      // Convert totals map to JSON with sorted keys
+      return ok(buildSortedJson(totals))
+    }
+    err(e) => {
+      return err("bad order")
+    }
+  }
+}
+
+let json_input = args()[0]
+match processOrders(json_input) {
+  ok(result) => {
+    print(result)
+  }
+  err(e) => {
+    print(`{"error":"bad order"}`)
+  }
+}

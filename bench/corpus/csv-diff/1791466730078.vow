@@ -1,0 +1,109 @@
+fn parseCSV(text) {
+  let all_lines = lines(text)
+  let rows = []
+  for line in all_lines {
+    let trimmed = trim(line)
+    if trimmed != "" {
+      push(rows, split(line, ","))
+    }
+  }
+  return rows
+}
+
+fn main() {
+  let args_list = args()
+  let old_text = args_list[0]
+  let new_text = args_list[1]
+
+  let old_rows = parseCSV(old_text)
+  let new_rows = parseCSV(new_text)
+
+  if len(old_rows) == 0 or len(new_rows) == 0 {
+    print("error: headers differ")
+    return
+  }
+
+  let old_header = old_rows[0]
+  let new_header = new_rows[0]
+
+  // Check if headers match
+  if len(old_header) != len(new_header) {
+    print("error: headers differ")
+    return
+  }
+
+  for i in range(0, len(old_header)) {
+    if old_header[i] != new_header[i] {
+      print("error: headers differ")
+      return
+    }
+  }
+
+  // Build maps for old and new tables
+  let old_map = {}
+  for i in range(1, len(old_rows)) {
+    let row = old_rows[i]
+    if len(row) > 0 {
+      let key = row[0]
+      old_map[key] = row
+    }
+  }
+
+  let new_map = {}
+  for i in range(1, len(new_rows)) {
+    let row = new_rows[i]
+    if len(row) > 0 {
+      let key = row[0]
+      new_map[key] = row
+    }
+  }
+
+  // Collect all unique keys
+  let all_keys = {}
+  for k in keys(old_map) {
+    all_keys[k] = true
+  }
+  for k in keys(new_map) {
+    all_keys[k] = true
+  }
+
+  let sorted_keys = sort(keys(all_keys))
+
+  // Generate differences
+  let differences = []
+  for key in sorted_keys {
+    if not has(old_map, key) {
+      push(differences, "+ " + key)
+    } else if not has(new_map, key) {
+      push(differences, "- " + key)
+    } else {
+      let old_row = old_map[key]
+      let new_row = new_map[key]
+      for j in range(1, len(old_header)) {
+        let col_name = old_header[j]
+        let old_val = match get(old_row, j) {
+          ok(v) => v
+          err(_) => ""
+        }
+        let new_val = match get(new_row, j) {
+          ok(v) => v
+          err(_) => ""
+        }
+        if old_val != new_val {
+          push(differences, "~ " + key + ": " + col_name + " " + old_val + " -> " + new_val)
+        }
+      }
+    }
+  }
+
+  // Print output
+  if len(differences) == 0 {
+    print("no changes")
+  } else {
+    for diff in differences {
+      print(diff)
+    }
+  }
+}
+
+main()

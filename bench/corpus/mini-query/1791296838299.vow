@@ -1,0 +1,232 @@
+struct Row {
+  values
+}
+
+fn isNumber(s) {
+  return match num(s) {
+    ok(_) => true
+    err(_) => false
+  }
+}
+
+fn getColumnIndex(header, col) {
+  for i in range(0, len(header)) {
+    if header[i] == col { return ok(i) }
+  }
+  return err("unknown column " + col)
+}
+
+fn compareCell(cell, value, op) {
+  let cellIsNum = isNumber(cell)
+  let valueIsNum = isNumber(value)
+
+  if cellIsNum and valueIsNum {
+    let cellNum = num(cell)?
+    let valueNum = num(value)?
+    if op == "=" { return ok(cellNum == valueNum) }
+    if op == "!=" { return ok(cellNum != valueNum) }
+    if op == "<" { return ok(cellNum < valueNum) }
+    if op == ">" { return ok(cellNum > valueNum) }
+    if op == "<=" { return ok(cellNum <= valueNum) }
+    if op == ">=" { return ok(cellNum >= valueNum) }
+  } else {
+    if op == "=" { return ok(cell == value) }
+    if op == "!=" { return ok(cell != value) }
+    return err("bad comparison")
+  }
+  return err("bad query")
+}
+
+let args_list = args()
+let csv = get(args_list, 0)
+let query = get(args_list, 1)
+
+match csv {
+  ok(csv_val) => {
+    match query {
+      ok(query_val) => {
+        let csv_lines = split(csv_val, "\n")
+        let header = split(csv_lines[0], ",")
+        let rows = []
+        for i in range(1, len(csv_lines)) {
+          if csv_lines[i] != "" {
+            push(rows, Row { values: split(csv_lines[i], ",") })
+          }
+        }
+
+        let query_parts = split(query_val, " ")
+        let idx = 0
+
+        let valid = true
+        let error_msg = ""
+
+        if idx >= len(query_parts) or query_parts[idx] != "SELECT" {
+          valid = false
+          error_msg = "bad query"
+        }
+
+        if valid {
+          idx = idx + 1
+          if idx >= len(query_parts) {
+            valid = false
+            error_msg = "bad query"
+          }
+        }
+
+        let select_cols = []
+        if valid {
+          select_cols = split(query_parts[idx], ",")
+          idx = idx + 1
+
+          for col in select_cols {
+            if valid {
+              match getColumnIndex(header, col) {
+                ok(_) => {}
+                err(e) => {
+                  valid = false
+                  error_msg = e
+                }
+              }
+            }
+          }
+        }
+
+        let filtered_rows = rows
+
+        if valid and idx < len(query_parts) and query_parts[idx] == "WHERE" {
+          idx = idx + 1
+          if idx + 2 >= len(query_parts) {
+            valid = false
+            error_msg = "bad query"
+          } else {
+            let where_col = query_parts[idx]
+            let where_op = query_parts[idx + 1]
+            let where_val = query_parts[idx + 2]
+            idx = idx + 3
+
+            match getColumnIndex(header, where_col) {
+              ok(where_col_idx) => {
+                filtered_rows = []
+                for row in rows {
+                  let cell = row.values[where_col_idx]
+                  match compareCell(cell, where_val, where_op) {
+                    ok(matches) => {
+                      if matches { push(filtered_rows, row) }
+                    }
+                    err(e) => {
+                      valid = false
+                      error_msg = e
+                    }
+                  }
+                }
+              }
+              err(e) => {
+                valid = false
+                error_msg = e
+              }
+            }
+          }
+        }
+
+        if valid and idx + 1 < len(query_parts) and query_parts[idx] == "ORDER" and query_parts[idx + 1] == "BY" {
+          idx = idx + 2
+          if idx >= len(query_parts) {
+            valid = false
+            error_msg = "bad query"
+          } else {
+            let order_col = query_parts[idx]
+            idx = idx + 1
+
+            match getColumnIndex(header, order_col) {
+              ok(order_col_idx) => {
+                let desc = false
+                if idx < len(query_parts) and query_parts[idx] == "DESC" {
+                  desc = true
+                  idx = idx + 1
+                }
+
+                let all_numeric = true
+                for row in filtered_rows {
+                  if not isNumber(row.values[order_col_idx]) {
+                    all_numeric = false
+                    break
+                  }
+                }
+
+                if all_numeric {
+                  filtered_rows = sortBy(filtered_rows, r => {
+                    match num(r.values[order_col_idx]) {
+                      ok(v) => {
+                        if desc { return 0 - v }
+                        return v
+                      }
+                      err(_) => return 0
+                    }
+                  })
+                } else {
+                  filtered_rows = sortBy(filtered_rows, r => {
+                    r.values[order_col_idx]
+                  })
+                  if desc {
+                    filtered_rows = reverse(filtered_rows)
+                  }
+                }
+              }
+              err(e) => {
+                valid = false
+                error_msg = e
+              }
+            }
+          }
+        }
+
+        if valid and idx < len(query_parts) and query_parts[idx] == "LIMIT" {
+          idx = idx + 1
+          if idx >= len(query_parts) {
+            valid = false
+            error_msg = "bad query"
+          } else {
+            let limit_str = query_parts[idx]
+            match num(limit_str) {
+              ok(limit_num) => {
+                idx = idx + 1
+                if limit_num < len(filtered_rows) {
+                  filtered_rows = slice(filtered_rows, 0, limit_num)
+                }
+              }
+              err(_) => {
+                valid = false
+                error_msg = "bad query"
+              }
+            }
+          }
+        }
+
+        if valid and idx < len(query_parts) {
+          valid = false
+          error_msg = "bad query"
+        }
+
+        if valid {
+          print(join(select_cols, ","))
+          for row in filtered_rows {
+            let output = []
+            for col in select_cols {
+              match getColumnIndex(header, col) {
+                ok(col_idx) => {
+                  push(output, row.values[col_idx])
+                }
+                err(_) => {}
+              }
+            }
+            print(join(output, ","))
+          }
+        } else {
+          print("error: " + error_msg)
+        }
+      }
+      err(_) => print("error: bad query")
+    }
+  }
+  err(_) => print("error: bad query")
+}

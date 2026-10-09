@@ -1,0 +1,47 @@
+let args_list = args()
+
+if len(args_list) == 0 {
+  print("{}")
+} else {
+  let input = args_list[0]
+  if len(input) == 0 {
+    print("{}")
+  } else {
+    let pairs = split(input, ",")
+    let data = {}
+    let error_data = {}
+    let error_found = false
+
+    for pair in pairs {
+      if not error_found {
+        let parts = split(pair, ":")
+        if len(parts) != 2 {
+          error_found = true
+          error_data["error"] = "bad pair: " + pair
+        } else {
+          let name = parts[0]
+          match num(parts[1]) {
+            ok(amount) => {
+              if amount == floor(amount) {
+                data[name] = amount
+              } else {
+                error_found = true
+                error_data["error"] = "bad pair: " + pair
+              }
+            }
+            err(e) => {
+              error_found = true
+              error_data["error"] = "bad pair: " + pair
+            }
+          }
+        }
+      }
+    }
+
+    if error_found {
+      print(toJson(error_data))
+    } else {
+      print(toJson(data))
+    }
+  }
+}

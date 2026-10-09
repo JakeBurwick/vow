@@ -1,0 +1,4 @@
+fn look(m, k) { return m[k] }
+let m = {"a": 1, "b": 2}
+print(look(m, "a"))
+print(look(m, "zz"))

@@ -1,0 +1,2 @@
+import "./deep.vow" as deep
+fn total(xs) { return sum(map(xs, s => deep.toNum(s))) }

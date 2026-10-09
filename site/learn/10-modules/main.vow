@@ -1,0 +1,8 @@
+// Run with: node cli.js site/learn/10-modules/main.vow
+import "./shapes.vow" as shapes
+
+let rooms = [shapes.Rect { w: 3, h: 4 }, shapes.Rect { w: 5, h: 2 }]
+for r in rooms {
+  print(shapes.describe(r))
+}
+print("total area: ${fold(rooms, 0, (acc, r) => acc + shapes.area(r))}")

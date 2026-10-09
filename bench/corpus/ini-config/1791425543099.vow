@@ -1,0 +1,136 @@
+fn isValidName(name) {
+  if len(name) == 0 {
+    return false
+  }
+  for i in range(0, len(name)) {
+    let c = name[i]
+    let isLower = c >= "a" and c <= "z"
+    let isDigit = c >= "0" and c <= "9"
+    let isUnderscore = c == "_"
+    if not (isLower or isDigit or isUnderscore) {
+      return false
+    }
+  }
+  return true
+}
+
+fn main() {
+  let args_list = args()
+  if len(args_list) == 0 {
+    return ok(true)
+  }
+
+  let iniStr = args_list[0]
+  let iniLines = lines(iniStr)
+
+  let config = {}
+  let currentSection = ""
+  let lineNum = 0
+
+  for line in iniLines {
+    lineNum = lineNum + 1
+    let trimmed = trim(line)
+
+    // skip blank lines and comments
+    if len(trimmed) == 0 {
+      continue
+    }
+    if trimmed[0] == ";" or trimmed[0] == "#" {
+      continue
+    }
+
+    // check for section
+    if trimmed[0] == "[" and trimmed[len(trimmed) - 1] == "]" {
+      let sectionName = slice(trimmed, 1, len(trimmed) - 1)
+      sectionName = trim(sectionName)
+
+      // validate section name: lowercase letters, digits, underscores
+      if not isValidName(sectionName) {
+        print("error line ${lineNum}: bad line")
+        return ok(true)
+      }
+
+      let lowerSection = lower(sectionName)
+      if not has(config, lowerSection) {
+        config[lowerSection] = {}
+      }
+      currentSection = lowerSection
+      continue
+    }
+
+    // check for key = value
+    match indexOf(trimmed, "=") {
+      ok(eqIdx) => {
+        if len(currentSection) == 0 {
+          print("error line ${lineNum}: key outside section")
+          return ok(true)
+        }
+
+        let key = trim(slice(trimmed, 0, eqIdx))
+        let value = trim(slice(trimmed, eqIdx + 1, len(trimmed)))
+
+        // validate key name
+        if not isValidName(key) {
+          print("error line ${lineNum}: bad line")
+          return ok(true)
+        }
+
+        key = lower(key)
+
+        match get(config, currentSection) {
+          ok(sect) => {
+            sect[key] = value
+          }
+          err(_) => {
+            print("error line ${lineNum}: bad line")
+            return ok(true)
+          }
+        }
+        continue
+      }
+      err(_) => {
+        print("error line ${lineNum}: bad line")
+        return ok(true)
+      }
+    }
+  }
+
+  // process queries
+  let queryIdx = 1
+  while queryIdx < len(args_list) {
+    let query = args_list[queryIdx]
+    match indexOf(query, ".") {
+      ok(dotIdx) => {
+        let section = lower(slice(query, 0, dotIdx))
+        let key = lower(slice(query, dotIdx + 1, len(query)))
+
+        match get(config, section) {
+          ok(sect) => {
+            match get(sect, key) {
+              ok(value) => {
+                print("${query} = ${value}")
+              }
+              err(_) => {
+                print("${query} missing")
+              }
+            }
+          }
+          err(_) => {
+            print("${query} missing")
+          }
+        }
+      }
+      err(_) => {
+        print("${query} missing")
+      }
+    }
+    queryIdx = queryIdx + 1
+  }
+
+  return ok(true)
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

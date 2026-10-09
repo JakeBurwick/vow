@@ -1,0 +1,6 @@
+fn a(n) { return b(n + 1) }
+fn b(n) {
+  let k = n
+  return a(k)
+}
+print(a(0))

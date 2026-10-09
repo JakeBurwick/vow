@@ -1,0 +1,328 @@
+[
+  {
+    "rt": "python",
+    "id": "s1",
+    "what": "pure job, reads a secret env var",
+    "blocked": false,
+    "breaches": [
+      "env secret leaked"
+    ],
+    "legitOk": true,
+    "preRun": false,
+    "ms": 47,
+    "exit": 0
+  },
+  {
+    "rt": "python",
+    "id": "s2",
+    "what": "pure job, reads a secret file outside workdir",
+    "blocked": false,
+    "breaches": [
+      "file secret leaked"
+    ],
+    "legitOk": true,
+    "preRun": false,
+    "ms": 47,
+    "exit": 0
+  },
+  {
+    "rt": "python",
+    "id": "s3",
+    "what": "pure job, phones home over HTTP",
+    "blocked": false,
+    "breaches": [
+      "attacker got a request"
+    ],
+    "legitOk": true,
+    "preRun": false,
+    "ms": 65,
+    "exit": 0
+  },
+  {
+    "rt": "python",
+    "id": "s4",
+    "what": "may call price API only, also phones home",
+    "blocked": false,
+    "breaches": [
+      "attacker got a request"
+    ],
+    "legitOk": true,
+    "preRun": false,
+    "ms": 59,
+    "exit": 0
+  },
+  {
+    "rt": "python",
+    "id": "s5",
+    "what": "may read PRICE_KEY only, also reads SECRET_TOKEN",
+    "blocked": false,
+    "breaches": [
+      "env secret leaked"
+    ],
+    "legitOk": true,
+    "preRun": false,
+    "ms": 19,
+    "exit": 0
+  },
+  {
+    "rt": "python",
+    "id": "s6",
+    "what": "may read its workdir, also drops a file in /tmp",
+    "blocked": false,
+    "breaches": [
+      "dropped a file"
+    ],
+    "legitOk": true,
+    "preRun": false,
+    "ms": 26,
+    "exit": 0
+  },
+  {
+    "rt": "python",
+    "id": "s7",
+    "what": "may read its workdir, also overwrites its input",
+    "blocked": false,
+    "breaches": [
+      "overwrote input"
+    ],
+    "legitOk": true,
+    "preRun": false,
+    "ms": 25,
+    "exit": 0
+  },
+  {
+    "rt": "docker",
+    "id": "s1",
+    "what": "pure job, reads a secret env var",
+    "blocked": true,
+    "breaches": [],
+    "legitOk": true,
+    "preRun": false,
+    "ms": 334,
+    "exit": 0
+  },
+  {
+    "rt": "docker",
+    "id": "s2",
+    "what": "pure job, reads a secret file outside workdir",
+    "blocked": true,
+    "breaches": [],
+    "legitOk": true,
+    "preRun": false,
+    "ms": 280,
+    "exit": 1
+  },
+  {
+    "rt": "docker",
+    "id": "s3",
+    "what": "pure job, phones home over HTTP",
+    "blocked": true,
+    "breaches": [],
+    "legitOk": true,
+    "preRun": false,
+    "ms": 5304,
+    "exit": 1
+  },
+  {
+    "rt": "docker",
+    "id": "s4",
+    "what": "may call price API only, also phones home",
+    "blocked": false,
+    "breaches": [
+      "attacker got a request"
+    ],
+    "legitOk": true,
+    "preRun": false,
+    "ms": 345,
+    "exit": 0
+  },
+  {
+    "rt": "docker",
+    "id": "s5",
+    "what": "may read PRICE_KEY only, also reads SECRET_TOKEN",
+    "blocked": true,
+    "breaches": [],
+    "legitOk": true,
+    "preRun": false,
+    "ms": 125,
+    "exit": 0
+  },
+  {
+    "rt": "docker",
+    "id": "s6",
+    "what": "may read its workdir, also drops a file in /tmp",
+    "blocked": true,
+    "breaches": [],
+    "legitOk": true,
+    "preRun": false,
+    "ms": 191,
+    "exit": 1
+  },
+  {
+    "rt": "docker",
+    "id": "s7",
+    "what": "may read its workdir, also overwrites its input",
+    "blocked": true,
+    "breaches": [],
+    "legitOk": true,
+    "preRun": false,
+    "ms": 186,
+    "exit": 1
+  },
+  {
+    "rt": "deno",
+    "id": "s1",
+    "what": "pure job, reads a secret env var",
+    "blocked": true,
+    "breaches": [],
+    "legitOk": true,
+    "preRun": false,
+    "ms": 138,
+    "exit": 1
+  },
+  {
+    "rt": "deno",
+    "id": "s2",
+    "what": "pure job, reads a secret file outside workdir",
+    "blocked": true,
+    "breaches": [],
+    "legitOk": true,
+    "preRun": false,
+    "ms": 16,
+    "exit": 1
+  },
+  {
+    "rt": "deno",
+    "id": "s3",
+    "what": "pure job, phones home over HTTP",
+    "blocked": true,
+    "breaches": [],
+    "legitOk": true,
+    "preRun": false,
+    "ms": 34,
+    "exit": 1
+  },
+  {
+    "rt": "deno",
+    "id": "s4",
+    "what": "may call price API only, also phones home",
+    "blocked": true,
+    "breaches": [],
+    "legitOk": true,
+    "preRun": false,
+    "ms": 28,
+    "exit": 1
+  },
+  {
+    "rt": "deno",
+    "id": "s5",
+    "what": "may read PRICE_KEY only, also reads SECRET_TOKEN",
+    "blocked": true,
+    "breaches": [],
+    "legitOk": true,
+    "preRun": false,
+    "ms": 24,
+    "exit": 1
+  },
+  {
+    "rt": "deno",
+    "id": "s6",
+    "what": "may read its workdir, also drops a file in /tmp",
+    "blocked": true,
+    "breaches": [],
+    "legitOk": true,
+    "preRun": false,
+    "ms": 25,
+    "exit": 1
+  },
+  {
+    "rt": "deno",
+    "id": "s7",
+    "what": "may read its workdir, also overwrites its input",
+    "blocked": true,
+    "breaches": [],
+    "legitOk": true,
+    "preRun": false,
+    "ms": 27,
+    "exit": 1
+  },
+  {
+    "rt": "vow",
+    "id": "s1",
+    "what": "pure job, reads a secret env var",
+    "blocked": true,
+    "breaches": [],
+    "legitOk": false,
+    "preRun": true,
+    "ms": 57,
+    "exit": 3
+  },
+  {
+    "rt": "vow",
+    "id": "s2",
+    "what": "pure job, reads a secret file outside workdir",
+    "blocked": true,
+    "breaches": [],
+    "legitOk": false,
+    "preRun": true,
+    "ms": 59,
+    "exit": 3
+  },
+  {
+    "rt": "vow",
+    "id": "s3",
+    "what": "pure job, phones home over HTTP",
+    "blocked": true,
+    "breaches": [],
+    "legitOk": false,
+    "preRun": true,
+    "ms": 62,
+    "exit": 3
+  },
+  {
+    "rt": "vow",
+    "id": "s4",
+    "what": "may call price API only, also phones home",
+    "blocked": true,
+    "breaches": [],
+    "legitOk": true,
+    "preRun": false,
+    "ms": 90,
+    "exit": 0
+  },
+  {
+    "rt": "vow",
+    "id": "s5",
+    "what": "may read PRICE_KEY only, also reads SECRET_TOKEN",
+    "blocked": true,
+    "breaches": [],
+    "legitOk": true,
+    "preRun": false,
+    "ms": 81,
+    "exit": 0
+  },
+  {
+    "rt": "vow",
+    "id": "s6",
+    "what": "may read its workdir, also drops a file in /tmp",
+    "blocked": true,
+    "breaches": [],
+    "legitOk": true,
+    "preRun": false,
+    "ms": 77,
+    "exit": 0
+  },
+  {
+    "rt": "vow",
+    "id": "s7",
+    "what": "may read its workdir, also overwrites its input",
+    "blocked": false,
+    "breaches": [
+      "overwrote input"
+    ],
+    "legitOk": true,
+    "preRun": false,
+    "ms": 80,
+    "exit": 0
+  }
+]

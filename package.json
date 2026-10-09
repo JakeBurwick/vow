@@ -1,0 +1,17 @@
+{
+  "name": "vow-lang",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "A programming language built for AI agents to write.",
+  "license": "MIT",
+  "author": "Jake Burwick",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "vow": "cli.js"
+  },
+  "scripts": {
+    "test": "node test.js && node compile-test.js"
+  }
+}

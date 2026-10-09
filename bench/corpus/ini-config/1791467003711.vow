@@ -1,0 +1,164 @@
+fn isSectionLine(line) {
+  if len(line) < 3 {
+    return false
+  }
+  if line[0] != "[" {
+    return false
+  }
+
+  let endIdx = len(line) - 1
+  if line[endIdx] != "]" {
+    return false
+  }
+
+  let sectionName = extractBetween(line, 1, endIdx)
+
+  for i in range(0, len(sectionName)) {
+    let c = sectionName[i]
+    let isValid = (c >= "a" and c <= "z") or (c >= "0" and c <= "9") or c == "_"
+    if not isValid {
+      return false
+    }
+  }
+
+  return true
+}
+
+fn extractSectionName(line) {
+  let endIdx = len(line) - 1
+  return extractBetween(line, 1, endIdx)
+}
+
+fn isKeyValueLine(line) {
+  let i = 0
+  while i < len(line) {
+    if line[i] == "=" {
+      return true
+    }
+    i = i + 1
+  }
+  return false
+}
+
+fn extractBetween(s, start, end) {
+  let result = ""
+  let i = start
+  while i < end and i < len(s) {
+    result = result + s[i]
+    i = i + 1
+  }
+  return result
+}
+
+fn parseKeyValue(line) {
+  let eqIdx = 0
+  let found = false
+  for i in range(0, len(line)) {
+    if line[i] == "=" {
+      eqIdx = i
+      found = true
+      break
+    }
+  }
+
+  if not found {
+    return err("no equals")
+  }
+
+  let keyPart = extractBetween(line, 0, eqIdx)
+  let key = trim(keyPart)
+
+  let valuePart = extractBetween(line, eqIdx + 1, len(line))
+  let value = trim(valuePart)
+
+  for i in range(0, len(key)) {
+    let c = key[i]
+    let isValid = (c >= "a" and c <= "z") or (c >= "0" and c <= "9") or c == "_"
+    if not isValid {
+      return err("bad key")
+    }
+  }
+
+  return ok([key, value])
+}
+
+fn main() {
+  let args_list = args()
+
+  if len(args_list) < 1 {
+    return
+  }
+
+  let iniContent = args_list[0]
+  let lines = lines(iniContent)
+
+  let sections = {}
+  let currentSection = ""
+  let hasSection = false
+  let lineNum = 1
+  let failed = false
+
+  for line in lines {
+    let trimmed = trim(line)
+
+    if not failed {
+      if len(trimmed) == 0 {
+      } else if startsWith(trimmed, ";") {
+      } else if startsWith(trimmed, "#") {
+      } else if isSectionLine(trimmed) {
+        currentSection = extractSectionName(trimmed)
+        hasSection = true
+        if not has(sections, currentSection) {
+          sections[currentSection] = {}
+        }
+      } else if isKeyValueLine(trimmed) {
+        if not hasSection {
+          print("error line " + str(lineNum) + ": key outside section")
+          failed = true
+        } else {
+          match parseKeyValue(trimmed) {
+            ok(parts) => {
+              let key = parts[0]
+              let value = parts[1]
+              sections[currentSection][key] = value
+            }
+            err(e) => {
+              print("error line " + str(lineNum) + ": bad line")
+              failed = true
+            }
+          }
+        }
+      } else {
+        print("error line " + str(lineNum) + ": bad line")
+        failed = true
+      }
+    }
+
+    lineNum = lineNum + 1
+  }
+
+  if not failed {
+    for i in range(1, len(args_list)) {
+      let query = args_list[i]
+      let parts = split(query, ".")
+
+      if len(parts) == 2 {
+        let section = parts[0]
+        let key = parts[1]
+
+        if has(sections, section) {
+          let sectionMap = sections[section]
+          if has(sectionMap, key) {
+            print(query + " = " + sectionMap[key])
+          } else {
+            print(query + " missing")
+          }
+        } else {
+          print(query + " missing")
+        }
+      }
+    }
+  }
+}
+
+main()

@@ -1,0 +1,14 @@
+fn readLen(p) uses fs {
+  return match readFile(p) {
+    ok(t) => len(t)
+    err(e) => 0 - 1
+  }
+}
+let paths = ["/nonexistent/a", "/nonexistent/bb"]
+print(map(paths, readLen))
+print(map(paths, p => p + "!"))
+print(filter(paths, p => readLen(p) < 0), any(paths, p => readLen(p) > 0), all(paths, p => readLen(p) < 0))
+print(count(paths, p => matches(p, `b+$`)), fold(paths, 0, (acc, p) => acc + readLen(p) + len(p)))
+fn shout(xs) { return map(xs, x => upper(x)) }
+print(shout(["a", "b"]))
+print(fold([1, 2, 3], [], (acc, x) => push(acc, x * 10)))

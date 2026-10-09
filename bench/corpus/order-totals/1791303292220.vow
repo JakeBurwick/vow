@@ -1,0 +1,63 @@
+fn processOrders() {
+  let s = get(args(), 0)?
+  let j = parseJson(s)?
+
+  if jsonType(j) != "array" {
+    return err("bad order")
+  }
+
+  let items = jsonList(j)
+
+  if len(items) == 0 {
+    print("{}")
+    return ok(true)
+  }
+
+  let totals = {}
+
+  for item_json in items {
+    if jsonType(item_json) != "object" {
+      return err("bad order")
+    }
+
+    // Extract item name
+    let item_val = get(item_json, "item")?
+    let item_name = jsonStr(item_val)?
+
+    // Extract qty
+    let qty_val = get(item_json, "qty")?
+    let qty = jsonNum(qty_val)?
+
+    // Extract price
+    let price_val = get(item_json, "price")?
+    let price = jsonNum(price_val)?
+
+    let revenue = qty * price
+
+    // Add to totals
+    if has(totals, item_name) {
+      totals[item_name] = totals[item_name] + revenue
+    } else {
+      totals[item_name] = revenue
+    }
+  }
+
+  // Sort keys alphabetically
+  let sorted_keys = sort(keys(totals))
+
+  // Build JSON output
+  let json_parts = []
+  for key in sorted_keys {
+    let value = totals[key]
+    push(json_parts, "\"" + key + "\":" + toJson(value))
+  }
+
+  let result = "{" + join(json_parts, ",") + "}"
+  print(result)
+  return ok(true)
+}
+
+match processOrders() {
+  ok(v) => {}
+  err(e) => print("{\"error\":\"bad order\"}")
+}

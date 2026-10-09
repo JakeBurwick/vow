@@ -1,0 +1,254 @@
+struct Query {
+  columns,
+  where_col,
+  where_op,
+  where_val,
+  order_col,
+  order_desc,
+  limit_n
+}
+
+fn parseQuery(query_str) {
+  let parts = split(query_str, " ")
+
+  if len(parts) < 2 or parts[0] != "SELECT" {
+    return err("error: bad query")
+  }
+
+  let cols_str = parts[1]
+  let columns = split(cols_str, ",")
+
+  // Default values
+  let where_col = ""
+  let where_op = ""
+  let where_val = ""
+  let order_col = ""
+  let order_desc = false
+  let limit_n = 999999
+
+  let idx = 2
+
+  // Check for WHERE
+  if idx < len(parts) and parts[idx] == "WHERE" {
+    idx = idx + 1
+    if idx + 2 >= len(parts) {
+      return err("error: bad query")
+    }
+    where_col = parts[idx]
+    where_op = parts[idx + 1]
+    where_val = parts[idx + 2]
+    idx = idx + 3
+  }
+
+  // Check for ORDER BY
+  if idx < len(parts) and parts[idx] == "ORDER" {
+    if idx + 1 >= len(parts) or parts[idx + 1] != "BY" {
+      return err("error: bad query")
+    }
+    idx = idx + 2
+    if idx >= len(parts) {
+      return err("error: bad query")
+    }
+    order_col = parts[idx]
+    idx = idx + 1
+    if idx < len(parts) and parts[idx] == "DESC" {
+      order_desc = true
+      idx = idx + 1
+    }
+  }
+
+  // Check for LIMIT
+  if idx < len(parts) and parts[idx] == "LIMIT" {
+    idx = idx + 1
+    if idx >= len(parts) {
+      return err("error: bad query")
+    }
+    match num(parts[idx]) {
+      ok(n) => {
+        limit_n = n
+      }
+      err(e) => {
+        return err("error: bad query")
+      }
+    }
+    idx = idx + 1
+  }
+
+  if idx != len(parts) {
+    return err("error: bad query")
+  }
+
+  return ok(Query {
+    columns: columns,
+    where_col: where_col,
+    where_op: where_op,
+    where_val: where_val,
+    order_col: order_col,
+    order_desc: order_desc,
+    limit_n: limit_n
+  })
+}
+
+fn isNumVal(val) {
+  let result = match num(val) {
+    ok(n) => true
+    err(e) => false
+  }
+  return result
+}
+
+fn compareValues(a_str, b_str, op, is_num) {
+  if is_num {
+    let a_num = match num(a_str) {
+      ok(n) => n
+      err(e) => 0
+    }
+    let b_num = match num(b_str) {
+      ok(n) => n
+      err(e) => 0
+    }
+
+    if op == "=" {
+      return ok(a_num == b_num)
+    } else if op == "!=" {
+      return ok(a_num != b_num)
+    } else if op == "<" {
+      return ok(a_num < b_num)
+    } else if op == ">" {
+      return ok(a_num > b_num)
+    } else if op == "<=" {
+      return ok(a_num <= b_num)
+    } else if op == ">=" {
+      return ok(a_num >= b_num)
+    }
+    return err("error: bad comparison")
+  } else {
+    if op != "=" and op != "!=" {
+      return err("error: bad comparison")
+    }
+    if op == "=" {
+      return ok(a_str == b_str)
+    } else {
+      return ok(a_str != b_str)
+    }
+  }
+}
+
+fn findColIndex(header, col) {
+  for i in range(0, len(header)) {
+    if header[i] == col {
+      return ok(i)
+    }
+  }
+  return err("error: unknown column " + col)
+}
+
+fn main() {
+  let argv = args()
+  if len(argv) < 2 {
+    return err("need two args")
+  }
+
+  let csv_data = argv[0]
+  let query_str = argv[1]
+
+  // Parse CSV
+  let lines = split(csv_data, "\n")
+  if len(lines) == 0 {
+    return err("no data")
+  }
+
+  let header = split(lines[0], ",")
+  let rows = []
+  for i in range(1, len(lines)) {
+    if lines[i] != "" {
+      push(rows, split(lines[i], ","))
+    }
+  }
+
+  // Parse query
+  let query = parseQuery(query_str)?
+
+  // Check that all query columns exist in header
+  for col in query.columns {
+    let _ = findColIndex(header, col)?
+  }
+
+  if query.where_col != "" {
+    let _ = findColIndex(header, query.where_col)?
+  }
+
+  if query.order_col != "" {
+    let _ = findColIndex(header, query.order_col)?
+  }
+
+  // Filter rows
+  let filtered = []
+  for row in rows {
+    let match_where = true
+    if query.where_col != "" {
+      let col_idx = findColIndex(header, query.where_col)?
+      let cell_val = row[col_idx]
+      let is_num = isNumVal(cell_val) and isNumVal(query.where_val)
+      let matches = compareValues(cell_val, query.where_val, query.where_op, is_num)?
+      match_where = matches
+    }
+
+    if match_where {
+      push(filtered, row)
+    }
+  }
+
+  // Sort if needed
+  if query.order_col != "" {
+    let col_idx = findColIndex(header, query.order_col)?
+
+    // Check if all values in this column are numeric
+    let all_numeric = true
+    for row in filtered {
+      if not isNumVal(row[col_idx]) {
+        all_numeric = false
+        break
+      }
+    }
+
+    // Sort
+    if all_numeric {
+      filtered = sortBy(filtered, row => match num(row[col_idx]) { ok(n) => n err(e) => 0 })
+    } else {
+      filtered = sortBy(filtered, row => row[col_idx])
+    }
+
+    if query.order_desc {
+      filtered = reverse(filtered)
+    }
+  }
+
+  // Apply LIMIT
+  let limited = []
+  for i in range(0, len(filtered)) {
+    if i < query.limit_n {
+      push(limited, filtered[i])
+    }
+  }
+
+  // Output header
+  print(join(query.columns, ","))
+
+  // Output rows with selected columns
+  for row in limited {
+    let output_vals = []
+    for col in query.columns {
+      let col_idx = findColIndex(header, col)?
+      push(output_vals, row[col_idx])
+    }
+    print(join(output_vals, ","))
+  }
+
+  return ok(true)
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

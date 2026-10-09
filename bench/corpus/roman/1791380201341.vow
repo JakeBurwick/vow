@@ -1,0 +1,117 @@
+fn decimalToRoman(n) {
+  let values = [1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1]
+  let numerals = ["M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"]
+
+  let result = ""
+  let remaining = n
+
+  for i in range(0, len(values)) {
+    let value = values[i]
+    let numeral = numerals[i]
+
+    while remaining >= value {
+      result = result + numeral
+      remaining = remaining - value
+    }
+  }
+
+  return result
+}
+
+fn romanToDecimal(s) {
+  let values = {"M": 1000, "D": 500, "C": 100, "L": 50, "X": 10, "V": 5, "I": 1}
+
+  let result = 0
+
+  for i in range(0, len(s)) {
+    let char = s[i]
+
+    if not has(values, char) {
+      return err("invalid character")
+    }
+
+    let current_value = values[char]
+    let next_value = 0
+
+    if i + 1 < len(s) {
+      let next_char = s[i + 1]
+      if has(values, next_char) {
+        next_value = values[next_char]
+      }
+    }
+
+    if next_value > current_value {
+      result = result - current_value
+    } else {
+      result = result + current_value
+    }
+  }
+
+  return ok(result)
+}
+
+fn main() {
+  let args_list = args()
+
+  let input = match get(args_list, 0) {
+    ok(s) => s
+    err(e) => ""
+  }
+
+  if input == "" {
+    print("error")
+    return
+  }
+
+  // Check if input is all digits
+  let is_digits = true
+  for i in range(0, len(input)) {
+    let c = input[i]
+    if not (c >= "0" and c <= "9") {
+      is_digits = false
+      break
+    }
+  }
+
+  if is_digits {
+    // Convert decimal to Roman
+    // Check for leading zeros
+    if len(input) > 1 and input[0] == "0" {
+      print("error")
+      return
+    }
+
+    match num(input) {
+      ok(n) => {
+        // Check range
+        if n < 1 or n > 3999 {
+          print("error")
+          return
+        }
+
+        print(decimalToRoman(n))
+      }
+      err(e) => {
+        print("error")
+      }
+    }
+  } else {
+    // Try to parse as Roman numeral
+    match romanToDecimal(input) {
+      ok(n) => {
+        // Validate by converting back to standard form
+        let canonical = decimalToRoman(n)
+        if canonical == input {
+          print(str(n))
+        } else {
+          print("error")
+        }
+      }
+      err(e) => {
+        print("error")
+      }
+    }
+  }
+}
+
+main()

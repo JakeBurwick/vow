@@ -1,0 +1,60 @@
+fn main() {
+  let args_list = args()
+
+  if len(args_list) == 0 {
+    print("{}")
+    return ok(true)
+  }
+
+  let input = args_list[0]
+  let j = parseJson(input)?
+
+  if jsonType(j) != "array" {
+    print("{\"error\":\"bad order\"}")
+    return ok(true)
+  }
+
+  let items = jsonList(j)
+
+  if len(items) == 0 {
+    print("{}")
+    return ok(true)
+  }
+
+  let totals = {}
+
+  for item_obj in items {
+    if jsonType(item_obj) != "object" {
+      print("{\"error\":\"bad order\"}")
+      return ok(true)
+    }
+
+    let item_name = jsonStr(get(item_obj, "item")?)?
+    let qty_num = jsonNum(get(item_obj, "qty")?)?
+    let price_num = jsonNum(get(item_obj, "price")?)?
+
+    let revenue = qty_num * price_num
+
+    if has(totals, item_name) {
+      totals[item_name] = totals[item_name] + revenue
+    } else {
+      totals[item_name] = revenue
+    }
+  }
+
+  let keys_list = sort(keys(totals))
+  let json_parts = []
+
+  for key in keys_list {
+    let val = totals[key]
+    push(json_parts, "\"" + key + "\":" + toJson(val))
+  }
+
+  print("{" + join(json_parts, ",") + "}")
+  return ok(true)
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print("{\"error\":\"bad order\"}")
+}

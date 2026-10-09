@@ -1,0 +1,126 @@
+fn decimalToRoman(n) {
+  let result = ""
+  let values = [1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1]
+  let symbols = ["M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"]
+
+  let i = 0
+  let num = n
+  while i < len(values) {
+    let value = values[i]
+    let symbol = symbols[i]
+
+    while num >= value {
+      result = result + symbol
+      num = num - value
+    }
+    i = i + 1
+  }
+
+  return result
+}
+
+fn romanToDecimal(s) {
+  let values = {
+    "I": 1,
+    "V": 5,
+    "X": 10,
+    "L": 50,
+    "C": 100,
+    "D": 500,
+    "M": 1000
+  }
+
+  let result = 0
+  let i = 0
+  while i < len(s) {
+    let c = s[i]
+    match get(values, c) {
+      ok(currentVal) => {
+        if i + 1 < len(s) {
+          let nextC = s[i + 1]
+          match get(values, nextC) {
+            ok(nextVal) => {
+              if currentVal < nextVal {
+                result = result + nextVal - currentVal
+                i = i + 2
+              } else {
+                result = result + currentVal
+                i = i + 1
+              }
+            }
+            err(e) => return err("invalid")
+          }
+        } else {
+          result = result + currentVal
+          i = i + 1
+        }
+      }
+      err(e) => return err("invalid")
+    }
+  }
+
+  return ok(result)
+}
+
+fn isValidRoman(s) {
+  match romanToDecimal(s) {
+    ok(n) => {
+      let canonical = decimalToRoman(n)
+      return n >= 1 and n <= 3999 and canonical == s
+    }
+    err(e) => return false
+  }
+}
+
+fn main() {
+  let input = args()[0]
+
+  if input == "" {
+    print("error")
+    return ok(true)
+  }
+
+  // Check if it's a decimal number
+  match int(input) {
+    ok(n) => {
+      // It's a number
+      if n < 1 or n > 3999 {
+        print("error")
+        return ok(true)
+      }
+
+      // Check for leading zeros
+      if len(input) > 1 and input[0] == "0" {
+        print("error")
+        return ok(true)
+      }
+
+      let roman = decimalToRoman(n)
+      print(roman)
+      return ok(true)
+    }
+    err(e) => {
+      // Not a decimal number, try Roman numeral
+      if isValidRoman(input) {
+        match romanToDecimal(input) {
+          ok(n) => {
+            print(str(n))
+            return ok(true)
+          }
+          err(e) => {
+            print("error")
+            return ok(true)
+          }
+        }
+      } else {
+        print("error")
+        return ok(true)
+      }
+    }
+  }
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

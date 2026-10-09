@@ -1,0 +1,38 @@
+fn isMatching(open, close) {
+  if open == "(" {
+    return close == ")"
+  } else if open == "[" {
+    return close == "]"
+  } else if open == "{" {
+    return close == "}"
+  } else {
+    return false
+  }
+}
+
+let input = args()[0]
+let stack = []
+let valid = true
+
+for c in split(input, "") {
+  if c == "(" or c == "[" or c == "{" {
+    push(stack, c)
+  } else if c == ")" or c == "]" or c == "}" {
+    match pop(stack) {
+      ok(open) => {
+        if not isMatching(open, c) {
+          valid = false
+        }
+      }
+      err(e) => {
+        valid = false
+      }
+    }
+  }
+}
+
+if valid and len(stack) == 0 {
+  print("yes")
+} else {
+  print("no")
+}

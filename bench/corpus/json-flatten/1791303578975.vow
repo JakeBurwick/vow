@@ -1,0 +1,101 @@
+struct PathValue {
+  path,
+  value
+}
+
+fn flattenJson(j, currentPath) {
+  let result = []
+
+  let t = jsonType(j)
+
+  if t == "object" {
+    let objKeys = sort(jsonKeys(j))
+
+    if len(objKeys) == 0 {
+      if currentPath != "" {
+        push(result, PathValue { path: currentPath, value: j })
+      }
+    } else {
+      for key in objKeys {
+        let value = get(j, key)?
+        let newPath = if currentPath == "" { key } else { currentPath + "." + key }
+
+        let subResult = flattenJson(value, newPath)?
+        for item in subResult {
+          push(result, item)
+        }
+      }
+    }
+  } else if t == "array" {
+    let arr = jsonList(j)
+
+    if len(arr) == 0 {
+      if currentPath != "" {
+        push(result, PathValue { path: currentPath, value: j })
+      }
+    } else {
+      for i in range(0, len(arr)) {
+        let value = arr[i]
+        let newPath = currentPath + "[" + str(i) + "]"
+
+        let subResult = flattenJson(value, newPath)?
+        for item in subResult {
+          push(result, item)
+        }
+      }
+    }
+  } else {
+    push(result, PathValue { path: currentPath, value: j })
+  }
+
+  return ok(result)
+}
+
+fn main() {
+  let args_list = args()
+
+  if len(args_list) < 1 {
+    print("{\"error\":\"bad json\"}")
+    return ok(true)
+  }
+
+  let jsonStr = args_list[0]
+
+  match parseJson(jsonStr) {
+    ok(j) => {
+      let t = jsonType(j)
+      if t != "object" and t != "array" {
+        print("{\"error\":\"not a container\"}")
+      } else {
+        match flattenJson(j, "") {
+          ok(flattened) => {
+            if len(flattened) == 0 {
+              print("{}")
+            } else {
+              let parts = []
+              for item in flattened {
+                let pathJson = toJson(item.path)
+                let valueJson = toJson(item.value)
+                push(parts, pathJson + ":" + valueJson)
+              }
+              print("{" + join(parts, ",") + "}")
+            }
+          }
+          err(e) => {
+            print("{\"error\":\"bad json\"}")
+          }
+        }
+      }
+    }
+    err(e) => {
+      print("{\"error\":\"bad json\"}")
+    }
+  }
+
+  return ok(true)
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

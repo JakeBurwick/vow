@@ -1,0 +1,15 @@
+fn bad(n)
+  ensures result > n
+{
+  n = n - 5
+  return n + 1
+}
+fn worse(n, k)
+  ensures result >= k
+{
+  return n - k
+}
+fn mid(n) { return worse(n, 4) }
+print(bad(10))
+print(mid(10))
+print(mid(3))

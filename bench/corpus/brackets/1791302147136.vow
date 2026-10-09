@@ -1,0 +1,32 @@
+let input = args()[0]
+let stack = []
+let valid = true
+
+for i in range(0, len(input)) {
+  let c = input[i]
+
+  if c == "(" or c == "[" or c == "{" {
+    push(stack, c)
+  } else if c == ")" or c == "]" or c == "}" {
+    match pop(stack) {
+      ok(top) => {
+        if c == ")" and top != "(" {
+          valid = false
+        } else if c == "]" and top != "[" {
+          valid = false
+        } else if c == "}" and top != "{" {
+          valid = false
+        }
+      }
+      err(e) => {
+        valid = false
+      }
+    }
+  }
+}
+
+if valid and len(stack) == 0 {
+  print("yes")
+} else {
+  print("no")
+}

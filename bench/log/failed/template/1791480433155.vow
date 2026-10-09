@@ -1,0 +1,258 @@
+fn processTemplate(template, data, startIdx, endIdx, contextStack) {
+  let output = ""
+  let i = startIdx
+
+  while i < endIdx {
+    // Find next {{
+    let braceIdx = i
+    let foundBrace = false
+    while braceIdx < endIdx - 1 {
+      if template[braceIdx] == "{" and template[braceIdx + 1] == "{" {
+        foundBrace = true
+        break
+      }
+      braceIdx = braceIdx + 1
+    }
+
+    if not foundBrace {
+      // No more tags, add rest of string
+      output = output + slice(template, i, endIdx)
+      return ok(output)
+    }
+
+    // Add text before the tag
+    output = output + slice(template, i, braceIdx)
+
+    // Find closing }}
+    let closeIdx = braceIdx + 2
+    let foundClose = false
+    while closeIdx < endIdx - 1 {
+      if template[closeIdx] == "}" and template[closeIdx + 1] == "}" {
+        foundClose = true
+        break
+      }
+      closeIdx = closeIdx + 1
+    }
+
+    if not foundClose {
+      return err("unclosed tag")
+    }
+
+    let tagContent = slice(template, braceIdx + 2, closeIdx)
+    tagContent = trim(tagContent)
+
+    // Parse tag type
+    if startsWith(tagContent, "#if ") {
+      let varName = trim(slice(tagContent, 4, len(tagContent)))
+
+      // Find matching {{/if}}
+      match findBlockEnd(template, closeIdx + 2, endIdx, "if") {
+        ok(blockEndIdx) => {
+          match lookupValue(data, varName, contextStack) {
+            ok(value) => {
+              if truthy(value) {
+                match processTemplate(template, data, closeIdx + 2, blockEndIdx, contextStack) {
+                  ok(text) => output = output + text
+                  err(e) => return err(e)
+                }
+              }
+            }
+            err(_) => {}
+          }
+          i = blockEndIdx + 6
+        }
+        err(e) => return err(e)
+      }
+    } else if startsWith(tagContent, "#each ") {
+      let varName = trim(slice(tagContent, 6, len(tagContent)))
+
+      // Find matching {{/each}}
+      match findBlockEnd(template, closeIdx + 2, endIdx, "each") {
+        ok(blockEndIdx) => {
+          match lookupValue(data, varName, contextStack) {
+            ok(value) => {
+              if jsonType(value) == "null" {
+                // missing name renders nothing
+              } else if jsonType(value) != "array" {
+                return err("not a list: " + varName)
+              } else {
+                let items = jsonList(value)
+                for item in items {
+                  let newStack = []
+                  push(newStack, item)
+                  match processTemplate(template, data, closeIdx + 2, blockEndIdx, newStack) {
+                    ok(text) => output = output + text
+                    err(e) => return err(e)
+                  }
+                }
+              }
+            }
+            err(_) => {}
+          }
+          i = blockEndIdx + 8
+        }
+        err(e) => return err(e)
+      }
+    } else if startsWith(tagContent, "/if") {
+      return err("unexpected /if")
+    } else if startsWith(tagContent, "/each") {
+      return err("unexpected /each")
+    } else if tagContent == "." {
+      // Current element in each loop
+      if len(contextStack) > 0 {
+        let current = contextStack[0]
+        match printValue(current) {
+          ok(text) => output = output + text
+          err(e) => return err(e)
+        }
+      }
+      i = closeIdx + 2
+    } else {
+      // Regular {{name}}
+      match lookupValue(data, tagContent, contextStack) {
+        ok(value) => {
+          match printValue(value) {
+            ok(text) => output = output + text
+            err(e) => return err(e)
+          }
+        }
+        err(_) => {}
+      }
+      i = closeIdx + 2
+    }
+  }
+
+  return ok(output)
+}
+
+fn findBlockEnd(template, searchStart, searchEnd, blockType) {
+  let depth = 1
+  let i = searchStart
+
+  while i < searchEnd - 1 {
+    if template[i] == "{" and template[i + 1] == "{" {
+      let closePos = i + 2
+      while closePos < searchEnd - 1 and not (template[closePos] == "}" and template[closePos + 1] == "}") {
+        closePos = closePos + 1
+      }
+
+      if closePos < searchEnd - 1 and template[closePos] == "}" and template[closePos + 1] == "}" {
+        let content = trim(slice(template, i + 2, closePos))
+
+        if startsWith(content, "#" + blockType + " ") {
+          depth = depth + 1
+          i = closePos + 2
+        } else if content == "/" + blockType {
+          depth = depth - 1
+          if depth == 0 {
+            return ok(i)
+          }
+          i = closePos + 2
+        } else {
+          i = closePos + 2
+        }
+      } else {
+        i = i + 1
+      }
+    } else {
+      i = i + 1
+    }
+  }
+
+  if blockType == "if" {
+    return err("unclosed if")
+  } else {
+    return err("unclosed each")
+  }
+}
+
+fn lookupValue(data, name, contextStack) {
+  // Look in context stack first (for nested each)
+  for context in contextStack {
+    if jsonType(context) == "object" {
+      if has(context, name) {
+        return ok(field(context, name))
+      }
+    }
+  }
+
+  // Look in main data
+  if jsonType(data) == "object" {
+    if has(data, name) {
+      return ok(field(data, name))
+    }
+  }
+
+  // Not found - return null json as ok result
+  match parseJson("null") {
+    ok(j) => return ok(j)
+    err(e) => return err(e)
+  }
+}
+
+fn printValue(value) {
+  match jsonType(value) {
+    "string" => {
+      match jsonStr(value) {
+        ok(s) => return ok(s)
+        err(e) => return err(e)
+      }
+    }
+    "number" => {
+      match jsonNum(value) {
+        ok(n) => return ok(str(n))
+        err(e) => return err(e)
+      }
+    }
+    "bool" => {
+      match jsonBool(value) {
+        ok(b) => return ok(str(b))
+        err(e) => return err(e)
+      }
+    }
+    "null" => {
+      return ok("")
+    }
+    "array" => {
+      return err("not printable")
+    }
+    "object" => {
+      return err("not printable")
+    }
+    _ => return ok("")
+  }
+}
+
+fn main() {
+  let argv = args()
+
+  if len(argv) < 2 {
+    return ok(true)
+  }
+
+  let template = argv[0]
+  let dataStr = argv[1]
+
+  match parseJson(dataStr) {
+    ok(data) => {
+      if jsonType(data) != "object" {
+        print("error: bad data")
+      } else {
+        match processTemplate(template, data, 0, len(template), []) {
+          ok(output) => print(output)
+          err(e) => print("error: " + e)
+        }
+      }
+    }
+    err(e) => {
+      print("error: bad data")
+    }
+  }
+
+  return ok(true)
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

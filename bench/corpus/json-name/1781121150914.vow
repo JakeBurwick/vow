@@ -1,0 +1,9 @@
+fn nameOf(s) {
+  let j = parseJson(s)?
+  return jsonStr(get(j, "name")?)
+}
+let input = args()
+match nameOf(input[0]) {
+  ok(n) => print(n)
+  err(e) => print("no name")
+}

@@ -1,0 +1,120 @@
+fn parseGraph(edgesStr) {
+  let graph = {}
+  let edges = split(edgesStr, ",")
+
+  for edge in edges {
+    let parts = split(edge, "-")
+    if len(parts) == 2 {
+      let a = parts[0]
+      let b = parts[1]
+
+      if has(graph, a) {
+        push(graph[a], b)
+      } else {
+        graph[a] = [b]
+      }
+
+      if has(graph, b) {
+        push(graph[b], a)
+      } else {
+        graph[b] = [a]
+      }
+    }
+  }
+
+  return graph
+}
+
+
+fn bfs(graph, start, goal) {
+  if start == goal {
+    return ok([start])
+  }
+
+  if not has(graph, start) or not has(graph, goal) {
+    return err("node not in graph")
+  }
+
+  let queue = [[start]]
+  let visited = {}
+  visited[start] = true
+  let foundPaths = []
+
+  while len(queue) > 0 {
+    let nextQueue = []
+    let foundAtThisLevel = false
+
+    for path in queue {
+      let current = path[len(path) - 1]
+
+      let neighbors = graph[current]
+      for neighbor in neighbors {
+        if neighbor == goal {
+          let resultPath = slice(path, 0, len(path))
+          push(resultPath, goal)
+          push(foundPaths, resultPath)
+          foundAtThisLevel = true
+        } else if not has(visited, neighbor) {
+          visited[neighbor] = true
+          let newPath = slice(path, 0, len(path))
+          push(newPath, neighbor)
+          push(nextQueue, newPath)
+        }
+      }
+    }
+
+    if foundAtThisLevel {
+      break
+    }
+
+    queue = nextQueue
+  }
+
+  if len(foundPaths) == 0 {
+    return err("no path")
+  }
+
+  let smallest = foundPaths[0]
+  for i in range(1, len(foundPaths)) {
+    let path = foundPaths[i]
+    let minLen = min(len(path), len(smallest))
+    let isSmaller = false
+    for j in range(0, minLen) {
+      if path[j] < smallest[j] {
+        isSmaller = true
+        break
+      } else if path[j] > smallest[j] {
+        break
+      }
+    }
+    if not isSmaller and len(path) < len(smallest) {
+      isSmaller = true
+    }
+    if isSmaller {
+      smallest = path
+    }
+  }
+
+  return ok(smallest)
+}
+
+let args = args()
+let edgesStr = args[0]
+let start = args[1]
+let goal = args[2]
+
+let graph = parseGraph(edgesStr)
+
+match bfs(graph, start, goal) {
+  ok(path) => {
+    let result = ""
+    for i in range(0, len(path)) {
+      if i > 0 {
+        result = result + " -> "
+      }
+      result = result + path[i]
+    }
+    print(result)
+  }
+  err(e) => print("no path")
+}

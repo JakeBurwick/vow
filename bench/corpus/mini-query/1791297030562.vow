@@ -1,0 +1,275 @@
+fn parseNumber(s) {
+  let trimmed = trim(s)
+  let result = num(trimmed)
+  return result
+}
+
+fn isNumber(s) {
+  return match parseNumber(s) {
+    ok(_) => true
+    err(_) => false
+  }
+}
+
+fn compareValues(val1, val2, op) {
+  let isNum1 = isNumber(val1)
+  let isNum2 = isNumber(val2)
+
+  if isNum1 and isNum2 {
+    let n1 = match parseNumber(val1) { ok(v) => v err(_) => 0 }
+    let n2 = match parseNumber(val2) { ok(v) => v err(_) => 0 }
+
+    if op == "=" { return n1 == n2 }
+    if op == "!=" { return n1 != n2 }
+    if op == "<" { return n1 < n2 }
+    if op == "<=" { return n1 <= n2 }
+    if op == ">" { return n1 > n2 }
+    if op == ">=" { return n1 >= n2 }
+  }
+
+  if op == "=" { return val1 == val2 }
+  if op == "!=" { return val1 != val2 }
+
+  return false
+}
+
+fn main() {
+  let args_list = args()
+  if len(args_list) < 2 {
+    print("error: bad query")
+    return ok(true)
+  }
+
+  let csv_str = args_list[0]
+  let query_str = args_list[1]
+
+  let csv_lines = lines(csv_str)
+  if len(csv_lines) == 0 {
+    print("error: bad query")
+    return ok(true)
+  }
+
+  let header_line = csv_lines[0]
+  let headers = split(header_line, ",")
+  let header_map = {}
+  let header_list = []
+
+  for i in range(0, len(headers)) {
+    let h = headers[i]
+    header_map[h] = i
+    push(header_list, h)
+  }
+
+  let rows = []
+  for i in range(1, len(csv_lines)) {
+    let line = csv_lines[i]
+    if line != "" {
+      let fields = split(line, ",")
+      push(rows, fields)
+    }
+  }
+
+  let query_parts = split(query_str, " ")
+  if len(query_parts) == 0 {
+    print("error: bad query")
+    return ok(true)
+  }
+
+  if query_parts[0] != "SELECT" {
+    print("error: bad query")
+    return ok(true)
+  }
+
+  if len(query_parts) < 2 {
+    print("error: bad query")
+    return ok(true)
+  }
+
+  let select_cols_str = query_parts[1]
+  let select_cols = split(select_cols_str, ",")
+
+  for col in select_cols {
+    if not has(header_map, col) {
+      print("error: unknown column " + col)
+      return ok(true)
+    }
+  }
+
+  let where_col = ""
+  let where_op = ""
+  let where_val = ""
+  let order_by_col = ""
+  let order_by_desc = false
+  let limit_n = 999999
+
+  let i = 2
+  while i < len(query_parts) {
+    let keyword = query_parts[i]
+
+    if keyword == "WHERE" {
+      if i + 3 >= len(query_parts) {
+        print("error: bad query")
+        return ok(true)
+      }
+      where_col = query_parts[i + 1]
+      where_op = query_parts[i + 2]
+      where_val = query_parts[i + 3]
+
+      if not has(header_map, where_col) {
+        print("error: unknown column " + where_col)
+        return ok(true)
+      }
+
+      if where_op != "=" and where_op != "!=" and where_op != "<" and where_op != "<=" and where_op != ">" and where_op != ">=" {
+        print("error: bad query")
+        return ok(true)
+      }
+
+      let is_num_col = true
+      for row in rows {
+        let col_idx = header_map[where_col]
+        if col_idx < len(row) {
+          if not isNumber(row[col_idx]) {
+            is_num_col = false
+            break
+          }
+        }
+      }
+
+      if not is_num_col and where_op != "=" and where_op != "!=" {
+        print("error: bad comparison")
+        return ok(true)
+      }
+
+      i = i + 4
+    } else if keyword == "ORDER" {
+      if i + 2 >= len(query_parts) {
+        print("error: bad query")
+        return ok(true)
+      }
+      if query_parts[i + 1] != "BY" {
+        print("error: bad query")
+        return ok(true)
+      }
+      order_by_col = query_parts[i + 2]
+
+      if not has(header_map, order_by_col) {
+        print("error: unknown column " + order_by_col)
+        return ok(true)
+      }
+
+      if i + 3 < len(query_parts) and query_parts[i + 3] == "DESC" {
+        order_by_desc = true
+        i = i + 4
+      } else {
+        i = i + 3
+      }
+    } else if keyword == "LIMIT" {
+      if i + 1 >= len(query_parts) {
+        print("error: bad query")
+        return ok(true)
+      }
+      let limit_str = query_parts[i + 1]
+      match num(limit_str) {
+        ok(n) => limit_n = n
+        err(_) => {
+          print("error: bad query")
+          return ok(true)
+        }
+      }
+      i = i + 2
+    } else {
+      print("error: bad query")
+      return ok(true)
+    }
+  }
+
+  let filtered_rows = []
+  for row in rows {
+    let include = true
+    if where_col != "" {
+      let col_idx = header_map[where_col]
+      if col_idx >= len(row) {
+        include = false
+      } else {
+        let cell_val = row[col_idx]
+        if not compareValues(cell_val, where_val, where_op) {
+          include = false
+        }
+      }
+    }
+    if include {
+      push(filtered_rows, row)
+    }
+  }
+
+  if order_by_col != "" {
+    let col_idx = header_map[order_by_col]
+    let is_numeric = true
+    for row in filtered_rows {
+      if col_idx < len(row) and not isNumber(row[col_idx]) {
+        is_numeric = false
+        break
+      }
+    }
+
+    if is_numeric {
+      filtered_rows = sortBy(filtered_rows, row => {
+        let val_idx = header_map[order_by_col]
+        let val_str = ""
+        if val_idx < len(row) {
+          val_str = row[val_idx]
+        }
+        let n = match parseNumber(val_str) { ok(v) => v err(_) => 0 }
+        if order_by_desc {
+          return 0 - n
+        } else {
+          return n
+        }
+      })
+    } else {
+      filtered_rows = sortBy(filtered_rows, row => {
+        let val_idx = header_map[order_by_col]
+        let val_str = ""
+        if val_idx < len(row) {
+          val_str = row[val_idx]
+        }
+        if order_by_desc {
+          return val_str
+        } else {
+          return val_str
+        }
+      })
+    }
+  }
+
+  let output_rows = []
+  let limit_count = 0
+  for row in filtered_rows {
+    if limit_count < limit_n {
+      push(output_rows, row)
+      limit_count = limit_count + 1
+    }
+  }
+
+  print(join(select_cols, ","))
+  for row in output_rows {
+    let output_fields = []
+    for col in select_cols {
+      let col_idx = header_map[col]
+      if col_idx < len(row) {
+        push(output_fields, row[col_idx])
+      } else {
+        push(output_fields, "")
+      }
+    }
+    print(join(output_fields, ","))
+  }
+
+  return ok(true)
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print("error: bad query")
+}

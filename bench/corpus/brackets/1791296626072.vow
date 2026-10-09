@@ -1,0 +1,63 @@
+fn isBalanced(s) {
+  let stack = []
+  let chars = split(s, "")
+
+  for c in chars {
+    if c == "(" or c == "[" or c == "{" {
+      push(stack, c)
+    } else if c == ")" {
+      match pop(stack) {
+        ok(top) => {
+          if top != "(" {
+            return ok(false)
+          }
+        }
+        err(e) => {
+          return ok(false)
+        }
+      }
+    } else if c == "]" {
+      match pop(stack) {
+        ok(top) => {
+          if top != "[" {
+            return ok(false)
+          }
+        }
+        err(e) => {
+          return ok(false)
+        }
+      }
+    } else if c == "}" {
+      match pop(stack) {
+        ok(top) => {
+          if top != "{" {
+            return ok(false)
+          }
+        }
+        err(e) => {
+          return ok(false)
+        }
+      }
+    }
+  }
+
+  if len(stack) == 0 {
+    return ok(true)
+  } else {
+    return ok(false)
+  }
+}
+
+let s = args()[0]
+match isBalanced(s) {
+  ok(result) => {
+    if result {
+      print("yes")
+    } else {
+      print("no")
+    }
+  }
+  err(e) => {
+    print("no")
+  }
+}

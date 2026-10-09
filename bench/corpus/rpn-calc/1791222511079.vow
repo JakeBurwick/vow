@@ -1,0 +1,77 @@
+fn isOperator(token) {
+  return token == "+" or token == "-" or token == "*" or token == "/"
+}
+
+fn evaluateRPN(expr) {
+  let tokens = split(expr, " ")
+  let stack = []
+
+  for token in tokens {
+    if token == "" {
+      continue
+    }
+
+    if isOperator(token) {
+      if len(stack) < 2 {
+        return err("error")
+      }
+
+      match pop(stack) {
+        ok(b) => {
+          match pop(stack) {
+            ok(a) => {
+              let result = match token {
+                "+" => a + b
+                "-" => a - b
+                "*" => a * b
+                "/" => {
+                  if b == 0 {
+                    return err("error")
+                  }
+                  a / b
+                }
+                _ => 0
+              }
+              push(stack, result)
+            }
+            err(e) => {
+              return err("error")
+            }
+          }
+        }
+        err(e) => {
+          return err("error")
+        }
+      }
+    } else {
+      match num(token) {
+        ok(n) => {
+          push(stack, n)
+        }
+        err(e) => {
+          return err("error")
+        }
+      }
+    }
+  }
+
+  if len(stack) == 1 {
+    return ok(stack[0])
+  } else {
+    return err("error")
+  }
+}
+
+let args_list = args()
+let input = match get(args_list, 0) {
+  ok(s) => s
+  err(e) => ""
+}
+
+match evaluateRPN(input) {
+  ok(result) => {
+    let rounded = round(result, 0)
+    print(str(rounded))
+  }
+  err(e) => print("error")
+}

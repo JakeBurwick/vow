@@ -1,0 +1,2 @@
+fn ser(r) { return toJson([r]) }
+print(ser(ok(1)))

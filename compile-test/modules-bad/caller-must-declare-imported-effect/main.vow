@@ -1,0 +1,8 @@
+import "./net.vow" as net
+fn page(u) {
+  return net.get(u)
+}
+match page("https://example.com") {
+  ok(b) => print(b)
+  err(e) => print(e)
+}

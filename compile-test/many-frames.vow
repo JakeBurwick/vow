@@ -1,0 +1,8 @@
+fn f(n) {
+  if n == 0 {
+    let xs = [1]
+    return xs[3]
+  }
+  return f(n - 1)
+}
+print(f(20))

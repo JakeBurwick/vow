@@ -1,0 +1,134 @@
+fn isLowercase(s) {
+  if len(s) == 0 {
+    return false
+  }
+  for c in split(s, "") {
+    if not (c >= "a" and c <= "z") {
+      return false
+    }
+  }
+  return true
+}
+
+fn main() {
+  let input = args()[0]
+  let entries = split(input, ";")
+
+  let packages = {}
+
+  // Parse and validate entries
+  for entry in entries {
+    let trimmed = trim(entry)
+    if len(trimmed) == 0 {
+      continue
+    }
+
+    // Check for exactly one colon
+    match indexOf(trimmed, ":") {
+      ok(idx) => {
+        let after_colon = slice(trimmed, idx + 1, len(trimmed))
+        match indexOf(after_colon, ":") {
+          ok(_) => {
+            print("error: bad entry " + entry)
+            return ok(true)
+          }
+          err(_) => {
+            // Good, exactly one colon
+            let name = slice(trimmed, 0, idx)
+            let deps_str = after_colon
+
+            if not isLowercase(name) {
+              print("error: bad entry " + entry)
+              return ok(true)
+            }
+
+            let deps = if deps_str == "" { [] } else { split(deps_str, ",") }
+
+            for dep in deps {
+              if not isLowercase(dep) {
+                print("error: bad entry " + entry)
+                return ok(true)
+              }
+            }
+
+            if has(packages, name) {
+              let existing = packages[name]
+              for dep in deps {
+                if not contains(existing, dep) {
+                  push(existing, dep)
+                }
+              }
+            } else {
+              packages[name] = deps
+            }
+
+            for dep in deps {
+              if not has(packages, dep) {
+                packages[dep] = []
+              }
+            }
+          }
+        }
+      }
+      err(_) => {
+        print("error: bad entry " + entry)
+        return ok(true)
+      }
+    }
+  }
+
+  // Topological sort with cycle detection
+  let in_degree = {}
+  let graph = {}
+
+  for pkg in keys(packages) {
+    in_degree[pkg] = 0
+    graph[pkg] = []
+  }
+
+  for pkg in keys(packages) {
+    for dep in packages[pkg] {
+      push(graph[dep], pkg)
+      in_degree[pkg] = in_degree[pkg] + 1
+    }
+  }
+
+  let queue = []
+  for pkg in keys(in_degree) {
+    if in_degree[pkg] == 0 {
+      push(queue, pkg)
+    }
+  }
+
+  let result = []
+  while len(queue) > 0 {
+    queue = sort(queue)
+    let pkg = queue[0]
+    let new_queue = []
+    for i in range(1, len(queue)) {
+      push(new_queue, queue[i])
+    }
+    queue = new_queue
+    push(result, pkg)
+
+    for next_pkg in graph[pkg] {
+      in_degree[next_pkg] = in_degree[next_pkg] - 1
+      if in_degree[next_pkg] == 0 {
+        push(queue, next_pkg)
+      }
+    }
+  }
+
+  if len(result) != len(keys(packages)) {
+    print("error: cycle")
+  } else {
+    print(join(result, " "))
+  }
+
+  return ok(true)
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}
