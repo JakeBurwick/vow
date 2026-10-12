@@ -3,6 +3,7 @@
 // are checked at runtime with caller-vs-callee blame in the message.
 
 import { VowError, nodeLoc } from './diagnostics.js';
+import { compileRegex } from './checker.js';
 
 export const UNIT = Object.freeze({ __unit: true });
 
@@ -57,7 +58,29 @@ function sameHash(a, b) {
 // JSON values are wrapped so a parsed object can never masquerade as a
 // Vow map, struct, or Result at runtime.
 export const isJson = (v) => v !== null && typeof v === 'object' && '__json' in v;
-const J = (raw) => ({ __json: raw });
+// __key: where the value came from (an object key or an array index), so jsonNum("36") can
+// say `the JSON value at "age"`; absent for the root of parseJson and for built values
+const J = (raw, key) => key === undefined ? { __json: raw } : { __json: raw, __key: key };
+// "the JSON value at "age" is a string ("36")": what was found, and where, for jsonNum/jsonStr/jsonBool
+function jsonFound(j) {
+  const raw = j.__json;
+  const where = j.__key === undefined ? 'this JSON value'
+    : typeof j.__key === 'number' ? `the JSON value at index ${j.__key}` : `the JSON value at "${j.__key}"`;
+  let shown = '';
+  if (raw !== null) {
+    const s = JSON.stringify(raw);
+    shown = ` (${s.length > 40 ? s.slice(0, 37) + '...' : s})`;
+  }
+  const kind = jsonTypeOf(raw);
+  return `${where} is ${kind === 'null' ? 'null' : `${kind === 'object' || kind === 'array' ? 'an' : 'a'} ${kind}${shown}`}`;
+}
+// jsonMerge(a, b): objects merge key by key (recursively), anything else is replaced by b
+function rawJsonMerge(a, b) {
+  if (!isJsonObject(a) || !isJsonObject(b)) return b;
+  const out = { ...a };
+  for (const k of Object.keys(b)) out[k] = Object.hasOwn(a, k) ? rawJsonMerge(a[k], b[k]) : b[k];
+  return out;
+}
 const jsonTypeOf = (raw) =>
   raw === null ? 'null'
     : Array.isArray(raw) ? 'array'
@@ -272,7 +295,7 @@ export function createRun(src, ast, opts = {}) {
     const key = flags + ':' + p;
     let re = regexCache.get(key);
     if (re) { re.lastIndex = 0; return re; }
-    try { re = new RegExp(p, flags); }
+    try { re = compileRegex(p, flags); }
     catch (ex) {
       trap(node, 'RuntimeError', `invalid regular expression: ${JSON.stringify(p)}`,
         `${ex.message.replace(/^Invalid regular expression: /, '')}. Patterns are JavaScript regular expressions.`,
@@ -340,7 +363,7 @@ export function createRun(src, ast, opts = {}) {
         if (Array.isArray(raw)) {
           if (typeof k !== 'number') return err(`this JSON value is an array; index it with a number, not "${k}"`);
           if (!Number.isInteger(k) || k < 0 || k >= raw.length) return err(`index ${display(k)} is out of range (the JSON array has ${raw.length} item${raw.length === 1 ? '' : 's'})`);
-          return ok(J(raw[k]));
+          return ok(J(raw[k], k));
         }
         if (raw !== null && typeof raw === 'object') {
           if (typeof k !== 'string') return err(`this JSON value is an object; access it with a string key, not ${display(k)}`);
@@ -348,7 +371,7 @@ export function createRun(src, ast, opts = {}) {
             const ks = Object.keys(raw).slice(0, 8).map(x => `"${x}"`).join(', ');
             return err(`key "${k}" not found in this JSON object (its keys: ${ks || 'none; the object is empty'})`);
           }
-          return ok(J(raw[k]));
+          return ok(J(raw[k], k));
         }
         return err(`can't index into a JSON ${jsonTypeOf(raw)}; only objects and arrays have children`);
       }
@@ -391,15 +414,25 @@ export function createRun(src, ast, opts = {}) {
       catch (e) { return err(`invalid JSON: ${e.message}`); }
     },
     toJson: ([v], node) => JSON.stringify(vowToRaw(v, node)),
-    jsonNum: ([j]) => typeof j.__json === 'number' ? ok(j.__json) : err(`this JSON value is a ${jsonTypeOf(j.__json)}, not a number`),
-    jsonStr: ([j]) => typeof j.__json === 'string' ? ok(j.__json) : err(`this JSON value is a ${jsonTypeOf(j.__json)}, not a string`),
-    jsonBool: ([j]) => typeof j.__json === 'boolean' ? ok(j.__json) : err(`this JSON value is a ${jsonTypeOf(j.__json)}, not a bool`),
-    jsonList: ([j]) => Array.isArray(j.__json) ? j.__json.map(J) : [],
+    prettyJson: ([v], node) => JSON.stringify(vowToRaw(v, node), null, 2),
+    // json values are read-only, so "modifying" one builds a new one (children are shared)
+    jsonSet: ([j, k, v], node) => {
+      const raw = j.__json;
+      if (raw !== null && !isJsonObject(raw)) trap(node, 'RuntimeError', `jsonSet() needs a JSON object, but ${jsonFound(j)}`,
+        'jsonSet(j, key, value) returns a copy of the object j with that key set (a json null counts as an empty object).',
+        'check the kind first: if jsonType(j) == "object" { ... }; to build a list, use a Vow list and toJson(...) instead.');
+      return J({ ...(raw ?? {}), [k]: vowToRaw(v, node) });
+    },
+    jsonMerge: ([a, b]) => J(rawJsonMerge(a.__json, b.__json)),
+    jsonNum: ([j]) => typeof j.__json === 'number' ? ok(j.__json) : err(`${jsonFound(j)}, not a number`),
+    jsonStr: ([j]) => typeof j.__json === 'string' ? ok(j.__json) : err(`${jsonFound(j)}, not a string`),
+    jsonBool: ([j]) => typeof j.__json === 'boolean' ? ok(j.__json) : err(`${jsonFound(j)}, not a bool`),
+    jsonList: ([j]) => Array.isArray(j.__json) ? j.__json.map((x, i) => J(x, i)) : [],
     jsonKeys: ([j]) => jsonTypeOf(j.__json) === 'object' ? Object.keys(j.__json) : [],
     jsonType: ([j]) => jsonTypeOf(j.__json),
     // missing is a normal case: a json null instead of a Result (get() stays the strict version)
-    field: ([j, k]) => isJsonObject(j.__json) && Object.hasOwn(j.__json, k) ? J(j.__json[k]) : J(null),
-    at: ([j, i]) => Array.isArray(j.__json) && Number.isInteger(i) && i >= 0 && i < j.__json.length ? J(j.__json[i]) : J(null),
+    field: ([j, k]) => isJsonObject(j.__json) && Object.hasOwn(j.__json, k) ? J(j.__json[k], k) : J(null, k),
+    at: ([j, i]) => Array.isArray(j.__json) && Number.isInteger(i) && i >= 0 && i < j.__json.length ? J(j.__json[i], i) : J(null, i),
     isNull: ([j]) => j.__json === null,
     truthy: ([j]) => jsonTruthy(j.__json),
     // I/O builtins — the host (CLI) overrides these via opts.builtins.
@@ -407,6 +440,9 @@ export function createRun(src, ast, opts = {}) {
     readFile: () => err('readFile is only available in the Vow CLI; the browser playground has no filesystem'),
     writeFile: () => err('writeFile is only available in the Vow CLI; the browser playground has no filesystem'),
     httpGet: () => err('httpGet is only available in the Vow CLI; the browser playground cannot reach the network'),
+    httpRequest: () => err('httpRequest is only available in the Vow CLI; the browser playground cannot reach the network'),
+    readLine: () => err('readLine is only available in the Vow CLI; the browser playground has no standard input'),
+    readAll: () => err('readAll is only available in the Vow CLI; the browser playground has no standard input'),
     env: () => err('env is only available in the Vow CLI; the browser playground has no environment variables'),
     args: () => [],
     serve: () => err('serve is only available in the Vow CLI; the browser playground cannot open a port'),
@@ -474,7 +510,26 @@ export function createRun(src, ast, opts = {}) {
     replace: ([t, a, b]) => a === '' ? t : t.split(a).join(b), // every occurrence; literal, not a pattern
     startsWith: ([t, a]) => t.startsWith(a),
     endsWith: ([t, a]) => t.endsWith(a),
-    indexOf: ([t, a]) => { const i = t.indexOf(a); return i < 0 ? err(`"${a}" does not occur in the text`) : ok(i); },
+    indexOf: ([t, a]) => {
+      if (typeof t === 'string') { const i = t.indexOf(a); return i < 0 ? err(`"${a}" does not occur in the text`) : ok(i); }
+      const i = t.findIndex(x => deepEq(x, a));
+      return i < 0 ? err(`${display(a, 1)} is not in the list`) : ok(i);
+    },
+    // ---- URLs and code points ----
+    urlEncode: ([t]) => encodeURIComponent(t),
+    urlDecode: ([t]) => {
+      try { return ok(decodeURIComponent(t)); }
+      catch { return err(`"${t.length > 60 ? t.slice(0, 57) + '...' : t}" is not valid URL encoding (a % must be followed by two hex digits)`); }
+    },
+    ord: ([t], node) => {
+      if (t === '') trap(node, 'RuntimeError', 'ord() of an empty string', 'ord(text) gives the code point of the first character, and "" has none.', 'check first: if s != "" { ord(s) }');
+      return t.codePointAt(0);
+    },
+    chr: ([n], node) => {
+      if (!Number.isInteger(n) || n < 0 || n > 0x10FFFF) trap(node, 'RuntimeError', `chr(${display(n)}) is not a code point`,
+        'chr(n) takes a whole number from 0 to 1114111 (0x10FFFF).', 'pass a whole number in that range, e.g. chr(65) is "A" and chr(9731) is "☃".');
+      return String.fromCodePoint(n);
+    },
     repeat: ([t, n], node) => {
       if (!Number.isInteger(n) || n < 0 || n * t.length > 10_000_000) trap(node, 'RuntimeError', `repeat() count ${display(n)} is not a usable whole number`, 'The count must be a whole number from 0 up, and the result at most 10 million characters.', 'pass a non-negative whole number.');
       return t.repeat(n);
@@ -537,9 +592,9 @@ export function createRun(src, ast, opts = {}) {
   function* execStmt(s, env) {
     st.steps++;
     if (st.steps > st.maxSteps) {
-      trap(s, 'RuntimeError', 'the program ran too long and was stopped',
-        `Over ${st.maxSteps.toLocaleString()} steps executed; this is almost always an infinite loop.`,
-        'check that your while condition can become false and that loop counters actually change.');
+      trap(s, 'RuntimeError', `the program ran over ${st.maxSteps.toLocaleString()} steps and was stopped`,
+        'That many steps is usually an infinite loop, but it can also be heavy legitimate work.',
+        `check that your while condition can become false and that loop counters actually change; if the work is real, raise the limit: vow --max-steps ${st.maxSteps * 10} main.vow (0 = no limit).`);
     }
     const frame = st.stack[st.stack.length - 1];
     frame.line = s.pos.line;
@@ -699,7 +754,7 @@ export function createRun(src, ast, opts = {}) {
                 `This JSON array has ${raw.length} item${raw.length === 1 ? '' : 's'}.`,
                 `use get(j, ${display(key)}) which returns a Result you can match on.`);
             }
-            return J(raw[key]);
+            return J(raw[key], key);
           }
           if (raw !== null && typeof raw === 'object') {
             if (!Object.hasOwn(raw, key)) {
@@ -708,7 +763,7 @@ export function createRun(src, ast, opts = {}) {
                 `Its keys are: ${ks || '(none; the object is empty)'}.`,
                 `use get(j, "${key}") which returns a Result you can match on.`);
             }
-            return J(raw[key]);
+            return J(raw[key], key);
           }
           trap(e, 'RuntimeError', `can't index into a JSON ${jsonTypeOf(raw)}`,
             'Only JSON objects and arrays have children.',

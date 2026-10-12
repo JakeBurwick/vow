@@ -5,8 +5,10 @@
 //   node cli.js --interp program.vow      run on the tree-walking interpreter instead of
 //                                         the compiled JS backend (lang/compile.js)
 //   node cli.js --seed 42 program.vow     reproducible random() / randomInt() (also VOW_SEED=42)
+//   node cli.js --max-steps N program.vow stop after N statements (default 50,000,000; 0 = no limit)
 
 import { readFile as fsRead, writeFile as fsWrite } from 'node:fs/promises';
+import { readSync, writeSync } from 'node:fs';
 import process from 'node:process';
 import { createServer } from 'node:http';
 import { check } from './lang/checker.js';
@@ -24,11 +26,18 @@ let checkOnly = false;
 let forceInterp = false;
 // --seed N (or VOW_SEED=N) makes random() / randomInt() reproducible
 let seed = process.env.VOW_SEED;
+// --max-steps N: statements executed before the run is stopped (0 = unlimited)
+let maxSteps = 50_000_000;
 while (argv[0]?.startsWith('--')) {
   const flag = argv.shift();
   if (flag === '--check') checkOnly = true;
   else if (flag === '--interp') forceInterp = true;
   else if (flag === '--seed') seed = argv.shift();
+  else if (flag === '--max-steps') {
+    const n = argv.shift();
+    if (!/^\d+$/.test(String(n ?? '').trim())) { console.error(`✗ --max-steps takes a whole number of steps (0 = no limit), got "${n}"`); process.exit(2); }
+    maxSteps = Number(n) === 0 ? Infinity : Number(n);
+  }
   else if (flag === '--sandbox') policy.on = true;
   else if (flag === '--allow') {
     policy.on = true;
@@ -47,7 +56,7 @@ if (seed != null && seed !== '') {
 } else seed = undefined;
 
 if (!file) {
-  console.error('usage: vow <file.vow> [args...]\n       vow --check <file.vow>\n       vow --interp <file.vow> [args...]   (interpreter instead of the compiler)');
+  console.error('usage: vow <file.vow> [args...]\n       vow --check <file.vow>\n       vow --interp <file.vow> [args...]   (interpreter instead of the compiler)\n       vow --max-steps N <file.vow>       (stop after N statements; 0 = no limit)');
   process.exit(2);
 }
 
@@ -63,6 +72,77 @@ const ok = (v) => ({ tag: 'ok', val: v });
 const err = (v) => ({ tag: 'err', val: v });
 const programArgs = argv.slice(1);
 
+// Output goes straight to the file descriptors, synchronously: everything a program printed
+// is on the terminal (or in the pipe) before the next statement runs, so a prompt shows up
+// before readLine() blocks and output never lands after the error text that followed it.
+// (console.log from a worker thread is asynchronous and can reorder against stderr.)
+const sleep = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+function writeOut(fd, text) {
+  const buf = Buffer.from(text, 'utf8');
+  let off = 0;
+  while (off < buf.length) {
+    try { off += writeSync(fd, buf, off, buf.length - off); }
+    catch (e) {
+      if (e.code === 'EAGAIN') { sleep(5); continue; } // a non-blocking pipe is full: wait for the reader
+      if (e.code === 'EPIPE') process.exit(process.exitCode ?? 0); // `vow prog.vow | head` closed early
+      throw e;
+    }
+  }
+}
+const printLine = (line) => writeOut(1, line + '\n');
+const errLine = (text) => writeOut(2, text + '\n');
+
+// Standard input, read synchronously on fd 0 (a terminal or a pipe) and split into lines.
+// A partial final line (no trailing newline) is still a line; \r\n counts as one newline.
+const stdin = { buf: '', eof: false, chunk: Buffer.alloc(65536) };
+function fillStdin() { // one read; false at end of input
+  if (stdin.eof) return false;
+  for (;;) {
+    let n;
+    try { n = readSync(0, stdin.chunk, 0, stdin.chunk.length, null); }
+    catch (e) {
+      if (e.code === 'EAGAIN') { sleep(5); continue; } // non-blocking stdin with nothing to read yet
+      if (e.code === 'EOF' || e.code === 'EBADF') { stdin.eof = true; return false; } // Windows console at Ctrl+Z; stdin closed
+      throw e;
+    }
+    if (n === 0) { stdin.eof = true; return false; }
+    stdin.buf += stdin.chunk.toString('utf8', 0, n);
+    return true;
+  }
+}
+function readLine() {
+  for (;;) {
+    const nl = stdin.buf.indexOf('\n');
+    if (nl >= 0) {
+      let line = stdin.buf.slice(0, nl);
+      stdin.buf = stdin.buf.slice(nl + 1);
+      if (line.endsWith('\r')) line = line.slice(0, -1);
+      return ok(line);
+    }
+    if (!fillStdin()) {
+      if (stdin.buf === '') return err('end of input');
+      const line = stdin.buf; stdin.buf = '';
+      return ok(line.endsWith('\r') ? line.slice(0, -1) : line);
+    }
+  }
+}
+function readAll() {
+  while (fillStdin()) { /* until end of input */ }
+  const text = stdin.buf; stdin.buf = '';
+  return ok(text);
+}
+
+// the ok value of httpRequest: HttpResponse { status, headers (lower-case names), body }
+const httpResponse = (res, body) => ({
+  __struct: 'HttpResponse',
+  fields: new Map([['status', res.status], ['headers', new Map([...res.headers.entries()])], ['body', body]]),
+});
+// the start of a failed response's body, so a 404 / 403 says what the server said
+const bodyHint = (text) => {
+  const t = text.replace(/\s+/g, ' ').trim();
+  return t ? ` ${JSON.stringify(t.length > 200 ? t.slice(0, 197) + '...' : t)}` : '';
+};
+
 const ioBuiltins = {
   readFile: async ([p]) => {
     try { return ok(await fsRead(p, 'utf8')); }
@@ -75,12 +155,27 @@ const ioBuiltins = {
   httpGet: async ([url]) => {
     try {
       const res = await fetch(url, { signal: AbortSignal.timeout(15000), redirect: 'follow' });
-      if (!res.ok) return err(`GET ${url} failed: HTTP ${res.status}`);
+      if (!res.ok) return err(`GET ${url} failed: HTTP ${res.status}${bodyHint(await res.text().catch(() => ''))}`);
       return ok(await res.text());
     } catch (e) {
       return err(`GET ${url} failed: ${e.cause?.code ?? e.message}`);
     }
   },
+  // any status is an ok (the caller reads .status); only a failure to get a response is an err
+  httpRequest: async ([method, url, headers, body]) => {
+    const m = method.toUpperCase();
+    try {
+      const res = await fetch(url, {
+        method: m, headers: Object.fromEntries(headers), signal: AbortSignal.timeout(15000), redirect: 'follow',
+        body: body === '' || m === 'GET' || m === 'HEAD' ? undefined : body,
+      });
+      return ok(httpResponse(res, await res.text()));
+    } catch (e) {
+      return err(`${m} ${url} failed: ${e.cause?.code ?? e.message}`);
+    }
+  },
+  readLine: () => readLine(),
+  readAll: () => readAll(),
   env: ([name]) => process.env[name] != null ? ok(process.env[name]) : err(`environment variable "${name}" is not set`),
   args: () => [...programArgs],
   // serve(port, handler): never returns while the server is up. Requests are handled one at a
@@ -109,7 +204,7 @@ const ioBuiltins = {
             r = await ctx.invoke(handler, [vreq]);
           } catch (e) {
             const msg = e instanceof VowError ? formatDiag(src, e.diag) : `internal error: ${e.message}`;
-            console.error(`${req.method} ${url.pathname} -> 500\n${msg}`);
+            errLine(`${req.method} ${url.pathname} -> 500\n${msg}`);
             r = { status: 500, type: 'text/plain; charset=utf-8', body: 'internal server error' };
           }
           res.writeHead(r.status, {
@@ -126,13 +221,13 @@ const ioBuiltins = {
             'Cache-Control': 'no-store',
           });
           res.end(r.body);
-          console.error(`${req.method} ${url.pathname} -> ${r.status} (${Date.now() - started} ms)`);
+          errLine(`${req.method} ${url.pathname} -> ${r.status} (${Date.now() - started} ms)`);
         });
       });
     });
     server.requestTimeout = 15_000;
     server.on('error', (e) => resolve(err(`could not serve on port ${port}: ${e.code ?? e.message}`)));
-    server.listen(port, host, () => console.error(`serving on http://${host === '0.0.0.0' ? 'localhost' : host}:${port}  (Ctrl+C to stop)`));
+    server.listen(port, host, () => errLine(`serving on http://${host === '0.0.0.0' ? 'localhost' : host}:${port}  (Ctrl+C to stop)`));
   }),
 };
 
@@ -148,6 +243,11 @@ const guarded = {
   httpGet: ([url]) => {
     let host; try { host = new URL(url).host; } catch { return err(`GET ${url} failed: invalid URL`); }
     return permits('net', h => h === host) ? raw.httpGet([url]) : denied('net', host);
+  },
+  httpRequest: (args) => {
+    const [method, url] = args;
+    let host; try { host = new URL(url).host; } catch { return err(`${method.toUpperCase()} ${url} failed: invalid URL`); }
+    return permits('net', h => h === host) ? raw.httpRequest(args) : denied('net', host);
   },
   env: ([name]) => permits('env', n => n === name) ? raw.env([name]) : denied('env', `"${name}"`),
 };
@@ -178,8 +278,8 @@ try {
     process.exit(0);
   }
   const runOpts = {
-    out: (line) => console.log(line),
-    maxSteps: 50_000_000,
+    out: printLine,
+    maxSteps,
     maxDepth: 50000,
     stepYields: false,
     builtins: ioBuiltins,
@@ -190,7 +290,7 @@ try {
   let compiled = null;
   if (!forceInterp) {
     try { compiled = createCompiledRun(src, ast, runOpts); }
-    catch (e) { if (process.env.VOW_DEBUG) console.error(`(compiler fallback: ${e.message})`); }
+    catch (e) { if (process.env.VOW_DEBUG) errLine(`(compiler fallback: ${e.message})`); }
   }
   if (compiled) await compiled.run();
   else {
@@ -202,11 +302,11 @@ try {
   }
 } catch (e) {
   if (e instanceof VowError) {
-    console.error(formatDiag(src, e.diag));
+    errLine(formatDiag(src, e.diag));
     process.exit(1);
   }
   if (e instanceof RangeError && /call stack/i.test(e.message)) {
-    console.error('✗ RuntimeError: ran out of stack space\n  The program recursed deeper than the machine allows.\n  Likely fix: turn the deepest recursion into a loop.');
+    errLine('✗ RuntimeError: ran out of stack space\n  The program recursed deeper than the machine allows.\n  Likely fix: turn the deepest recursion into a loop.');
     process.exit(1);
   }
   throw e;

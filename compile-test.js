@@ -53,6 +53,7 @@ async function main() {
       },
       writeFile: async ([p, text]) => { mem.set(p, text); return ok(true); },
       httpGet: async ([url]) => err(`GET ${url} failed: network disabled in compile-test`),
+      httpRequest: async ([method, url]) => err(`${method} ${url} failed: network disabled in compile-test`),
       serve: async ([port, handler], node, ctx) => {
         for (const rq of chk.requests ?? []) {
           const req = new Map([['method', rq.method ?? 'GET'], ['path', rq.path ?? '/'], ['query', rq.query ?? ''], ['body', rq.body ?? ''], ['authorization', rq.authorization ?? '']]);

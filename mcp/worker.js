@@ -26,7 +26,8 @@ try {
     builtins: {
       args: () => args.slice(),
       readFile: () => sandboxed('readFile'), writeFile: () => sandboxed('writeFile'),
-      httpGet: () => sandboxed('httpGet'), env: () => sandboxed('env'),
+      httpGet: () => sandboxed('httpGet'), httpRequest: () => sandboxed('httpRequest'), env: () => sandboxed('env'),
+      readLine: () => sandboxed('readLine'), readAll: () => sandboxed('readAll'),
     },
   });
   let r = gen.next();

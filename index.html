@@ -10,15 +10,15 @@
 <style>
 /* Use Vow with your AI (Home). Kept here so style.css stays untouched by this section. */
 .ai { margin-top: 64px; }
-.ai h2 { font-family: var(--display); font-weight: 600; font-size: 26px; letter-spacing: -0.4px; margin-bottom: 12px; scroll-margin-top: 16px; }
+.ai h2 { font-weight: 650; font-size: 26px; letter-spacing: -0.4px; margin-bottom: 12px; scroll-margin-top: 16px; }
 .steps { list-style: none; counter-reset: step; margin-top: 24px; border-top: 1px solid var(--border); }
 .steps > li {
   counter-increment: step; display: grid; grid-template-columns: 56px minmax(0, 1fr);
   padding: 22px 0 24px; border-bottom: 1px solid var(--border);
 }
 .steps > li::before {
-  content: counter(step) "."; grid-row: 1 / span 5;
-  font-family: var(--display); font-size: 18px; color: var(--muted); padding-top: 0;
+  content: counter(step); grid-row: 1 / span 5;
+  font-family: var(--mono); font-size: 13px; color: var(--accent2); padding-top: 3px;
 }
 .steps > li > * { grid-column: 2; }
 .steps h3 { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 10px; }
@@ -26,10 +26,10 @@
   font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: 0.04em;
   border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; margin-left: 6px; vertical-align: 2px;
 }
-.step-note { font-size: 14.5px; color: #c9c6bf; line-height: 1.6; margin-bottom: 12px; max-width: 72ch; }
+.step-note { font-size: 14.5px; color: #b9c2d4; line-height: 1.6; margin-bottom: 12px; max-width: 72ch; }
 .step-note code {
-  font-family: var(--mono); font-size: 0.86em; background: var(--panel2);
-  border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; color: var(--builtin);
+  font-family: var(--mono); font-size: 0.88em; background: var(--panel2);
+  border-radius: 3px; padding: 1px 4px; color: var(--text);
 }
 .codeblock.prompt { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text); line-height: 1.65; }
 .steps .copyable .codeblock.shell { white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -50,7 +50,7 @@ a.btn {
   .steps > li > * { grid-column: 1; }
 }
 </style>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path d='M50 6 94 50 50 94 6 50Z' fill='%2341e0c8'/></svg>">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2310141d'/%3E%3Ctext x='16' y='23' text-anchor='middle' font-family='-apple-system,Helvetica,Arial' font-weight='700' font-size='20' fill='%23dde4f0'%3EV%3C/text%3E%3C/svg%3E">
 </head>
 <body>
 
@@ -70,8 +70,7 @@ a.btn {
 
     <div class="intro">
       <div class="intro-text">
-        <h1>Vow</h1>
-        <p class="tagline">A programming language built for AI agents to write.</p>
+        <h1>A programming language built for AI agents to write.</h1>
         <p class="sub">Vow is designed around the loop every coding agent runs: write, run, read the error, fix. Every error says what is wrong, where, and the likely fix. There are no nulls and no exceptions, and every function declares whether it can touch the network, files or environment.</p>
         <div class="actions">
           <button class="primary big" data-go="learn">Start the tutorial</button>
@@ -499,11 +498,14 @@ match parseJson(text) {          // Result: bad input is an err
       ok(a) => print(a)
       err(e) => print("no age")
     }
+    let j2 = jsonSet(j, "age", 36)   // a new json; j is unchanged
+    print(jsonMerge(j, j2) == j2)    // deep merge, right side wins; == compares value
   }
   err(e) => print("bad JSON: ${e}")
 }
 struct User { name, age }
-print(toJson(User { name: "Ada", age: 36 }))</pre>
+print(toJson(User { name: "Ada", age: 36 }))
+print(prettyJson([1, 2]))        // indented with 2 spaces</pre>
       </div>
 
       <div class="cheat">
@@ -557,7 +559,11 @@ print(geo.norm(p))       // 5</pre>
         <h3>I/O (CLI only)</h3>
 <pre class="codeblock vow">readFile(path)     // Result: text or err
 writeFile(p, s)    // Result
-httpGet(url)       // Result
+httpGet(url)       // Result: body, or err on non-2xx
+httpRequest(method, url, headers, body)
+                   // Result: HttpResponse { status, headers, body }
+readLine()         // Result: next stdin line, err at end of input
+readAll()          // Result: the rest of stdin
 env(name)          // Result
 args()             // list of the user's arguments
 now()              // current time, UTC ms

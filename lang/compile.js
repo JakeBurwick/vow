@@ -15,9 +15,9 @@ import { BUILTIN_NAMES } from './checker.js';
 class Unsupported extends Error {}
 
 // builtins the host (CLI) may implement asynchronously; calls to them are awaited
-const ASYNC_BUILTINS = new Set(['readFile', 'writeFile', 'httpGet', 'serve', 'env']);
+const ASYNC_BUILTINS = new Set(['readFile', 'writeFile', 'httpGet', 'httpRequest', 'serve', 'env']);
 // builtins that can trap: their VowError needs the compiled call stack as notes
-const TRAP_BUILTINS = new Set(['range', 'repeat', 'redirect', 'toJson', 'matches', 'find', 'findAll', 'replaceAll', 'splitOn', 'sig',
+const TRAP_BUILTINS = new Set(['range', 'repeat', 'redirect', 'toJson', 'prettyJson', 'jsonSet', 'ord', 'chr', 'matches', 'find', 'findAll', 'replaceAll', 'splitOn', 'sig',
   'sqrt', 'pow', 'exp', 'ln', 'log', 'sin', 'cos', 'tan', 'atan2', 'ceil', 'trunc', 'randomInt', 'dateParts', 'isoDate', 'daysBetween']);
 // builtins that call back into Vow code: compiled to prelude helpers ($map / $mapA, ...),
 // in the same item order and with the same short-circuiting as lang/interp.js
@@ -91,9 +91,9 @@ function PRELUDE() {
     throw new VowError({ kind, title, ...nodeLoc($src, node), detail, fix, notes: $notes() });
   }
   function $stepTrap(s) {
-    $trap(s, 'RuntimeError', 'the program ran too long and was stopped',
-      `Over ${$MAXS.toLocaleString()} steps executed; this is almost always an infinite loop.`,
-      'check that your while condition can become false and that loop counters actually change.');
+    $trap(s, 'RuntimeError', `the program ran over ${$MAXS.toLocaleString()} steps and was stopped`,
+      'That many steps is usually an infinite loop, but it can also be heavy legitimate work.',
+      `check that your while condition can become false and that loop counters actually change; if the work is real, raise the limit: vow --max-steps ${$MAXS * 10} main.vow (0 = no limit).`);
   }
   function $depthTrap(callNode) {
     const counts = new Map([['(top level)', 1]]);
@@ -167,7 +167,7 @@ function PRELUDE() {
             `This JSON array has ${raw.length} item${raw.length === 1 ? '' : 's'}.`,
             `use get(j, ${display(key)}) which returns a Result you can match on.`);
         }
-        return { __json: raw[key] };
+        return { __json: raw[key], __key: key };
       }
       if (raw !== null && typeof raw === 'object') {
         if (!Object.hasOwn(raw, key)) {
@@ -176,7 +176,7 @@ function PRELUDE() {
             `Its keys are: ${ks || '(none; the object is empty)'}.`,
             `use get(j, "${key}") which returns a Result you can match on.`);
         }
-        return { __json: raw[key] };
+        return { __json: raw[key], __key: key };
       }
       $trap(e, 'RuntimeError', `can't index into a JSON ${$jsonTypeOf(raw)}`,
         'Only JSON objects and arrays have children.',

@@ -123,6 +123,14 @@ export function lex(src) {
         i++; col++;
         while (i < src.length && /[0-9]/.test(src[i])) { i++; col++; }
       }
+      // exponent: 1e9, 2.5e-3, 1E+6 (only when digits follow, so `1else` is not a number)
+      if ((src[i] === 'e' || src[i] === 'E')) {
+        const signLen = (src[i + 1] === '+' || src[i + 1] === '-') ? 1 : 0;
+        if (/[0-9]/.test(src[i + 1 + signLen])) {
+          i += 1 + signLen; col += 1 + signLen;
+          while (i < src.length && /[0-9]/.test(src[i])) { i++; col++; }
+        }
+      }
       push('num', Number(src.slice(s, i)), startLine, startCol, start);
       continue;
     }

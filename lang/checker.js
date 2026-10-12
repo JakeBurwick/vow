@@ -210,13 +210,25 @@ export const BUILTIN_NAMES = ['print', 'str', 'num', 'len', 'range', 'push', 'po
   'replace', 'startsWith', 'endsWith', 'indexOf', 'repeat', 'padLeft', 'padRight', 'lines',
   'matches', 'find', 'findAll', 'replaceAll', 'splitOn', 'words', 'sig', 'isInt', 'int',
   'map', 'filter', 'any', 'all', 'count', 'fold', 'uniq', 'values',
-  'readFile', 'writeFile', 'httpGet', 'args', 'env', 'serve', 'html', 'text', 'respond', 'redirect', 'param', 'escape', 'checkLogin', 'askLogin', 'now',
-  'parseJson', 'toJson', 'jsonNum', 'jsonStr', 'jsonBool', 'jsonList', 'jsonKeys', 'jsonType', 'field', 'at', 'isNull', 'truthy',
+  'readFile', 'writeFile', 'httpGet', 'httpRequest', 'readLine', 'readAll', 'args', 'env', 'serve', 'html', 'text', 'respond', 'redirect', 'param', 'escape', 'checkLogin', 'askLogin', 'now',
+  'urlEncode', 'urlDecode', 'ord', 'chr',
+  'parseJson', 'toJson', 'prettyJson', 'jsonSet', 'jsonMerge', 'jsonNum', 'jsonStr', 'jsonBool', 'jsonList', 'jsonKeys', 'jsonType', 'field', 'at', 'isNull', 'truthy',
   'sqrt', 'pow', 'exp', 'ln', 'log', 'sin', 'cos', 'tan', 'atan2', 'ceil', 'trunc', 'pi', 'random', 'randomInt',
   'dateParts', 'isoDate', 'parseDate', 'daysBetween'];
 
 // fields of the struct dateParts(ms) returns, in display order
 const DATE_PARTS_FIELDS = ['year', 'month', 'day', 'hour', 'minute', 'second', 'weekday'];
+
+// Regex patterns are compiled with the u flag (so \p{L} and full code points work). A pattern
+// that is only valid without it (an identity escape like `\-` outside brackets, a lone `{`)
+// is compiled the old way. Same rule as lang/interp.js regex(); keep the two in sync.
+export function compileRegex(p, flags = '') {
+  try { return new RegExp(p, flags + 'u'); }
+  catch (uErr) {
+    try { return new RegExp(p, flags); }
+    catch { throw uErr; }
+  }
+}
 
 // ---------- checker ----------
 
@@ -357,6 +369,16 @@ export function check(src, ast) {
     }
     structs.set('DateParts', { k: 'struct', name: 'DateParts', fields: new Map(DATE_PARTS_FIELDS.map(f => [f, NUM])), line: 0, builtin: true });
   }
+  // httpRequest(...) returns a builtin struct HttpResponse { status, headers, body }, declared
+  // only in programs that call it (same reasoning as DateParts above)
+  if (callsBuiltin(ast, 'httpRequest')) {
+    if (structs.has('HttpResponse')) {
+      const s = ast.stmts.find(st => st.t === 'Struct' && st.name === 'HttpResponse');
+      diag(s.nameTok, `'HttpResponse' is the struct that httpRequest() returns`,
+        'This program calls httpRequest(...), whose ok value is a builtin struct named HttpResponse, so the name is taken.', 'rename your struct.');
+    }
+    structs.set('HttpResponse', { k: 'struct', name: 'HttpResponse', fields: new Map([['status', NUM], ['headers', mapT(STR)], ['body', STR]]), line: 0, builtin: true });
+  }
 
   // Pass 1: hoist top-level functions so they can call each other (and recurse).
   for (const s of ast.stmts) {
@@ -392,7 +414,7 @@ export function check(src, ast) {
 
   function checkEffects() {
     const BUILTIN_EFFECTS = new Map([
-      ['httpGet', 'net'], ['serve', 'net'], ['readFile', 'fs'], ['writeFile', 'fs'], ['env', 'env'],
+      ['httpGet', 'net'], ['httpRequest', 'net'], ['serve', 'net'], ['readFile', 'fs'], ['writeFile', 'fs'], ['env', 'env'],
     ]);
     const CAPS = ['net', 'fs', 'env'];
     const fnUses = new Map(); // fn name -> Set of declared capabilities
@@ -405,7 +427,7 @@ export function check(src, ast) {
           let best = null, bestD = 3;
           for (const c of CAPS) { const d = editDistance(u.name, c); if (d < bestD) { bestD = d; best = c; } }
           diag(u.tok, `'${u.name}' is not a capability`,
-            `Vow has three capabilities: net (httpGet, serve), fs (readFile, writeFile) and env (env).`,
+            `Vow has three capabilities: net (httpGet, httpRequest, serve), fs (readFile, writeFile) and env (env). Reading standard input (readLine, readAll) needs none.`,
             best ? `did you mean '${best}'?` : `remove it from the uses clause.`, 'EffectError');
         }
       }
@@ -526,6 +548,7 @@ export function check(src, ast) {
         // one as a statement is always a bug (sort(xs) leaves xs unsorted)
         const PURE = ['replace', 'startsWith', 'endsWith', 'indexOf', 'repeat', 'padLeft', 'padRight', 'lines', 'checkLogin', 'askLogin', 'now', 'fixed', 'html', 'text', 'respond', 'redirect', 'param', 'escape', 'sort', 'sortBy', 'reverse', 'slice', 'trim', 'upper', 'lower', 'join', 'split', 'keys', 'str', 'abs', 'floor', 'min', 'max', 'sum', 'len', 'contains', 'has', 'toJson',
           'matches', 'findAll', 'replaceAll', 'splitOn', 'words', 'sig', 'isInt', 'map', 'filter', 'any', 'all', 'count', 'fold', 'uniq', 'values', 'field', 'at', 'isNull', 'truthy', 'jsonType', 'jsonKeys', 'jsonList',
+          'urlEncode', 'ord', 'chr', 'prettyJson', 'jsonSet', 'jsonMerge',
           'sqrt', 'pow', 'exp', 'ln', 'log', 'sin', 'cos', 'tan', 'atan2', 'ceil', 'trunc', 'pi', 'random', 'randomInt', 'dateParts', 'isoDate', 'daysBetween'];
         if (s.expr.t === 'Call' && PURE.includes(s.expr.callee) && !scope.lookup(s.expr.callee)) {
           const a0 = s.expr.args[0] ? snippet(s.expr.args[0]) : 'x';
@@ -798,6 +821,13 @@ export function check(src, ast) {
         for (const n of names) {
           const d = editDistance(e.name, n);
           if (d < bestD) { bestD = d; best = n; }
+        }
+        // a top-level `let` further down the file: fns only see the variables declared above them
+        const later = ast.stmts.find(s => s.t === 'Let' && s.name === e.name && !(s.mod && !s.mod.isEntry));
+        if (later) {
+          diag(e, `'${e.name}' doesn't exist yet`,
+            `'${e.name}' is declared at line ${later.pos.line}, below this line. The file runs top to bottom, so a top-level variable exists only after its let, and a fn can only use the ones declared above it.`,
+            `move 'let ${e.name} = ${snippet(later.expr)}' above this (or pass ${e.name} in as a parameter).`);
         }
         diag(e, `'${e.name}' doesn't exist`,
           `No variable or function with this name is in scope here.`,
@@ -1226,7 +1256,7 @@ export function check(src, ast) {
   // a pattern written as a literal is checked now; one built at runtime is checked when it runs
   function checkPattern(a, name, usage) {
     if (!a || a.t !== 'Str') return;
-    try { new RegExp(a.value); }
+    try { compileRegex(a.value); }
     catch (ex) {
       diag(a, `invalid regular expression in ${name}()`,
         `${ex.message}. Patterns are JavaScript regular expressions.`,
@@ -1477,14 +1507,49 @@ export function check(src, ast) {
         return listT(el);
       }
       // ---- text toolkit: every argument is a str except the counts ----
-      case 'replace': case 'startsWith': case 'endsWith': case 'indexOf': {
+      case 'replace': case 'startsWith': case 'endsWith': {
         const n = e.callee === 'replace' ? 3 : 2;
-        const usage = { replace: 'replace(text, old, new)', startsWith: 'startsWith(text, prefix)', endsWith: 'endsWith(text, suffix)', indexOf: 'indexOf(text, piece)' }[e.callee];
+        const usage = { replace: 'replace(text, old, new)', startsWith: 'startsWith(text, prefix)', endsWith: 'endsWith(text, suffix)' }[e.callee];
         arity(e, n, usage);
         args().forEach((t, i) => { if (!unify(t, STR)) diag(e.args[i], `${e.callee}() takes strs, but argument ${i + 1} is a ${tn(t)}`, '', usage); });
-        if (e.callee === 'replace') return STR;
-        if (e.callee === 'indexOf') return resultT(NUM, STR);
-        return BOOL;
+        return e.callee === 'replace' ? STR : BOOL;
+      }
+      // indexOf(text, piece) or indexOf(list, item): same shape rules as contains()
+      case 'indexOf': {
+        arity(e, 2, 'indexOf(textOrList, pieceOrItem)');
+        const ct = inferExpr(e.args[0], scope);
+        const it = inferExpr(e.args[1], scope);
+        const pc = prune(ct);
+        if (pc.k === 'str') {
+          if (!unify(it, STR)) diag(e.args[1], `searching a str for a ${tn(it)}`, 'A string can only contain another string.', 'convert it: indexOf(text, str(x)).');
+          return resultT(NUM, STR);
+        }
+        const el = tvar();
+        if (!unify(ct, listT(el))) diag(e.args[0], `indexOf() searches a list or str, but this is a ${tn(ct)}`, '',
+          pc.k === 'map' ? `for maps, use has(${snippet(e.args[0])}, key) or get(...).` : 'pass a list or a string.');
+        if (!unify(el, it)) diag(e.args[1], `this list holds ${tn(el)}, but you're searching for a ${tn(it)}`,
+          'The search value must have the same type as the list items.', 'convert it with str(...) or num(...).');
+        return resultT(NUM, STR);
+      }
+      case 'urlEncode': case 'urlDecode': {
+        arity(e, 1, `${e.callee}(text)`);
+        const [t] = args();
+        if (!unify(t, STR)) diag(e.args[0], `${e.callee}() takes a str, but this is a ${tn(t)}`, '', `convert it first: ${e.callee}(str(${snippet(e.args[0])}))`);
+        return e.callee === 'urlEncode' ? STR : resultT(STR, STR);
+      }
+      case 'ord': {
+        arity(e, 1, 'ord(text)');
+        const [t] = args();
+        if (!unify(t, STR)) diag(e.args[0], `ord() takes a str, but this is a ${tn(t)}`, '',
+          prune(t).k === 'num' ? `ord() goes from text to a code point; for the other direction use chr(${snippet(e.args[0])}).` : 'pass a str; ord("A") is 65.');
+        return NUM;
+      }
+      case 'chr': {
+        arity(e, 1, 'chr(codePoint)');
+        const [t] = args();
+        if (!unify(t, NUM)) diag(e.args[0], `chr() takes a num (a code point), but this is a ${tn(t)}`, '',
+          prune(t).k === 'str' ? `chr() goes from a code point to text; for the other direction use ord(${snippet(e.args[0])}).` : 'pass a whole number; chr(65) is "A".');
+        return STR;
       }
       case 'repeat': case 'padLeft': case 'padRight': {
         const usage = { repeat: 'repeat(text, count)', padLeft: 'padLeft(text, width, fill)', padRight: 'padRight(text, width, fill)' }[e.callee];
@@ -1635,6 +1700,22 @@ export function check(src, ast) {
         if (!unify(t, STR)) diag(e.args[0], `httpGet() takes a str url, but this is a ${tn(t)}`, '', 'pass a url like httpGet("https://...").');
         return resultT(STR, STR);
       }
+      case 'httpRequest': {
+        const usage = 'httpRequest("POST", url, {"Content-Type": "application/json"}, body)';
+        arity(e, 4, usage);
+        const [mt, ut, ht, bt] = args();
+        if (!unify(mt, STR)) diag(e.args[0], `httpRequest() takes the method as a str first, but this is a ${tn(mt)}`, '', `e.g. "GET", "POST", "PUT", "DELETE": ${usage}`);
+        if (!unify(ut, STR)) diag(e.args[1], `httpRequest() takes a str url second, but this is a ${tn(ut)}`, '', usage);
+        if (!unify(ht, mapT(STR))) diag(e.args[2], `httpRequest() takes the headers as a map<str, str> third, but this is a ${tn(ht)}`,
+          'Every header value is text.', `pass a map like {"User-Agent": "vow"} (or {} for none): ${usage}`);
+        if (!unify(bt, STR)) diag(e.args[3], `httpRequest() takes the request body as a str last, but this is a ${tn(bt)}`, '',
+          prune(bt).k === 'map' || prune(bt).k === 'struct' || prune(bt).k === 'list' || prune(bt).k === 'json' ? `serialize it: toJson(${snippet(e.args[3])}); pass "" when there is no body.` : 'pass "" when there is no body.');
+        return resultT(structs.get('HttpResponse'), STR);
+      }
+      case 'readLine': case 'readAll': {
+        arity(e, 0, `${e.callee}()`);
+        return resultT(STR, STR);
+      }
       case 'args': { arity(e, 0, 'args()'); return listT(STR); }
       case 'serve': {
         arity(e, 2, 'serve(port, handler)');
@@ -1748,6 +1829,34 @@ export function check(src, ast) {
         if (pt.k === 'unit') diag(e.args[0], `toJson() needs a value, but this returns nothing (unit)`,
           '', 'pass a value: a num, str, bool, list, map, struct or json.');
         return STR;
+      }
+      case 'prettyJson': {
+        arity(e, 1, 'prettyJson(value)');
+        const [t] = args();
+        const pt = prune(t);
+        if (pt.k === 'result') diag(e.args[0], `prettyJson() can't serialize a Result`,
+          'A Result might be an error, and JSON has no representation for that.', 'match it first and serialize the ok value.');
+        if (pt.k === 'fn') diag(e.args[0], `prettyJson() can't serialize a function`, 'Code has no JSON form.', 'serialize the data the function works on instead.');
+        if (pt.k === 'unit') diag(e.args[0], `prettyJson() needs a value, but this returns nothing (unit)`, '', 'pass a value: a num, str, bool, list, map, struct or json.');
+        return STR;
+      }
+      case 'jsonSet': {
+        arity(e, 3, 'jsonSet(j, "key", value)');
+        const [jt, kt, vt] = args();
+        jsonArg(e.args[0], jt, 'jsonSet');
+        if (!unify(kt, STR)) diag(e.args[1], `jsonSet() sets an object key (a str), but this is a ${tn(kt)}`, '', 'jsonSet(j, "name", "Ada")');
+        const pv = prune(vt);
+        if (pv.k === 'result') diag(e.args[2], `jsonSet() can't store a Result`, 'A Result might be an error, and JSON has no representation for that.', 'match it first and store the ok value.');
+        if (pv.k === 'fn') diag(e.args[2], `jsonSet() can't store a function`, 'Code has no JSON form.', 'store the data the function works on instead.');
+        if (pv.k === 'unit') diag(e.args[2], `jsonSet() needs a value, but this returns nothing (unit)`, '', 'pass a num, str, bool, list, map, struct or json value.');
+        return JSONT;
+      }
+      case 'jsonMerge': {
+        arity(e, 2, 'jsonMerge(base, overrides)');
+        const [at, bt] = args();
+        jsonArg(e.args[0], at, 'jsonMerge');
+        jsonArg(e.args[1], bt, 'jsonMerge');
+        return JSONT;
       }
       case 'jsonNum': case 'jsonStr': case 'jsonBool': {
         arity(e, 1, `${e.callee}(j)`);

@@ -1,12 +1,12 @@
 :root {
-  --bg: #141416;
-  --panel: #1b1b1e;
-  --panel2: #232327;
-  --border: #303036;
-  --text: #e8e6e1;
-  --muted: #918f89;
-  --accent: #e3a13b;
-  --accent2: #e3a13b;
+  --bg: #0a0c12;
+  --panel: #10141d;
+  --panel2: #151b28;
+  --border: #232c3e;
+  --text: #dde4f0;
+  --muted: #7c88a1;
+  --accent: #6e8bff;
+  --accent2: #41e0c8;
   --red: #ff6b7d;
   --green: #5fdba7;
   --kw: #c792ea;
@@ -16,7 +16,6 @@
   --builtin: #7dcfff;
   --call: #82aaff;
   --op: #8fa3c7;
-  --display: ui-serif, "New York", "Iowan Old Style", Georgia, serif;
   --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
 }
 
@@ -44,7 +43,8 @@ header {
   background: var(--panel);
   flex: 0 0 auto;
 }
-.brand { font-family: var(--display); font-size: 20px; font-weight: 600; color: var(--text); text-decoration: none; }
+.brand { display: inline-flex; align-items: center; gap: 9px; font-size: 18px; font-weight: 700; letter-spacing: -0.2px; color: var(--text); text-decoration: none; }
+.brand .mark { width: 24px; height: 24px; flex: none; }
 .ver {
   font-size: 11px; color: var(--muted); font-weight: 500;
   border: 1px solid var(--border); border-radius: 999px; padding: 2px 8px;
@@ -81,8 +81,8 @@ button.primary {
   background: var(--accent); border-color: var(--accent); color: var(--bg);
 }
 :focus-visible { outline: 2px solid var(--accent2); outline-offset: 2px; }
-.editor:focus-within { border-color: #4a4a52; }
-button.dbg { border-color: #4a4a52; }
+.editor:focus-within { border-color: #3a4763; }
+button.dbg { border-color: #3a4763; }
 button.stop { color: var(--red); }
 button:disabled { opacity: .45; cursor: default; }
 #status { font-size: 12.5px; color: var(--muted); margin-left: 4px; }
@@ -139,7 +139,7 @@ button:disabled { opacity: .45; cursor: default; }
 }
 #highlight .cl { min-height: 1.55em; }
 #highlight .cl.active {
-  background: rgba(227, 161, 59, 0.12);
+  background: rgba(110, 139, 255, 0.16);
   box-shadow: inset 3px 0 0 var(--accent2);
   margin: 0 -16px; padding: 0 16px;
 }
@@ -148,7 +148,7 @@ button:disabled { opacity: .45; cursor: default; }
   background: transparent; color: transparent; caret-color: var(--accent2);
   border: none; outline: none; resize: none; overflow: auto;
 }
-#code::selection { background: rgba(227, 161, 59, 0.28); color: transparent; }
+#code::selection { background: rgba(110, 139, 255, 0.30); color: transparent; }
 #code[readonly] { caret-color: transparent; }
 
 .tok-kw { color: var(--kw); }
@@ -213,12 +213,12 @@ button:disabled { opacity: .45; cursor: default; }
 .page-inner { max-width: 1080px; margin: 0 auto; padding: 56px 24px 72px; }
 .mono { font-family: var(--mono); }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-a { color: var(--text); text-decoration-color: var(--accent); text-underline-offset: 3px; }
-.prose { color: #c9c6bf; line-height: 1.7; font-size: 15px; max-width: 68ch; }
+a { color: var(--builtin); text-underline-offset: 3px; }
+.prose { color: #b9c2d4; line-height: 1.7; font-size: 15px; max-width: 68ch; }
 .prose strong { color: var(--text); }
 .prose code, .roadmap code, .points code, .cheat-note code, .cli-note code {
-  font-family: var(--mono); font-size: 0.86em; background: var(--panel2);
-  border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; color: var(--builtin);
+  font-family: var(--mono); font-size: 0.88em; background: var(--panel2);
+  border-radius: 3px; padding: 1px 4px; color: var(--text);
 }
 .h-small {
   font-size: 14px; font-weight: 600;
@@ -229,7 +229,7 @@ a { color: var(--text); text-decoration-color: var(--accent); text-underline-off
 .codeblock {
   font-family: var(--mono); font-size: 13px; line-height: 1.6;
   background: var(--panel); border: 1px solid var(--border); border-radius: 4px;
-  padding: 14px 16px; overflow-x: auto; color: #d6d3cc; tab-size: 2;
+  padding: 14px 16px; overflow-x: auto; color: #c4cee2; tab-size: 2;
 }
 .codeblock.shell { color: var(--text); }
 .err-demo { color: #ffb3bd; white-space: pre; }
@@ -243,7 +243,7 @@ a { color: var(--text); text-decoration-color: var(--accent); text-underline-off
   background: var(--panel2); color: var(--muted);
 }
 .link-btn {
-  background: none; border: none; padding: 0; color: var(--text); text-decoration-color: var(--accent); font-weight: 600; font-size: 13px;
+  background: none; border: none; padding: 0; color: var(--builtin); font-weight: 600; font-size: 13px;
   text-decoration: underline; text-underline-offset: 3px;
 }
 
@@ -252,9 +252,8 @@ a { color: var(--text); text-decoration-color: var(--accent); text-underline-off
   display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
   gap: 48px; align-items: start;
 }
-.intro h1 { font-family: var(--display); font-weight: 600; font-size: 76px; line-height: 1; letter-spacing: -1px; margin: 4px 0 18px; }
-.tagline { font-family: var(--display); font-size: 26px; font-weight: 500; line-height: 1.3; color: var(--text); margin-bottom: 16px; }
-.sub { font-size: 16px; color: #c9c6bf; line-height: 1.7; margin-bottom: 28px; max-width: 54ch; }
+.intro h1 { font-size: 46px; line-height: 1.1; letter-spacing: -0.6px; font-weight: 700; margin: 4px 0 18px; max-width: 16ch; text-wrap: balance; }
+.sub { font-size: 16px; color: #b9c2d4; line-height: 1.7; margin-bottom: 28px; max-width: 54ch; }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; }
 button.big { font-size: 15px; padding: 11px 22px; }
 .sample { margin: 0; }
@@ -276,7 +275,7 @@ button.big { font-size: 15px; padding: 11px 22px; }
   border-top: 1px solid var(--border);
 }
 .points li {
-  padding: 20px 28px 4px 0; font-size: 15px; line-height: 1.6; color: #c9c6bf;
+  padding: 20px 28px 4px 0; font-size: 15px; line-height: 1.6; color: #b9c2d4;
 }
 .points strong { color: var(--text); }
 
@@ -288,14 +287,14 @@ button.big { font-size: 15px; padding: 11px 22px; }
   font-size: 14px; line-height: 1.7; color: var(--muted); max-width: 80ch;
 }
 .install { margin-top: 64px; }
-.install h2, .docs h2 { font-family: var(--display); font-weight: 600; font-size: 26px; letter-spacing: -0.4px; margin-bottom: 12px; }
+.install h2, .docs h2 { font-weight: 650; font-size: 26px; letter-spacing: -0.4px; margin-bottom: 12px; }
 .install .prose { margin-bottom: 14px; }
 .install .h-small { margin-top: 28px; }
 .cmds { display: grid; gap: 10px; }
 .cmd-row { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 4px 16px; align-items: center; }
 .cmd-row .codeblock { padding-top: 9px; padding-bottom: 9px; }
 .cmd-row .copy { margin-top: 5px; }
-.cmd-desc { font-size: 14px; color: #c9c6bf; line-height: 1.5; }
+.cmd-desc { font-size: 14px; color: #b9c2d4; line-height: 1.5; }
 .footer-note { margin-top: 64px; color: var(--muted); font-size: 13px; line-height: 1.6; }
 
 /* learn */
@@ -307,7 +306,7 @@ button.big { font-size: 15px; padding: 11px 22px; }
 .lesson-nav ol { list-style: none; display: grid; gap: 2px; }
 .lesson-link {
   width: 100%; text-align: left; display: flex; gap: 10px; align-items: baseline;
-  background: none; border: 1px solid transparent; padding: 7px 10px; font-weight: 500; color: #c9c6bf;
+  background: none; border: 1px solid transparent; padding: 7px 10px; font-weight: 500; color: #b9c2d4;
   font-size: 14px;
 }
 .lesson-link .lesson-n { font-family: var(--mono); font-size: 12px; color: var(--muted); }
@@ -316,7 +315,7 @@ button.big { font-size: 15px; padding: 11px 22px; }
 .lesson-pick { display: none; }
 .lesson { max-width: 760px; min-width: 0; }
 .kicker { font-family: var(--mono); font-size: 12px; color: var(--accent2); margin-bottom: 8px; }
-.lesson-title { font-family: var(--display); font-weight: 600; font-size: 34px; letter-spacing: -0.6px; line-height: 1.15; margin-bottom: 14px; }
+.lesson-title { font-weight: 650; font-size: 34px; letter-spacing: -0.6px; line-height: 1.15; margin-bottom: 14px; }
 .lesson-title:focus { outline: none; }
 .lesson-intro { margin-bottom: 22px; font-size: 16px; }
 .lesson-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 14px; }
@@ -339,8 +338,10 @@ button.big { font-size: 15px; padding: 11px 22px; }
 .pager .muted { font-size: 12px; font-weight: 500; }
 
 /* docs */
-.docs-title { font-family: var(--display); font-weight: 600; font-size: 44px; letter-spacing: -1px; margin-bottom: 12px; }
+.docs-title { font-weight: 650; font-size: 44px; letter-spacing: -1px; margin-bottom: 12px; }
 .toc { display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 20px 0 8px; font-size: 14px; }
+.toc a { color: var(--muted); text-decoration: none; }
+@media (hover: hover) { .toc a:hover { color: var(--text); } }
 .docs h2 { margin-top: 56px; scroll-margin-top: 16px; }
 .cheats { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px 20px; margin-top: 20px; }
 .cheat h3 { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
@@ -348,7 +349,7 @@ button.big { font-size: 15px; padding: 11px 22px; }
 .cheat-note { font-size: 13px; color: var(--muted); line-height: 1.6; margin-top: 8px; }
 .bench { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px 40px; margin-top: 24px; }
 .result-note { line-height: 1.5; }
-.roadmap { margin: 16px 0 0 20px; color: #c9c6bf; line-height: 1.75; font-size: 14.5px; max-width: 80ch; }
+.roadmap { margin: 16px 0 0 20px; color: #b9c2d4; line-height: 1.75; font-size: 14.5px; max-width: 80ch; }
 .roadmap li { margin-bottom: 6px; }
 .roadmap strong { color: var(--text); }
 
@@ -382,10 +383,9 @@ button.big { font-size: 15px; padding: 11px 22px; }
   .learn { padding-left: 16px; padding-right: 16px; }
   .toolbar { padding: 10px 16px; }
   .workspace { padding: 0 16px 16px; }
-  .intro h1 { font-size: 56px; }
-  .tagline { font-size: 21px; }
-  .lesson-title { font-family: var(--display); font-weight: 600; font-size: 28px; }
-  .docs-title { font-family: var(--display); font-weight: 600; font-size: 36px; }
+  .intro h1 { font-size: 46px; line-height: 1.1; letter-spacing: -0.6px; font-weight: 700; margin: 4px 0 18px; max-width: 16ch; text-wrap: balance; }
+    .lesson-title { font-weight: 650; font-size: 28px; }
+  .docs-title { font-weight: 650; font-size: 36px; }
   .codeblock { font-size: 12.5px; padding: 12px; }
   .pager button { max-width: 50%; }
 }

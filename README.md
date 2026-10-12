@@ -55,6 +55,7 @@ This installs two commands: `vow`, the compiler and runner, and `vow-mcp`, an MC
 | `vow --sandbox --allow net=api.example.com app.vow` | Only let it call one host |
 | `vow --seed 7 game.vow` | Make random numbers repeatable |
 | `vow --interp app.vow` | Use the interpreter instead of the compiler |
+| `vow --max-steps 500000000 app.vow` | Raise the step cap for heavy work (default 50,000,000; `0` = no limit) |
 
 To hack on Vow itself, clone the repository and run the CLI from the clone with `node cli.js` in place of `vow`:
 

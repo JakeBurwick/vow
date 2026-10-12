@@ -527,6 +527,26 @@ match f() { ok(v) => print(v) err(e) => print(e) }
   ["own struct DateParts clashes with dateParts()", "struct DateParts { a }\nprint(dateParts(0))\n", "is the struct that dateParts() returns"],
   ["discarded sqrt", "sqrt(4)\n", "the result of sqrt(...) is thrown away"],
   ["atan2 arity", "print(atan2(1))\n", "atan2(y, x)"],
+  // stress-test round: new builtins and behaviors
+  ["top-level let below the fn that uses it", "fn f() { return x + 1 }\nlet x = 1\nprint(f())\n", "move 'let x = 1' above this"],
+  ["httpRequest needs uses net", "fn f() { return httpRequest(\"GET\", \"https://x\", {}, \"\") }\nmatch f() { ok(r) => print(r.status)  err(e) => print(e) }\n", "uses the 'net' capability"],
+  ["httpRequest headers must be a map<str, str>", "fn f() uses net { return httpRequest(\"GET\", \"https://x\", {\"n\": 1}, \"\") }\nmatch f() { ok(r) => print(r.status)  err(e) => print(e) }\n", "headers as a map<str, str>"],
+  ["httpRequest body must be a str", "fn f() uses net { return httpRequest(\"POST\", \"https://x\", {}, {\"a\": 1}) }\nmatch f() { ok(r) => print(r.status)  err(e) => print(e) }\n", "toJson({\"a\": 1})"],
+  ["own struct HttpResponse clashes with httpRequest()", "struct HttpResponse { a }\nfn f() uses net { return httpRequest(\"GET\", \"https://x\", {}, \"\") }\nmatch f() { ok(r) => print(r.status)  err(e) => print(e) }\n", "is the struct that httpRequest() returns"],
+  ["readLine takes no arguments", "match readLine(\"> \") { ok(l) => print(l)  err(e) => print(e) }\n", "readLine takes 0 arguments"],
+  ["readLine Result must be handled", "readLine()\n", "this Result is ignored"],
+  ["indexOf on a list checks the item type", "match indexOf([1, 2], \"2\") { ok(i) => print(i)  err(e) => print(e) }\n", "this list holds num, but you're searching for a str"],
+  ["indexOf on a map suggests has/get", "match indexOf({\"a\": 1}, \"a\") { ok(i) => print(i)  err(e) => print(e) }\n", "for maps, use has"],
+  ["ord of a num suggests chr", "print(ord(65))\n", "use chr(65)"],
+  ["chr of a str suggests ord", "print(chr(\"A\"))\n", "use ord(\"A\")"],
+  ["ord of an empty string traps", "print(ord(\"\"))\n", "ord() of an empty string"],
+  ["chr of a non code point traps", "print(chr(1.5))\n", "is not a code point"],
+  ["jsonSet on a json array traps", "match parseJson(\"[1]\") { ok(j) => print(jsonSet(j, \"a\", 1))  err(e) => print(e) }\n", "jsonSet() needs a JSON object, but this JSON value is an array ([1])"],
+  ["jsonSet rejects a Result value", "match parseJson(\"{}\") { ok(j) => print(jsonSet(j, \"a\", num(\"1\")))  err(e) => print(e) }\n", "jsonSet() can't store a Result"],
+  ["jsonMerge takes json on both sides", "match parseJson(\"{}\") { ok(j) => print(jsonMerge(j, {\"a\": 1}))  err(e) => print(e) }\n", "jsonMerge() reads a json value, but this is a map"],
+  ["prettyJson rejects a Result", "print(prettyJson(num(\"1\")))\n", "prettyJson() can't serialize a Result"],
+  ["urlDecode Result must be handled", "let s = urlDecode(\"a%20b\")\nprint(s + \"!\")\n", "Result"],
+  ["a pattern invalid with and without the u flag is still a compile error", "print(matches(\"a\", `(`))\n", "invalid regular expression in matches()"],
 ];
 for (const [name, src, mustContain] of diagTests) {
   const res = runProgram(src);
@@ -563,6 +583,15 @@ const outputTests = [
   ["dates: dateParts, isoDate, parseDate, daysBetween (all UTC)", "let d = dateParts(0)\nprint(d)\nprint(d.year, d.month, d.day, d.weekday, isoDate(0), isoDate(1700000000000), isoDate(0 - 86400000))\nfor s in [\"2024-02-29\", \"2024-02-29T12:30:05Z\", \"2024-02-29 12:30\", \"2024-02-29T12:30:05.250Z\", \"2024-03-01T01:00:00+02:00\", \"0099-01-01\", \"2023-02-29\", \"2024-13-01\", \"2024-01-01T24:00:00\", \"2024-1-1\", \"yesterday\", \"2024-01-01Z\"] {\n  match parseDate(s) {\n    ok(ms) => print(\"${s} -> ${ms} ${isoDate(ms)}\")\n    err(e) => print(e)\n  }\n}\nlet jan1 = match parseDate(\"2026-01-01T23:59:00Z\") { ok(ms) => ms  err(e) => 0 }\nlet jan2 = match parseDate(\"2026-01-02T00:01:00Z\") { ok(ms) => ms  err(e) => 0 }\nprint(daysBetween(jan1, jan2), daysBetween(jan2, jan1), daysBetween(jan1, jan1 + 30 * 86400000), dateParts(jan2).weekday, dateParts(jan2).hour, dateParts(jan2).minute)\nprint(now() > 1700000000000)\n", "DateParts { year: 1970, month: 1, day: 1, hour: 0, minute: 0, second: 0, weekday: 4 }\n1970 1 1 4 1970-01-01T00:00:00Z 2023-11-14T22:13:20Z 1969-12-31T00:00:00Z\n2024-02-29 -> 1709164800000 2024-02-29T00:00:00Z\n2024-02-29T12:30:05Z -> 1709209805000 2024-02-29T12:30:05Z\n2024-02-29 12:30 -> 1709209800000 2024-02-29T12:30:00Z\n2024-02-29T12:30:05.250Z -> 1709209805250 2024-02-29T12:30:05Z\n2024-03-01T01:00:00+02:00 -> 1709247600000 2024-02-29T23:00:00Z\n0099-01-01 -> -59042995200000 0099-01-01T00:00:00Z\n\"2023-02-29\" is not a valid date: day 29 is out of range (2023-02 has 28 days)\n\"2024-13-01\" is not a valid date: month 13 is out of range (1-12)\n\"2024-01-01T24:00:00\" is not a valid date: hour 24 is out of range (0-23)\n\"2024-1-1\" is not an ISO date (expected YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS, optionally ending in Z or an offset like +02:00)\n\"yesterday\" is not an ISO date (expected YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS, optionally ending in Z or an offset like +02:00)\n\"2024-01-01Z\" is not a valid date: a time zone needs a time (YYYY-MM-DDTHH:MM:SSZ)\n1 -1 30 5 0 1\ntrue"],
   ["random: seeded sequence, randomInt bounds inclusive", "print(random(), random())\nprint(randomInt(1, 6), randomInt(1, 6), randomInt(1, 6), randomInt(0 - 3, 3), randomInt(10, 10))\nlet seen = {}\nlet inRange = true\nfor i in range(0, 600) {\n  let n = randomInt(1, 3)\n  if n < 1 or n > 3 or not isInt(n) { inRange = false }\n  seen[str(n)] = true\n}\nprint(sort(keys(seen)), inRange)\nlet r = random()\nprint(r >= 0 and r < 1)\n", "0.6270739406 0.5274470402\n6 4 3 0 10\n[\"1\", \"2\", \"3\"] true\ntrue"],
   ["user fns and variables shadow the math/random/date builtins", "fn log(msg) { return \"[log] \" + msg }\nfn random(xs) { return xs[0] }\nlet pi = 3\nlet e = 2\nfn sqrt(a, b) { return a + b }\nprint(log(\"hi\"), random([7, 8]), pi, e, sqrt(1, 2))\nfn outer() {\n  let ceil = 10\n  let trunc = x => x * 2\n  return ceil + trunc(4) + floor(2.5)\n}\nprint(outer())\nlet dateParts = \"none\"\nprint(dateParts, exp(0))\n", "[log] hi 7 3 2 3\n20\nnone 1"],
+  // stress-test round: new builtins and behaviors
+  ["number literals with exponents", "print(1e9, 2.5e-3, 1E+2, 3e2 + 1, 1e21)\n", "1000000000 0.0025 100 301 1e+21"],
+  ["urlEncode / urlDecode / ord / chr", "print(urlEncode(\"a b&c=d/é\"), ord(\"A\"), ord(\"é\"), ord(\"😀\"), chr(65), chr(9731), chr(128512))\nmatch urlDecode(\"a%20b%26c\") { ok(s) => print(s)  err(e) => print(e) }\nmatch urlDecode(\"bad%zz\") { ok(s) => print(s)  err(e) => print(e) }\n", "a%20b%26c%3Dd%2F%C3%A9 65 233 128512 A ☃ 😀\na b&c\n\"bad%zz\" is not valid URL encoding (a % must be followed by two hex digits)"],
+  ["indexOf works on lists (== equality) and strs", "struct P { x }\nmatch indexOf([10, 20, 30], 20) { ok(i) => print(i)  err(e) => print(e) }\nmatch indexOf([\"a\", \"b\"], \"z\") { ok(i) => print(i)  err(e) => print(e) }\nmatch indexOf(\"hello\", \"ll\") { ok(i) => print(i)  err(e) => print(e) }\nmatch indexOf([P { x: 1 }, P { x: 3 }], P { x: 3 }) { ok(i) => print(i)  err(e) => print(e) }\nfn pos(xs, v) { return indexOf(xs, v) }\nmatch pos([[1], [2]], [2]) { ok(i) => print(i)  err(e) => print(e) }\n", "1\n\"z\" is not in the list\n2\n1\n1"],
+  ["regex: u flag (\\p{L}, code points) with fallback for old-style escapes", "print(matches(\"héllo wörld\", `^\\p{L}+ \\p{L}+$`), findAll(\"ab-cd-ef\", `\\-`), matches(\"a{\", `a{`), len(findAll(\"😀😀\", `.`)), replaceAll(\"αβ 12\", `\\p{Script=Greek}+`, \"G\"))\n", "true [\"-\", \"-\"] true 2 G 12"],
+  ["prettyJson indents with 2 spaces", "struct U { name, tags }\nprint(prettyJson(U { name: \"Ada\", tags: [\"x\"] }))\nprint(prettyJson(7), prettyJson(\"s\"), prettyJson({}))\n", "{\n  \"name\": \"Ada\",\n  \"tags\": [\n    \"x\"\n  ]\n}\n7 \"s\" {}"],
+  ["jsonSet / jsonMerge build new json; == compares type and value", "match parseJson(`{\"user\": {\"name\": \"Ada\", \"age\": 36}, \"n\": 1}`) {\n  ok(j) => {\n    let u = field(j, \"user\")\n    let u2 = jsonSet(u, \"age\", 37)\n    print(u2, u, u2 == u, jsonSet(u, \"age\", 36) == u)\n    print(jsonSet(field(j, \"missing\"), \"k\", [1, 2]))\n    match parseJson(`{\"user\": {\"age\": 40, \"role\": \"admin\"}, \"n\": \"1\"}`) {\n      ok(o) => print(jsonMerge(j, o), jsonMerge(o, j), jsonMerge(j, field(o, \"n\")))\n      err(e) => print(e)\n    }\n    print(jsonSet(j, \"n\", {\"a\": 1}) != j, field(j, \"n\") == field(j, \"n\"))\n  }\n  err(e) => print(e)\n}\n", "{\"name\":\"Ada\",\"age\":37} {\"name\":\"Ada\",\"age\":36} false true\n{\"k\":[1,2]}\n{\"user\":{\"name\":\"Ada\",\"age\":40,\"role\":\"admin\"},\"n\":\"1\"} {\"user\":{\"age\":36,\"role\":\"admin\",\"name\":\"Ada\"},\"n\":1} 1\ntrue true"],
+  ["jsonNum/jsonStr/jsonBool errs say what was found and where it came from", "match parseJson(`{\"user\": {\"name\": \"Ada\", \"age\": \"36\", \"tags\": [1, \"x\"], \"on\": null}}`) {\n  ok(j) => {\n    let u = field(j, \"user\")\n    match jsonNum(field(u, \"age\")) { ok(n) => print(n)  err(e) => print(e) }\n    match jsonStr(at(field(u, \"tags\"), 0)) { ok(n) => print(n)  err(e) => print(e) }\n    match jsonBool(j) { ok(n) => print(n)  err(e) => print(e) }\n    match jsonNum(field(u, \"missing\")) { ok(n) => print(n)  err(e) => print(e) }\n    match jsonBool(field(u, \"on\")) { ok(n) => print(n)  err(e) => print(e) }\n    for t in jsonList(field(u, \"tags\")) {\n      match jsonNum(t) { ok(n) => print(\"num\", n)  err(e) => print(e) }\n    }\n    match get(u, \"name\") {\n      ok(v) => match jsonNum(v) { ok(n) => print(n)  err(e) => print(e) }\n      err(e) => print(e)\n    }\n    match jsonStr(u[\"age\"]) { ok(n) => print(n)  err(e) => print(e) }\n    match jsonStr(u) { ok(n) => print(n)  err(e) => print(e) }\n  }\n  err(e) => print(e)\n}\n", "the JSON value at \"age\" is a string (\"36\"), not a number\nthe JSON value at index 0 is a number (1), not a string\nthis JSON value is an object ({\"user\":{\"name\":\"Ada\",\"age\":\"36\",\"tag...), not a bool\nthe JSON value at \"missing\" is null, not a number\nthe JSON value at \"on\" is null, not a bool\nnum 1\nthe JSON value at index 1 is a string (\"x\"), not a number\nthe JSON value at \"name\" is a string (\"Ada\"), not a number\n36\nthe JSON value at \"user\" is an object ({\"name\":\"Ada\",\"age\":\"36\",\"tags\":[1,\"x...), not a string"],
+  ["readLine / readAll / httpRequest fail softly outside the CLI", "match readLine() { ok(l) => print(l)  err(e) => print(e) }\nmatch readAll() { ok(l) => print(l)  err(e) => print(e) }\nfn f() uses net { return httpRequest(\"GET\", \"https://x\", {\"User-Agent\": \"vow\"}, \"\") }\nmatch f() { ok(r) => print(r.status)  err(e) => print(e) }\n", "readLine is only available in the Vow CLI; the browser playground has no standard input\nreadAll is only available in the Vow CLI; the browser playground has no standard input\nhttpRequest is only available in the Vow CLI; the browser playground cannot reach the network"],
 ];
 for (const [name, src, want] of outputTests) {
   const res = runProgram(src);
@@ -661,6 +690,43 @@ for (const [dir, needles] of moduleDiagTests) {
   for (const [name, r, ok] of checks) {
     const pass = ok(r);
     console.log(`\n=== modules cli: ${name} — ${pass ? 'PASS' : 'FAIL'} ===`);
+    if (!pass) { console.log(`exit ${r.status}\n${r.stdout}\n${r.stderr}`); failures++; }
+  }
+}
+
+// stdin, the step cap, output ordering and httpRequest's sandbox: real CLI processes
+{
+  const { mkdtempSync, writeFileSync } = await import('node:fs');
+  const tmpDir = mkdtempSync(join((await import('node:os')).tmpdir(), 'vow-test-'));
+  const prog = (name, src) => { const f = join(tmpDir, name + '.vow'); writeFileSync(f, src); return f; };
+  const cli = (args, input) => spawnSync(process.execPath, [join(here, 'cli.js'), ...args], { cwd: here, encoding: 'utf8', input: input ?? '' });
+  const guess = prog('guess', 'let secret = 42\nlet tries = 0\nprint("guess:")\nwhile true {\n  match readLine() {\n    err(e) => {\n      print("bye (${e})")\n      break\n    }\n    ok(line) => {\n      tries = tries + 1\n      match int(trim(line)) {\n        err(e) => print("not a number: ${line}")\n        ok(g) => {\n          if g < secret { print("higher") }\n          else if g > secret { print("lower") }\n          else {\n            print("got it in ${tries}")\n            break\n          }\n        }\n      }\n    }\n  }\n}\n');
+  const all = prog('all', 'match readLine() { ok(l) => print("first: ${l}")  err(e) => print(e) }\nmatch readAll() { ok(t) => print("rest:", lines(t), len(t))  err(e) => print(e) }\nmatch readLine() { ok(l) => print(l)  err(e) => print("then: ${e}") }\n');
+  const loop = prog('loop', 'let i = 0\nwhile true { i = i + 1 }\n');
+  const heavy = prog('heavy', 'let n = 0\nfor i in range(0, 3000) { n = n + 1 }\nprint(n)\n');
+  const order = prog('order', 'for i in range(0, 3000) { print("line ${i}") }\nlet xs = [1]\nprint(xs[5])\n');
+  const net = prog('net', 'fn f() uses net { return httpRequest("GET", "https://api.github.com/x", {"User-Agent": "vow"}, "") }\nmatch f() { ok(r) => print(r.status)  err(e) => print(e) }\n');
+  const guessOut = 'guess:\nhigher\nlower\nnot a number: abc\ngot it in 4\n';
+  const checks = [
+    ['readLine: piped input, \\r\\n and a partial last line', cli([guess], '10\r\n50\nabc\n42'), r => r.status === 0 && r.stdout === guessOut && r.stderr === ''],
+    ['readLine on --interp', cli(['--interp', guess], '10\n50\nabc\n42\n'), r => r.status === 0 && r.stdout === guessOut],
+    ['readLine at end of input is an err', cli([guess], '1\n'), r => r.status === 0 && r.stdout === 'guess:\nhigher\nbye (end of input)\n'],
+    ['readAll takes the rest after readLine, then readLine sees the end', cli([all], 'a\nb\nc\n'), r => r.status === 0 && r.stdout === 'first: a\nrest: ["b", "c"] 4\nthen: end of input\n'],
+    ['readAll on empty input is ok("")', cli(['--interp', all], ''), r => r.status === 0 && r.stdout === 'end of input\nrest: [] 0\nthen: end of input\n'],
+    ['--max-steps N stops an infinite loop and names the flag', cli(['--max-steps', '1000', loop]), r => r.status === 1 && r.stderr.includes('ran over 1,000 steps') && r.stderr.includes('heavy legitimate work') && r.stderr.includes('--max-steps 10000')],
+    ['--max-steps on --interp gives the same message', cli(['--interp', '--max-steps', '1000', loop]), r => r.status === 1 && r.stderr.includes('ran over 1,000 steps') && r.stderr.includes('--max-steps 10000')],
+    ['--max-steps 0 means no limit', cli(['--max-steps', '0', heavy]), r => r.status === 0 && r.stdout === '3000\n'],
+    ['--max-steps rejects a non-number', cli(['--max-steps', 'lots', heavy]), r => r.status === 2 && r.stderr.includes('--max-steps takes a whole number')],
+    ['output printed before a trap stays before the error (same destination)', cli([order]), r => r.status === 1 && r.stdout.endsWith('line 2999\n') && r.stderr.includes('index 5 is out of range')],
+    ['httpRequest obeys the net allow-list', cli(['--sandbox', '--allow', 'net=example.com', net]), r => r.status === 0 && r.stdout === 'sandbox: net access to api.github.com is not allowed (--allow net=...)\n'],
+    ['httpRequest needs net under --sandbox', cli(['--sandbox', net]), r => r.status === 3 && r.stderr.includes("net: calls fn f, which declares 'uses net'")],
+  ];
+  // the same destination for stdout and stderr: every printed line must come before the error text
+  const both = spawnSync(process.execPath, [join(here, 'cli.js'), order], { cwd: here, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
+  checks.push(['stdout+stderr interleave in program order', { status: both.status, stdout: both.stdout, stderr: both.stderr }, r => r.stdout.split('\n').length === 3001]);
+  for (const [name, r, ok] of checks) {
+    const pass = ok(r);
+    console.log(`\n=== cli: ${name} — ${pass ? 'PASS' : 'FAIL'} ===`);
     if (!pass) { console.log(`exit ${r.status}\n${r.stdout}\n${r.stderr}`); failures++; }
   }
 }

@@ -426,6 +426,7 @@ if (shared !== null) {
   setStatus('loaded code from a share link', '');
 } else {
   ta.value = EXAMPLES[0].code;
+  sel.value = EXAMPLES[0].id;
 }
 renderEditor();
 window.__vowReady = true;

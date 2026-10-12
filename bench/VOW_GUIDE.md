@@ -2,7 +2,7 @@
 
 Vow is a small statically-typed language. All types are inferred — never write a type annotation. There are **no nulls and no exceptions**: anything that can fail returns a `Result` that the checker forces you to handle. Newlines end statements; there are no semicolons.
 
-Run a program with `node cli.js main.vow [args]`. A program can span several files: `main.vow` imports the others (`import "./geometry.vow" as geo`) and the CLI loads them from disk, relative to each importing file. Run the main file; `--check main.vow` checks every file it imports. (The browser playground runs one file.)
+Run a program with `node cli.js main.vow [args]`. A run stops after 50,000,000 statements (`--max-steps N` raises it, `--max-steps 0` removes the cap). A program can span several files: `main.vow` imports the others (`import "./geometry.vow" as geo`) and the CLI loads them from disk, relative to each importing file. Run the main file; `--check main.vow` checks every file it imports. (The browser playground runs one file.)
 
 ## Variables & types
 ```
@@ -12,6 +12,8 @@ x = "six"        // type error — a variable never changes type
 ```
 Primitives: `num`, `str`, `bool` (`true`/`false`). Boolean operators are `and`, `or`, `not` — there is no `&&`, `||`, `!`. Comparison: `==`, `!=`, `<`, `<=`, `>`, `>=`. Division by zero is a runtime trap.
 
+Numbers are 64-bit floats (one `num` type, no separate int). Literals: `42`, `3.5`, `1e9`, `2.5e-3`; a negative literal is `0 - 5` or `-x`. Printing: whole numbers print without a decimal point (`3`, not `3.0`), others print with up to 10 decimals and float noise removed (`0.1 + 0.2` prints `0.3`, `2 / 3` prints `0.6666666667`); `round(x, 2)`/`fixed(x, 2)` control it, `str(1e21)` is `1e+21`. `/` is real division (`7 / 2` is `3.5`; use `floor(7 / 2)` for 3). `%` is the JavaScript remainder: the result has the sign of the LEFT side (`-7 % 3` is `-1`, `7 % -3` is `1`) and works on decimals (`5.5 % 2` is `1.5`); for a non-negative modulo write `((a % n) + n) % n`.
+
 ## Strings
 ```
 let name = "Ada"
@@ -19,6 +21,7 @@ print("hi ${name}, next year: ${2026 + 1}")   // interpolation: any expression i
 print("{\"name\": \"${name}\"}")       // plain { and } are just text: {"name": "Ada"}
 let c = name[0]          // "A": indexing a str gives a one-character str (traps if out of range; get(s, i) is safe)
 ```
+`len(s)`, `s[i]` and `slice` count UTF-16 units, like JavaScript: `len("é")` is 1 but `len("😀")` is 2 and `"😀"[0]` is half a character. For code points use `ord("😀")` → 128512 (the first code point of a str; `ord("")` traps) and `chr(128512)` → "😀"; `split(s, "")` also splits into UTF-16 units. `urlEncode("a b&c")` → `"a%20b%26c"` (percent-encodes everything but letters, digits and `-_.!~*'()`); `urlDecode(t)` → Result<str, str> (err on a bad `%` sequence; it leaves `+` alone, so for form bodies use `param(body, "field")`).
 Only `${expr}` inserts a value. A plain `{` or `}` (and a `$` not followed by `{`) is ordinary text, so templates like `"{{name}}"` and JSON need no escaping. Escapes: `\n \t \" \\` and `\$` (`"\${x}"` prints the literal text `${x}`). `"hi {name}"` does NOT insert name: the checker reports it when `name` is a variable (write `${name}`, or `\{name}` if you really want the braces). A **raw string** in backticks: `` `C:\path "quoted" ${not interpolated}` `` takes every character literally (no escapes, no interpolation, may span multiple lines).
 
 ## Collections
@@ -74,7 +77,7 @@ let v = match num(s) {
   err(e) => 0 - 1
 }
 ```
-In a statement match (one whose value isn't used), arms may `return`, `break`, or `continue` freely, e.g. `err(e) => continue` or `ok(v) => return ok(v)`. Inside a fn, a value-producing arm (or if/else branch) may also `return` from the function: `err(e) => { return -1 }` (an arm that always returns needs no value). `break`/`continue` may not escape a value-producing arm. `if/else` also works as a value: `let size = if x > 5 { "big" } else { "small" }` (an else is required; each branch's last line is its value; `else if` chains work).
+In a statement match (one whose value isn't used), an arm that only prints is just `err(e) => print("bad: " + e)` (or a block `err(e) => { print(e) }`); it needs no value. In a value-producing match every arm must end in a value, so an arm that prints and still has to yield one ends with the value on its own line: `err(e) => { print(e)` newline `0 }`. Arms may `return`, `break`, or `continue` freely in a statement match, e.g. `err(e) => continue` or `ok(v) => return ok(v)`. Inside a fn, a value-producing arm (or if/else branch) may also `return` from the function: `err(e) => { return -1 }` (an arm that always returns needs no value). `break`/`continue` may not escape a value-producing arm. `if/else` also works as a value: `let size = if x > 5 { "big" } else { "small" }` (an else is required; each branch's last line is its value; `else if` chains work).
 - `?` unwraps ok or propagates the err to the caller — **only inside a function** (whose returns are `ok(...)`/`err(...)`), never at top level:
 ```
 fn area(w, h) {
@@ -112,7 +115,14 @@ match parseJson(`{"user": {"name": "Ada", "age": 36, "tags": [], "pet": null}}`)
 - Test: `isNull(j)`, `truthy(j)` (false for null, false, 0, "", `[]` and `{}`; empty array/object are falsy, unlike JavaScript), `jsonType(j)` → "object"/"array"/"string"/"number"/"bool"/"null".
 - Text: `str(j)` (and `print(j)`, `"${j}"`): strings as-is, numbers like `str(num)` (3, 3.5), true/false, null as "null", arrays/objects as compact JSON.
 - Walk: `jsonList(j)` → list of json elements, `jsonKeys(j)` → list of keys; both plain lists, `[]` for the other kinds.
-- Typed values: `jsonNum`, `jsonStr`, `jsonBool` → Results (err if it is another kind). `toJson(value)` serializes nums/strs/bools/lists/maps/structs/json.
+- Typed values: `jsonNum`, `jsonStr`, `jsonBool` → Results (err if it is another kind; the err says what was found and where it came from: `the JSON value at "age" is a string ("36"), not a number`). `toJson(value)` serializes nums/strs/bools/lists/maps/structs/json on one line; `prettyJson(value)` indents with 2 spaces.
+- Build: `jsonSet(j, "key", value)` → a NEW json object with that key set (`j` is unchanged; `value` is anything `toJson` accepts; a json null counts as `{}`, any other non-object traps). `jsonMerge(a, b)` → deep merge: objects merge key by key, recursively; for anything else `b` wins. Compare json with `==`/`!=`: same kind and same value (`field(a, "n") == field(b, "n")`).
+```
+let user = field(data, "user")
+let updated = jsonSet(jsonSet(user, "age", 37), "tags", ["x", "y"])
+let config = jsonMerge(defaults, overrides)        // overrides win, nested objects merge
+print(prettyJson(updated))
+```
 - There is no `null` keyword and json is not a map: use `field`/`has`/`jsonKeys` on it. A fn whose params are only used with these works on json directly. `j["key"]` / `j[0]` trap on a miss.
 
 ## Contracts (optional)
@@ -127,7 +137,7 @@ Contracts are checked at runtime with blame (caller vs callee). If the checker c
 ## Builtins
 `print str num len range push pop get keys has join split abs floor round fixed min max sort sortBy reverse sum contains slice trim upper lower ok err` (plus math, random and dates: see below)
 
-Text: `replace(t, old, new)` (every occurrence, literal), `startsWith(t, p)`, `endsWith(t, s)`, `indexOf(t, piece)` → Result, `repeat(t, n)`, `padLeft(t, width, fill)`, `padRight(t, width, fill)`, `lines(t)` (splits on newlines, drops a trailing one), `contains(t, piece)`, `split(t, sep)`, `slice(t, from, to)`, `t[i]`. — plus CLI I/O: `args()` → list<str>, `readFile/writeFile/httpGet/env` → Results.
+Text: `replace(t, old, new)` (every occurrence, literal), `startsWith(t, p)`, `endsWith(t, s)`, `indexOf(t, piece)` → Result<num, str> (also `indexOf(xs, item)` on a list: first position by `==`, err when absent), `repeat(t, n)`, `padLeft(t, width, fill)`, `padRight(t, width, fill)`, `lines(t)` (splits on newlines, drops a trailing one), `contains(t, piece)`, `split(t, sep)`, `slice(t, from, to)`, `t[i]`, `ord(t)`/`chr(n)`, `urlEncode(t)`/`urlDecode(t)`. — plus CLI I/O: `args()` → list<str>, `readFile/writeFile/httpGet/httpRequest/env/readLine/readAll` → Results (see below).
 
 `round(x, 2)` rounds half-up to 2 decimals (15.625 → 15.63), `fixed(x, 2)` gives text with exactly 2 decimals ("212.30") and `str()` prints numbers without trailing zeros (12.5, 3). `sort(xs)` orders nums or strs. `sortBy(xs, x => x.price)` orders any list by a num/str key (stable: ties keep their order). Both return a NEW list: write `xs = sort(xs)`. `and`/`or` short-circuit, so `i < len(xs) and xs[i] > 0` is safe. `args()` holds only the user's arguments, never the program name.
 
@@ -144,12 +154,39 @@ Text (patterns are JavaScript regular expressions; write them as backtick raw st
 - ``findAll(s, `\d+`)`` → list of every match · ``replaceAll(s, `(\w+)@`, "$1 at ")`` → str (`$1` = group 1)
 - ``splitOn(s, `\s*[,;]\s*`)`` → list (groups in the pattern do not add pieces) · `words(s)` → split on any whitespace, no empty strings
 - `replace(t, old, new)` stays literal text; a bad pattern literal is a compile error
+- Patterns are compiled with the `u` flag: ``\p{L}`` (any letter), ``\p{Script=Greek}`` work and `.` matches a whole emoji. A pattern that is only valid without `u` (an identity escape like ``\-`` outside brackets, a lone `{`) still works as before
 
 Numbers: `int("42")` → Result, strict (optional `-` then digits; `"4.2"`, `" 5"`, `"+3"` are errs) · `isInt(x)` → bool · `sig(1234.5, 2)` → 1200 (significant digits, 1 to 21)
 
 Your own `fn map(...)`, `let count = ...`, `fn log(...)`, `let pi = ...`, etc. still work: a fn or variable you define with a builtin's name takes precedence.
 
-**Capabilities:** a fn that does I/O must declare it in its signature — `fn fetch(url) uses net { return httpGet(url) }`. Capabilities: `net` (httpGet), `fs` (readFile/writeFile), `env` (env). Callers of an effectful fn must declare it too; top-level code needs no declaration; declaring a capability you don't use is also an error.
+**Capabilities:** a fn that does I/O must declare it in its signature — `fn fetch(url) uses net { return httpGet(url) }`. Capabilities: `net` (httpGet, httpRequest, serve), `fs` (readFile/writeFile), `env` (env). Reading standard input (`readLine`, `readAll`) needs none. Callers of an effectful fn must declare it too; top-level code needs no declaration; declaring a capability you don't use is also an error.
+
+## CLI I/O: stdin and HTTP
+```
+print("name?")                              // output is written before readLine blocks
+match readLine() {                          // Result<str, str>: the next line of stdin
+  ok(line) => print("hi ${trim(line)}")     // without its newline (\r\n handled); works with a terminal and with `echo x | vow prog.vow`
+  err(e) => print("no input: ${e}")         // err("end of input") at EOF (Ctrl+D, or the pipe is drained)
+}
+let rest = match readAll() { ok(t) => t  err(e) => "" }   // everything left on stdin; ok("") when it is empty
+```
+Loop `while true { match readLine() { err(e) => break  ok(line) => ... } }` to process input line by line. In the browser playground both return an err.
+
+`httpRequest(method, url, headers, body)` → `Result<HttpResponse, str>` with `HttpResponse { status, headers, body }`: `status` a num, `headers` a map<str, str> with lower-case names, `body` a str. Any status is an `ok` (check `r.status` yourself); only not getting a response (DNS, refused, timeout after 15 s) is an err. `headers` is a map<str, str> (`{}` for none), `body` a str (`""` for none; it is ignored for GET/HEAD). `httpGet(url)` stays the short form: ok(body) for 2xx, otherwise err("GET url failed: HTTP 404 ...") with the start of the response body.
+```
+fn repos(user) uses net {
+  let r = httpRequest("GET", "https://api.github.com/users/${user}/repos", {"User-Agent": "vow", "Accept": "application/vnd.github+json"}, "")?
+  if r.status != 200 { return err("GitHub said ${r.status}: ${slice(r.body, 0, 80)}") }
+  print(r.headers["content-type"])
+  return parseJson(r.body)
+}
+fn post(url, data) uses net {
+  let r = httpRequest("POST", url, {"Content-Type": "application/json"}, toJson(data))?
+  return ok(r.status)
+}
+```
+Both obey `--sandbox --allow net=host` by host, like httpGet.
 
 ## Modules (multi-file programs)
 ```
@@ -176,7 +213,7 @@ print(geo.norm(p))                  // 5
 - Times are nums: milliseconds since 1970-01-01T00:00:00Z, **always UTC**. `now()` → current time. `dateParts(ms)` → `DateParts { year, month (1-12), day, hour, minute, second, weekday (0=Sunday..6) }`. `isoDate(ms)` → `"2026-10-08T14:03:00Z"`. `parseDate(s)` → Result<num, str>: accepts `2026-10-08`, `2026-10-08T14:03`, `2026-10-08T14:03:00`, optional `.sss`, and `Z` or `+02:00`; no zone means UTC; impossible dates (`2026-02-30`) are errs. `daysBetween(a, b)` → UTC calendar days from a to b (negative if b is earlier; time of day ignored). One day later: `ms + 86400000`.
 
 ## Program structure
-A Vow file runs its top-level statements from top to bottom; there is no implicit `main`. Write the program at the top level (helper `fn`s can be declared anywhere, including inside another fn: a nested fn may read and update its parent's variables and call itself, e.g. a `fn dfs(n)` that fills the parent's `seen` map; such a fn can't have expects/ensures/uses). A bare `return` at the top level ends the program early (no value allowed there).
+A Vow file runs its top-level statements from top to bottom; there is no implicit `main`. `fn`s are hoisted (a call may come before the declaration), but top-level `let`s are not: a fn may only use a top-level variable declared ABOVE it, so put shared state (`let cache = {}`, `let config = ...`) at the top of the file, before the fns that use it (the checker says `'x' doesn't exist yet` otherwise). Write the program at the top level (helper `fn`s can be declared anywhere, including inside another fn: a nested fn may read and update its parent's variables and call itself, e.g. a `fn dfs(n)` that fills the parent's `seen` map; such a fn can't have expects/ensures/uses). A bare `return` at the top level ends the program early (no value allowed there).
 
 ## Web servers
 ```
@@ -208,5 +245,7 @@ Responses: `html(body)`, `text(body)`, `respond(status, contentType, body)`, `re
 - Writing `"{x}"` to insert x: interpolation is `"${x}"`; plain braces are literal text.
 - Indexing (`xs[i]`, `m[k]`, `j[k]`) when the key might be missing — use `get(...)`, or `field(j, k)` for json.
 - Writing your own truthiness / value-to-text helpers for json: use `truthy(j)` and `str(j)`.
+- Declaring a top-level `let` below a fn that uses it: move the let above the fn.
+- Two statements on one line inside a block (`{ print(e)  break }`): each statement goes on its own line.
 
-Run a program: `node cli.js program.vow [args]` (from the vow-lang directory; imported files load automatically). Type-check only: `node cli.js --check program.vow`. Every error message tells you what's wrong, shows the line, and suggests the likely fix — read it and apply the fix.
+Run a program: `node cli.js program.vow [args]` (from the vow-lang directory; imported files load automatically). Type-check only: `node cli.js --check program.vow`. Heavy but legitimate work that trips the step cap: `node cli.js --max-steps 500000000 program.vow` (`0` = no limit). Every error message tells you what's wrong, shows the line, and suggests the likely fix — read it and apply the fix.
