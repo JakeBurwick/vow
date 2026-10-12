@@ -1,0 +1,21 @@
+# Vow
+
+> Vow is a programming language built for AI agents to write. Every compiler and runtime error says what is wrong, where, and gives a "Likely fix" line to act on. There is no null and there are no exceptions: anything that can fail returns a Result (`ok(v)` or `err(msg)`) that must be handled with `match` or `?`. Functions that touch the network, files or environment declare `uses net`, `uses fs` or `uses env`. Types are inferred, so programs carry no annotations. Vow compiles to JavaScript and needs only Node.js 20 or newer.
+
+Before writing Vow, read the language guide below in full. Install with `npm install -g github:JakeBurwick/vow`, run a program with `vow file.vow`, and after every edit run `vow --check file.vow` and apply each error's "Likely fix".
+
+## Docs
+
+- [Vow language guide](https://vow-lang.vercel.app/bench/VOW_GUIDE.md): the complete language in one file, written for an agent to learn Vow in one read
+- [Verified examples](https://vow-lang.vercel.app/bench/EXAMPLES.md): working programs that passed the benchmark judge, showing Results, match, maps, JSON and recursion
+- [AGENTS.md template](https://vow-lang.vercel.app/templates/AGENTS.md): drop into a project root so a coding agent picks up the rules automatically
+
+## Install and CLI
+
+- [Install and command-line flags](https://github.com/JakeBurwick/vow#install): `vow app.vow`, `vow --check app.vow`, `vow --sandbox --allow fs=./data app.vow`, `vow --seed 7 app.vow`
+- [MCP server](https://github.com/JakeBurwick/vow/tree/main/mcp): `vow-mcp` gives an agent vow_guide, vow_check and vow_run tools; in Claude Code run `claude mcp add vow -- vow-mcp`
+
+## Optional
+
+- [Tutorial](https://vow-lang.vercel.app/#learn): 12 short lessons for people, each runnable in the browser
+- [Source repository](https://github.com/JakeBurwick/vow): compiler, CLI, benchmarks and example programs

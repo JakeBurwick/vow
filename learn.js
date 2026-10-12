@@ -76,7 +76,7 @@
 
   function runInPlayground(l, statusEl) {
     if (!window.vowPlayground) {
-      statusEl.textContent = 'The playground did not load. Reload the page, or copy the code and run it with node cli.js.';
+      statusEl.textContent = 'The playground did not load. Reload the page, or copy the code and run it with the vow command.';
       return;
     }
     window.vowPlayground.load(l.code, { run: true, label: 'Lesson ' + l.n + ': ' + l.title });
@@ -109,7 +109,7 @@
         lessonEl.appendChild(codeBlock(l.files[name], 'lesson-file-' + i));
       });
       lessonEl.appendChild(el('p', 'file-name', 'Run it from the repository folder'));
-      lessonEl.appendChild(codeBlock('node cli.js site/learn/' + l.file, 'lesson-run', true));
+      lessonEl.appendChild(codeBlock('vow ' + l.file.split('/').pop(), 'lesson-run', true));
     } else if (l.commands) {
       var note = el('p', 'cli-note');
       note.innerHTML = 'These commands run in the command-line tool. <a href="#install" data-go="install">Install</a> takes one clone and Node.js.';
@@ -162,5 +162,5 @@
 
   renderNav();
   renderLesson();
-  window.vowLearn = { select: select, show: show, rerender: renderLesson, lessons: lessons };
+  window.vowLearn = { select: select, show: show, rerender: renderLesson };
 })();

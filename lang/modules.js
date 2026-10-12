@@ -22,18 +22,9 @@
 // }
 
 import { parse } from './parser.js';
-import { VowError, registerSources } from './diagnostics.js';
+import { VowError, registerSources, editDistance } from './diagnostics.js';
 
-function editDistance(a, b) {
-  const m = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
-  for (let j = 0; j <= b.length; j++) m[0][j] = j;
-  for (let i = 1; i <= a.length; i++)
-    for (let j = 1; j <= b.length; j++)
-      m[i][j] = Math.min(m[i - 1][j] + 1, m[i][j - 1] + 1, m[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
-  return m[a.length][b.length];
-}
-
-const SKIP = new Set(['pos', 'tok', 'nameTok', 'tagTok', 'binderTok', 'keyTok', 'calleeNode', 'mod']);
+const SKIP = new Set(['pos', 'tok', 'nameTok', 'tagTok', 'binderTok', 'calleeNode', 'mod']);
 // AST nodes point at their module through a non-enumerable property, so every generic AST
 // walker in the toolchain (for...in / Object.keys) skips it instead of looping through
 // module records.
@@ -52,18 +43,15 @@ function walk(node, visit) {
 
 export function loadProgram(entrySrc, entryAbs, host) {
   const entryLabel = host.label(entryAbs);
-  const files = [{ start: 0, end: entrySrc.length, label: entryLabel, text: entrySrc, abs: entryAbs }];
+  const files = [{ start: 0, end: entrySrc.length, label: entryLabel, text: entrySrc }];
   let combined = entrySrc;
   const mods = new Map(); // abs -> loaded module
   const loading = []; // the import chain being loaded right now: [{ abs, label }]
   const order = []; // modules in dependency order (a module before anything that imports it)
   const prefixes = new Set();
 
-  const importError = (tok, title, detail, fix) => {
-    const e = new VowError({ kind: 'ImportError', title, line: tok.line, col: tok.col, length: Math.max(1, tok.end - tok.start), detail, fix });
-    e.diag.importError = true;
-    return e;
-  };
+  const importError = (tok, title, detail, fix) =>
+    new VowError({ kind: 'ImportError', title, line: tok.line, col: tok.col, length: Math.max(1, tok.end - tok.start), detail, fix });
 
   const onImportFrom = (fromAbs, fromLabel) => ({ path, pathTok }) => {
     const abs = host.resolve(fromAbs, path);
@@ -101,7 +89,7 @@ export function loadProgram(entrySrc, entryAbs, host) {
     const label = host.label(abs);
     const start = combined.length + 1;
     combined += '\n' + text;
-    const f = { start, end: start + text.length, label, text, abs };
+    const f = { start, end: start + text.length, label, text };
     files.push(f);
     loading.push({ abs, label });
     let ast;
@@ -109,12 +97,12 @@ export function loadProgram(entrySrc, entryAbs, host) {
     catch (e) { tag(e, f); throw e; }
     loading.pop();
 
-    let stem = (abs.split(/[\\/]/).pop() ?? 'module').replace(/\.vow$/, '') || 'module';
+    const stem = (abs.split(/[\\/]/).pop() ?? 'module').replace(/\.vow$/, '') || 'module';
     let prefix = stem;
     for (let n = 2; prefixes.has(prefix); n++) prefix = `${stem}${n}`;
     prefixes.add(prefix);
 
-    const mod = { abs, label, prefix, isEntry: false, fns: new Map(), structs: new Map(), structFields: new Map(), lifted: new Map(), exports: [], imports: new Set(ast.imports.map(i => i.mod)), aliases: new Map(ast.imports.map(i => [i.alias, i.mod])), stmts: ast.stmts };
+    const mod = { label, isEntry: false, fns: new Map(), structs: new Map(), structFields: new Map(), lifted: new Map(), exports: [], imports: new Set(ast.imports.map(i => i.mod)), aliases: new Map(ast.imports.map(i => [i.alias, i.mod])), stmts: ast.stmts };
     for (const s of ast.stmts) {
       const internal = `${prefix}.${s.name}`;
       if (s.t === 'Fn') {
@@ -140,12 +128,12 @@ export function loadProgram(entrySrc, entryAbs, host) {
   loading.push({ abs: entryAbs, label: entryLabel });
   let entryAst;
   try { entryAst = parse(entrySrc, { onImport: onImportFrom(entryAbs, entryLabel) }); }
-  catch (e) { if (files.length > 1 || e?.diag?.importError || e?.diag?.kind === 'ImportError' || /^\s*import\b/m.test(entrySrc)) tag(e, entryFile); throw e; }
+  catch (e) { if (files.length > 1 || e?.diag?.kind === 'ImportError' || /^\s*import\b/m.test(entrySrc)) tag(e, entryFile); throw e; }
   loading.pop();
 
-  if (files.length === 1) return { src: entrySrc, ast: { t: 'Program', stmts: entryAst.stmts }, multi: false };
+  if (files.length === 1) return { src: entrySrc, ast: { t: 'Program', stmts: entryAst.stmts } };
 
-  const entryMod = { abs: entryAbs, label: entryLabel, prefix: '', isEntry: true, fns: new Map(), structs: new Map(), imports: new Set(entryAst.imports.map(i => i.mod)), aliases: new Map(entryAst.imports.map(i => [i.alias, i.mod])), stmts: entryAst.stmts };
+  const entryMod = { label: entryLabel, isEntry: true, fns: new Map(), structs: new Map(), imports: new Set(entryAst.imports.map(i => i.mod)), aliases: new Map(entryAst.imports.map(i => [i.alias, i.mod])), stmts: entryAst.stmts };
   for (const s of entryAst.stmts) if (s.t === 'Fn' || s.t === 'Struct') setMod(s, entryMod);
   // which file each fn and lambda lives in: runtime call stacks name it
   for (const m of [entryMod, ...order]) {
@@ -154,7 +142,7 @@ export function loadProgram(entrySrc, entryAbs, host) {
   registerSources(combined, files);
   const ast = { t: 'Program', stmts: [...order.flatMap(m => m.stmts), ...entryAst.stmts] };
   Object.defineProperty(ast, 'modules', { value: [entryMod, ...order], enumerable: false });
-  return { src: combined, ast, multi: true };
+  return { src: combined, ast };
 }
 
 // Host for programs on disk (CLI, MCP with a path, compile-test). `base` is the folder that

@@ -199,7 +199,7 @@ function compile() {
     const ast = parse(src, { noImports: {
       title: 'imports work in the Vow CLI; the playground runs one file',
       detail: 'The playground has no files around your program, so there is nothing to import from.',
-      fix: 'paste the fns you need into this program, or save the files and run them with the CLI: node cli.js main.vow',
+      fix: 'paste the fns you need into this program, or save the files and run them with the CLI: vow main.vow',
     } });
     const { proved } = check(src, ast);
     return { src, ast, proved };

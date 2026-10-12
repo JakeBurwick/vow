@@ -19,5 +19,5 @@ export function createCompiledRun(src, ast, opts = {}) {
   const { code, nodes } = compile(src, ast, { maxSteps, maxDepth, builtinNames: [...Object.keys(builtins), 'sortBy', ...HIGHER_ORDER] });
   const factory = new Function('$rt', '$nodes', code);
   const prog = factory({ $B: builtins, display, deepEq, isJson, UNIT, VowError, nodeLoc, src }, nodes);
-  return { run: () => prog.main(), invoke: prog.ctx.invoke, code };
+  return { run: () => prog.main(), code };
 }

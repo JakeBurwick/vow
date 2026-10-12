@@ -40,27 +40,51 @@ abc: "abc" is not a number
 You need [Node.js](https://nodejs.org) 20 or newer.
 
 ```sh
+npm install -g github:JakeBurwick/vow
+echo 'print("Hello, Vow!")' > hello.vow
+vow hello.vow
+```
+
+This installs two commands: `vow`, the compiler and runner, and `vow-mcp`, an MCP server for AI coding tools.
+
+| Command | What it does |
+|---|---|
+| `vow app.vow [args...]` | Run a program (compiled to JavaScript) |
+| `vow --check app.vow` | Type-check without running |
+| `vow --sandbox --allow fs=./data app.vow` | Only let the program touch `./data`, checked before it runs |
+| `vow --sandbox --allow net=api.example.com app.vow` | Only let it call one host |
+| `vow --seed 7 game.vow` | Make random numbers repeatable |
+| `vow --interp app.vow` | Use the interpreter instead of the compiler |
+
+To hack on Vow itself, clone the repository and run the CLI from the clone with `node cli.js` in place of `vow`:
+
+```sh
 git clone https://github.com/JakeBurwick/vow.git
 cd vow
 echo 'print("Hello, Vow!")' > hello.vow
 node cli.js hello.vow
 ```
 
-| Command | What it does |
-|---|---|
-| `node cli.js app.vow [args...]` | Run a program (compiled to JavaScript) |
-| `node cli.js --check app.vow` | Type-check without running |
-| `node cli.js --sandbox --allow fs=./data app.vow` | Only let the program touch `./data`, checked before it runs |
-| `node cli.js --sandbox --allow net=api.example.com app.vow` | Only let it call one host |
-| `node cli.js --seed 7 game.vow` | Make random numbers repeatable |
-| `node cli.js --interp app.vow` | Use the interpreter instead of the compiler |
-
 Programs can span files with `import "./shapes.vow" as shapes`. See `programs/todo-cli/` for a multi-file example.
+
+## Use Vow with your AI
+
+Vow is meant to be written by AI coding tools. Give your tool the guide once and it can write, check and fix Vow on its own.
+
+1. **Install:** `npm install -g github:JakeBurwick/vow`
+2. **Tell your tool about Vow.** Paste this into Claude Code, Codex, Cursor or any coding agent:
+
+   > This project uses Vow, a programming language for AI agents. Before writing any Vow, read https://vow-lang.vercel.app/llms.txt and the guide it links to. Run programs with `vow file.vow`. After every edit run `vow --check file.vow` and fix each error using its "Likely fix" line. Vow has no null and no exceptions: handle every Result with match or ?.
+
+3. **Add it to your project (optional).** Copy [`templates/AGENTS.md`](templates/AGENTS.md) into your project root as `AGENTS.md` so your agent picks it up automatically. It has the same instructions plus the five rules agents miss most.
+4. **Connect the Vow tools (optional).** In Claude Code, `claude mcp add vow -- vow-mcp` gives the agent `vow_guide`, `vow_check` and `vow_run` tools. Any other MCP client can launch the `vow-mcp` command over stdio.
+
+Tested with Claude Haiku 4.5, Anthropic's smallest current model. Larger models should do at least as well. Comparable small models from other labs should behave similarly, since everything Vow needs is in its guide, but they have not been measured. A very small local model (Llama 3.2 3B) could not solve these tasks in Vow or in TypeScript.
 
 ## Learn
 
 - [Tutorial](https://vow-lang.vercel.app/#learn): 12 short lessons, each runnable in the browser.
-- [`bench/VOW_GUIDE.md`](bench/VOW_GUIDE.md): the complete language guide, written so an AI agent can learn Vow from it in one read.
+- [`bench/VOW_GUIDE.md`](bench/VOW_GUIDE.md): the complete language guide, written so an AI agent can learn Vow from it in one read. [`llms.txt`](llms.txt) points agents to it.
 - [`programs/`](programs/): example programs, including a live stock ticker, a Lisp interpreter and a multi-file to-do app.
 
 ## Does it work?
@@ -91,7 +115,8 @@ python3 bench/hidden/run.py   # hidden-test correctness check
 | `cli.js`, `cli-main.js` | Command-line tool and sandbox |
 | `index.html`, `app.js`, `learn.js` | Website, playground and tutorial |
 | `bench/` | Agent benchmark: tasks, judge, logs, solutions, hidden tests |
-| `mcp/` | MCP server so AI agents can check and run Vow code |
+| `mcp/` | MCP server (the `vow-mcp` command) so AI agents can check and run Vow code |
+| `templates/AGENTS.md`, `llms.txt` | Instructions for AI coding tools that write Vow |
 
 ## License
 

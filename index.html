@@ -7,6 +7,49 @@
 <meta name="description" content="Vow is a programming language built for AI agents to write. Errors are repair instructions, there are no nulls or exceptions, and every function declares what it can reach.">
 <meta name="theme-color" content="#10141d">
 <link rel="stylesheet" href="style.css">
+<style>
+/* Use Vow with your AI (Home). Kept here so style.css stays untouched by this section. */
+.ai { margin-top: 64px; }
+.ai h2 { font-size: 26px; letter-spacing: -0.4px; margin-bottom: 12px; scroll-margin-top: 16px; }
+.steps { list-style: none; counter-reset: step; margin-top: 24px; border-top: 1px solid var(--border); }
+.steps > li {
+  counter-increment: step; display: grid; grid-template-columns: 56px minmax(0, 1fr);
+  padding: 22px 0 24px; border-bottom: 1px solid var(--border);
+}
+.steps > li::before {
+  content: counter(step, decimal-leading-zero); grid-row: 1 / span 5;
+  font-family: var(--mono); font-size: 12px; color: var(--accent2); padding-top: 3px;
+}
+.steps > li > * { grid-column: 2; }
+.steps h3 { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 10px; }
+.steps .opt {
+  font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: 0.04em;
+  border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; margin-left: 6px; vertical-align: 2px;
+}
+.step-note { font-size: 14.5px; color: #b9c2d4; line-height: 1.6; margin-bottom: 12px; max-width: 72ch; }
+.step-note code {
+  font-family: var(--mono); font-size: 0.86em; background: var(--panel2);
+  border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; color: var(--builtin);
+}
+.codeblock.prompt { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text); line-height: 1.65; }
+.steps .copyable .codeblock.shell { white-space: pre-wrap; overflow-wrap: anywhere; }
+.step-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; margin-bottom: 12px; font-size: 14px; }
+a.btn {
+  display: inline-block; text-decoration: none; color: var(--bg); background: var(--accent);
+  border: 1px solid var(--accent); border-radius: 6px; padding: 7px 16px; font-size: 13.5px; font-weight: 600;
+}
+@media (hover: hover) { a.btn:hover { filter: brightness(1.18); } }
+.file-peek summary { cursor: pointer; font-size: 13.5px; color: var(--muted); margin-bottom: 10px; width: fit-content; }
+.file-peek summary:hover { color: var(--text); }
+.file-peek .codeblock { font-size: 12.5px; max-height: 420px; overflow-y: auto; }
+.model-note { margin-top: 18px; font-size: 13.5px; line-height: 1.6; color: var(--muted); max-width: 80ch; }
+.install-alt { margin-top: 20px; }
+@media (max-width: 560px) {
+  .steps > li { grid-template-columns: minmax(0, 1fr); }
+  .steps > li::before { grid-row: auto; margin-bottom: 6px; padding-top: 0; }
+  .steps > li > * { grid-column: 1; }
+}
+</style>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path d='M50 6 94 50 50 94 6 50Z' fill='%2341e0c8'/></svg>">
 </head>
 <body>
@@ -65,6 +108,51 @@ abc: "abc" is not a number
       <li><strong>Capabilities are checked before anything runs:</strong> <code>--sandbox</code> refuses a program that reaches beyond what you allow.</li>
     </ol>
 
+    <section id="ai" class="ai" aria-labelledby="ai-h">
+      <h2 id="ai-h">Use Vow with your AI</h2>
+      <p class="prose">Vow is meant to be written by AI coding tools. Give your tool the guide once and it can write, check and fix Vow on its own.</p>
+
+      <ol class="steps">
+        <li>
+          <h3>Install</h3>
+          <div class="copyable">
+<pre class="codeblock shell" id="ai-install">npm install -g github:JakeBurwick/vow</pre>
+            <button class="copy" data-copy-from="ai-install">Copy</button>
+          </div>
+        </li>
+        <li>
+          <h3>Tell your tool about Vow</h3>
+          <p class="step-note">Paste this into Claude Code, Codex, Cursor or any coding agent.</p>
+          <div class="copyable">
+<pre class="codeblock prompt" id="ai-prompt">This project uses Vow, a programming language for AI agents. Before writing any Vow, read https://vow-lang.vercel.app/llms.txt and the guide it links to. Run programs with `vow file.vow`. After every edit run `vow --check file.vow` and fix each error using its "Likely fix" line. Vow has no null and no exceptions: handle every Result with match or ?.</pre>
+            <button class="copy" data-copy-from="ai-prompt">Copy</button>
+          </div>
+        </li>
+        <li>
+          <h3>Add it to your project <span class="opt">optional</span></h3>
+          <p class="step-note">Drop this <code>AGENTS.md</code> into your project root and your agent picks it up automatically. It holds the same instructions plus the five rules agents miss most.</p>
+          <p class="step-actions"><a class="btn" href="templates/AGENTS.md" download="AGENTS.md">Download AGENTS.md</a> <a href="templates/AGENTS.md" target="_blank" rel="noopener">Open in a new tab</a></p>
+          <details class="file-peek">
+            <summary>Show the file</summary>
+            <div class="copyable">
+<pre class="codeblock prompt" id="ai-agents-md">Loading AGENTS.md. If this does not change, open it with the link above.</pre>
+              <button class="copy" data-copy-from="ai-agents-md">Copy</button>
+            </div>
+          </details>
+        </li>
+        <li>
+          <h3>Connect the Vow tools <span class="opt">optional</span></h3>
+          <p class="step-note">For Claude Code. This gives the agent <code>vow_guide</code>, <code>vow_check</code> and <code>vow_run</code> tools.</p>
+          <div class="copyable">
+<pre class="codeblock shell" id="ai-mcp">claude mcp add vow -- vow-mcp</pre>
+            <button class="copy" data-copy-from="ai-mcp">Copy</button>
+          </div>
+        </li>
+      </ol>
+
+      <p class="model-note">Tested with Claude Haiku 4.5, Anthropic's smallest current model. Larger models should do at least as well. Comparable small models from other labs should behave similarly, since everything Vow needs is in its guide, but they have not been measured. A very small local model (Llama 3.2 3B) could not solve these tasks in Vow or in TypeScript.</p>
+    </section>
+
     <div class="split">
       <div>
         <h2 class="h-small">An error, as Vow prints it</h2>
@@ -77,7 +165,7 @@ abc: "abc" is not a number
       </div>
       <div>
         <h2 class="h-small">A sandbox refusal, before any code runs</h2>
-<pre class="codeblock err-demo">$ node cli.js --sandbox --allow fs=./data app.vow
+<pre class="codeblock err-demo">$ vow --sandbox --allow fs=./data app.vow
 ✗ SandboxError: this program needs capabilities the sandbox does not grant
   env: calls fn leak, which declares 'uses env' (line 2)
   Nothing was run.
@@ -91,11 +179,18 @@ abc: "abc" is not a number
       <h2 id="install-h">Install</h2>
       <p class="prose">You need <strong>Node.js 20 or newer</strong>. Vow has no other dependencies.</p>
       <div class="copyable">
-<pre class="codeblock shell" id="install-cmds">git clone <span data-repo>https://github.com/JakeBurwick/vow.git</span>
+<pre class="codeblock shell" id="install-cmds">npm install -g github:JakeBurwick/vow
+echo 'print("Hello, Vow!")' &gt; hello.vow
+vow hello.vow</pre>
+        <button class="copy" data-copy-from="install-cmds">Copy</button>
+      </div>
+      <p class="prose install-alt">To hack on Vow itself, clone the repository and run the CLI from the clone:</p>
+      <div class="copyable">
+<pre class="codeblock shell" id="install-clone">git clone <span data-repo>https://github.com/JakeBurwick/vow.git</span>
 cd vow
 echo 'print("Hello, Vow!")' &gt; hello.vow
 node cli.js hello.vow</pre>
-        <button class="copy" data-copy-from="install-cmds">Copy</button>
+        <button class="copy" data-copy-from="install-clone">Copy</button>
       </div>
       <h3 class="h-small">Command-line flags</h3>
       <div id="install-flags" class="flags"></div>
@@ -165,12 +260,13 @@ node cli.js hello.vow</pre>
   <div class="page-inner docs">
 
     <h1 class="docs-title">Docs</h1>
-    <p class="prose">A reference for the current language. The complete rules live in the agent guide in the repository (<code>bench/VOW_GUIDE.md</code>); every example below was run with <code>node cli.js</code>.</p>
+    <p class="prose">A reference for the current language. The complete rules live in the agent guide in the repository (<code>bench/VOW_GUIDE.md</code>); every example below was run with the <code>vow</code> command. To have an AI coding tool write Vow for you, see <a href="#ai" data-go="ai">Use Vow with your AI</a>.</p>
     <nav class="toc" aria-label="On this page">
       <a href="#ref" data-go="ref">Syntax reference</a>
       <a href="#benchmarks" data-go="benchmarks">Benchmarks</a>
       <a href="#changelog" data-go="changelog">What got built</a>
       <a href="#install" data-go="install">Install</a>
+      <a href="#ai" data-go="ai">Use with your AI</a>
     </nav>
 
     <h2 id="ref">Syntax reference</h2>
@@ -439,7 +535,7 @@ fn shout(s) { upper(s) }      // provably touches nothing
 // callers inherit the obligation; declaring a
 // capability you don't use is also an error
 
-// node cli.js --sandbox --allow net=api.example.com,fs=./data app.vow
+// vow --sandbox --allow net=api.example.com,fs=./data app.vow
 // refuses the program before it runs if it reaches further</pre>
       </div>
 
@@ -450,7 +546,7 @@ struct Point { x, y }
 fn norm(p) { sqrt(_sq(p.x) + _sq(p.y)) }
 fn _sq(v) { v * v }      // _ = private
 
-// main.vow: node cli.js main.vow
+// main.vow: vow main.vow
 import "./geometry.vow" as geo
 let p = geo.Point { x: 3, y: 4 }
 print(geo.norm(p))       // 5</pre>
@@ -571,7 +667,7 @@ window.VOW_REPO = 'https://github.com/JakeBurwick/vow.git';
 
 var VIEWS = ['home', 'learn', 'play', 'docs'];
 // Anchors that live inside a view: going to them shows the view, then scrolls.
-var ANCHORS = { install: 'home', benchmarks: 'docs', ref: 'docs', changelog: 'docs' };
+var ANCHORS = { install: 'home', ai: 'home', benchmarks: 'docs', ref: 'docs', changelog: 'docs' };
 var HASH_FOR = { home: 'home', learn: 'learn', play: 'playground', docs: 'docs' };
 
 function showView(view, opts) {
@@ -640,6 +736,16 @@ document.addEventListener('click', function (e) {
   }, function () { btn.textContent = 'Select and copy'; });
 });
 window.addEventListener('hashchange', routeFromHash);
+
+// The AGENTS.md shown on Home is the downloadable file itself, so the two never drift.
+fetch('templates/AGENTS.md').then(function (r) {
+  if (!r.ok) throw new Error(r.status);
+  return r.text();
+}).then(function (t) {
+  document.getElementById('ai-agents-md').textContent = t.trimEnd();
+}).catch(function () {
+  document.getElementById('ai-agents-md').textContent = 'Could not load the file here. Use Download AGENTS.md above.';
+});
 
 // If the playground module never boots, say so instead of leaving dead buttons.
 setTimeout(function () {

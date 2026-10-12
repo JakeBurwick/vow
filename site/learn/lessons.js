@@ -68,9 +68,9 @@ window.VOW_LESSONS = [
   "title": "Modules",
   "intro": "Split a program across files with import \"./shapes.vow\" as shapes, then call shapes.area(r). A module holds functions and structs, and names starting with _ stay private. Modules run in the command-line tool, not in the browser playground.",
   "file": "10-modules/main.vow",
-  "code": "// Run with: node cli.js site/learn/10-modules/main.vow\nimport \"./shapes.vow\" as shapes\n\nlet rooms = [shapes.Rect { w: 3, h: 4 }, shapes.Rect { w: 5, h: 2 }]\nfor r in rooms {\n  print(shapes.describe(r))\n}\nprint(\"total area: ${fold(rooms, 0, (acc, r) => acc + shapes.area(r))}\")\n",
+  "code": "// Run with: vow site/learn/10-modules/main.vow\nimport \"./shapes.vow\" as shapes\n\nlet rooms = [shapes.Rect { w: 3, h: 4 }, shapes.Rect { w: 5, h: 2 }]\nfor r in rooms {\n  print(shapes.describe(r))\n}\nprint(\"total area: ${fold(rooms, 0, (acc, r) => acc + shapes.area(r))}\")\n",
   "files": {
-   "main.vow": "// Run with: node cli.js site/learn/10-modules/main.vow\nimport \"./shapes.vow\" as shapes\n\nlet rooms = [shapes.Rect { w: 3, h: 4 }, shapes.Rect { w: 5, h: 2 }]\nfor r in rooms {\n  print(shapes.describe(r))\n}\nprint(\"total area: ${fold(rooms, 0, (acc, r) => acc + shapes.area(r))}\")\n",
+   "main.vow": "// Run with: vow site/learn/10-modules/main.vow\nimport \"./shapes.vow\" as shapes\n\nlet rooms = [shapes.Rect { w: 3, h: 4 }, shapes.Rect { w: 5, h: 2 }]\nfor r in rooms {\n  print(shapes.describe(r))\n}\nprint(\"total area: ${fold(rooms, 0, (acc, r) => acc + shapes.area(r))}\")\n",
    "shapes.vow": "// A module holds fns and structs. Names starting with _ stay private.\nstruct Rect { w, h }\n\nfn area(r) { r.w * r.h }\n\nfn describe(r) {\n  \"${r.w} x ${r.h} rect, area ${area(r)}\"\n}\n\nfn _secret() { 42 }\n"
   },
   "cliOnly": true
@@ -78,31 +78,35 @@ window.VOW_LESSONS = [
  {
   "n": 11,
   "title": "Running Vow on your computer",
-  "intro": "You need Node.js 20 or newer. Clone the repository, then run node cli.js program.vow. Vow compiles to JavaScript, so programs run fast, and the flags below check code, limit what it can touch, and make randomness repeatable.",
+  "intro": "You need Node.js 20 or newer. Install Vow with npm install -g github:JakeBurwick/vow, then run any program with vow program.vow. Vow compiles to JavaScript, so programs run fast, and the flags below check code, limit what it can touch, and make randomness repeatable.",
   "cliOnly": true,
   "commands": [
    [
-    "node cli.js hello.vow",
+    "npm install -g github:JakeBurwick/vow",
+    "install the vow command"
+   ],
+   [
+    "vow hello.vow",
     "run a program (compiled to JavaScript)"
    ],
    [
-    "node cli.js --check hello.vow",
+    "vow --check hello.vow",
     "type-check without running"
    ],
    [
-    "node cli.js --sandbox --allow fs=./data app.vow",
+    "vow --sandbox --allow fs=./data app.vow",
     "only let the program touch ./data, checked before it runs"
    ],
    [
-    "node cli.js --sandbox --allow net=api.example.com app.vow",
+    "vow --sandbox --allow net=api.example.com app.vow",
     "only let it call one host"
    ],
    [
-    "node cli.js --seed 7 game.vow",
+    "vow --seed 7 game.vow",
     "make random numbers repeatable"
    ],
    [
-    "node cli.js --interp hello.vow",
+    "vow --interp hello.vow",
     "use the interpreter instead of the compiler"
    ]
   ]

@@ -167,3 +167,7 @@ Failed attempts on the 4 hard held-out tasks, 3 runs each, across every version 
 | TypeScript | 7 | 3 |
 
 The JSON redesign more than halved template's failures. Of Vow's remaining 15, 8 are wrong outputs (spec slips such as the `[Bad]` section-name rule and `vip: false`, which TypeScript agents also hit), 7 are language errors. Vow is now about 2x TypeScript on hard unseen tasks, down from 3.4x, with equal hidden-bug correctness.
+
+## Other models (2026-10-09)
+
+`bench/model-loop.py` runs any chat model through the same write, judge, fix loop (5 tries) for Vow (guide + examples) and TypeScript. Llama 3.2 3B (local, Ollama) solved 0 of the held-out tasks in Vow and 0 in TypeScript, so models that small cannot do this kind of work in either language; it does not locate Vow's own floor. Gemini could not be measured (the free API key returned errors for every model). All other results in this file are Claude Haiku 4.5.

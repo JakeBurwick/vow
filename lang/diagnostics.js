@@ -8,12 +8,22 @@ export class VowError extends Error {
   }
 }
 
-export function offsetToLineCol(src, offset) {
+function offsetToLineCol(src, offset) {
   let line = 1, lineStart = 0;
   for (let i = 0; i < offset && i < src.length; i++) {
     if (src[i] === '\n') { line++; lineStart = i + 1; }
   }
   return { line, col: offset - lineStart + 1 };
+}
+
+// for "did you mean ...?" suggestions
+export function editDistance(a, b) {
+  const m = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 0; j <= b.length; j++) m[0][j] = j;
+  for (let i = 1; i <= a.length; i++)
+    for (let j = 1; j <= b.length; j++)
+      m[i][j] = Math.min(m[i - 1][j] + 1, m[i][j - 1] + 1, m[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return m[a.length][b.length];
 }
 
 // Multi-file programs (lang/modules.js): every module's text sits in one combined source
@@ -25,7 +35,7 @@ export function registerSources(src, files) {
   if (PROGRAMS.size > 50) PROGRAMS.delete(PROGRAMS.keys().next().value);
   PROGRAMS.set(src, files);
 }
-export function fileAt(src, offset) {
+function fileAt(src, offset) {
   const files = PROGRAMS.get(src);
   if (!files) return null;
   let f = files[0];

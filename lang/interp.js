@@ -38,8 +38,6 @@ class Env {
   declare(name, v) { this.vars.set(name, v); }
 }
 
-// JSON values are wrapped so a parsed object can never masquerade as a
-// Vow map, struct, or Result at runtime.
 // constant-time string equality via fixed-length digests (FNV-1a over UTF-16, 4 lanes):
 // the loop never exits early, so timing doesn't reveal how much of a guess matched
 function digest(str) {
@@ -56,6 +54,8 @@ function sameHash(a, b) {
   return diff === 0;
 }
 
+// JSON values are wrapped so a parsed object can never masquerade as a
+// Vow map, struct, or Result at runtime.
 export const isJson = (v) => v !== null && typeof v === 'object' && '__json' in v;
 const J = (raw) => ({ __json: raw });
 const jsonTypeOf = (raw) =>
@@ -139,7 +139,7 @@ export function deepEq(a, b) {
 // random() source. With a seed (CLI --seed N / VOW_SEED) it is mulberry32, so a run is
 // reproducible and both backends (which share this builtin table) see the same sequence.
 // 53 bits per number, like Math.random, so randomInt over a wide range stays uniform.
-export function makeRandom(seed) {
+function makeRandom(seed) {
   if (seed == null) return Math.random;
   let s = Number(seed) >>> 0;
   const next32 = () => {
@@ -185,7 +185,6 @@ function parseIsoDate(s) {
 
 export function createRun(src, ast, opts = {}) {
   const st = {
-    src,
     out: opts.out ?? (() => {}),
     steps: 0,
     maxSteps: opts.maxSteps ?? 1_000_000,
@@ -321,7 +320,7 @@ export function createRun(src, ast, opts = {}) {
   const builtins = {
     print: (args) => { st.out(args.map(a => display(a)).join(' ')); return UNIT; },
     str: ([v]) => display(v),
-    num: ([s], node) => {
+    num: ([s]) => {
       const t = s.trim();
       if (t === '' || isNaN(Number(t))) return err(`"${s}" is not a number`);
       return ok(Number(t));
@@ -358,9 +357,8 @@ export function createRun(src, ast, opts = {}) {
         if (!Number.isInteger(k) || k < 0 || k >= c.length) return err(`index ${display(k)} is out of range (the string has ${c.length} character${c.length === 1 ? '' : 's'})`);
         return ok(c[k]);
       }
-      const i = k;
-      if (!Number.isInteger(i) || i < 0 || i >= c.length) return err(`index ${display(i)} is out of range (the list has ${c.length} item${c.length === 1 ? '' : 's'})`);
-      return ok(c[i]);
+      if (!Number.isInteger(k) || k < 0 || k >= c.length) return err(`index ${display(k)} is out of range (the list has ${c.length} item${c.length === 1 ? '' : 's'})`);
+      return ok(c[k]);
     },
     keys: ([m]) => [...m.keys()],
     has: ([m, k]) => isJson(m) ? isJsonObject(m.__json) && Object.hasOwn(m.__json, k) : m.has(k),
@@ -368,9 +366,9 @@ export function createRun(src, ast, opts = {}) {
     split: ([s, sep]) => sep === '' ? [...s] : s.split(sep),
     abs: ([n]) => Math.abs(n),
     floor: ([n]) => Math.floor(n),
-    // half-up decimal rounding via exponent strings, so round(15.625, 2) is 15.63 (not 15.62 from float error)
     // text with exactly d decimals, rounded half-up like round(): fixed(212.3, 2) is "212.30"
     fixed: ([n, d]) => { const k = Math.max(0, Math.min(20, Math.floor(d))); return builtins.round([n, k]).toFixed(k); },
+    // half-up decimal rounding via exponent strings, so round(15.625, 2) is 15.63 (not 15.62 from float error)
     round: ([n, d = 0]) => {
       const k = Math.max(0, Math.floor(d));
       if (/e/i.test(String(n))) return Math.round(n * 10 ** k) / 10 ** k;
@@ -534,26 +532,21 @@ export function createRun(src, ast, opts = {}) {
 
   // ---------- execution ----------
 
+  // Fn and Struct never reach here: program() hoists top-level ones and the parser lifts
+  // nested fns (or turns capturing ones into a let + lambda).
   function* execStmt(s, env) {
-    if (s.t !== 'Fn') {
-      st.steps++;
-      if (st.steps > st.maxSteps) {
-        trap(s, 'RuntimeError', 'the program ran too long and was stopped',
-          `Over ${st.maxSteps.toLocaleString()} steps executed; this is almost always an infinite loop.`,
-          'check that your while condition can become false and that loop counters actually change.');
-      }
-      const frame = st.stack[st.stack.length - 1];
-      frame.line = s.pos.line;
-      frame.env = env;
-      if (st.stepYields) yield { line: s.pos.line };
+    st.steps++;
+    if (st.steps > st.maxSteps) {
+      trap(s, 'RuntimeError', 'the program ran too long and was stopped',
+        `Over ${st.maxSteps.toLocaleString()} steps executed; this is almost always an infinite loop.`,
+        'check that your while condition can become false and that loop counters actually change.');
     }
+    const frame = st.stack[st.stack.length - 1];
+    frame.line = s.pos.line;
+    frame.env = env;
+    if (st.stepYields) yield { line: s.pos.line };
 
     switch (s.t) {
-      case 'Fn':
-        st.globals.declare(s.name, { fn: s });
-        return NORMAL;
-      case 'Struct':
-        return NORMAL;
       case 'Let': {
         // a recursive closure (s.rec) needs nothing extra: the closure captures this env,
         // and its name is declared here before any call can look it up
@@ -837,7 +830,7 @@ export function createRun(src, ast, opts = {}) {
   }
 
   // Blame the fn that actually fills the stack, not whichever call happened to tip it over.
-  function depthTrap(callNode, name) {
+  function depthTrap(callNode) {
     const counts = new Map();
     for (const f of st.stack) counts.set(f.name, (counts.get(f.name) ?? 0) + 1);
     const [top] = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
@@ -848,7 +841,7 @@ export function createRun(src, ast, opts = {}) {
   }
 
   function* callLambda(closure, args, callNode) {
-    if (st.stack.length > st.maxDepth) depthTrap(callNode, '(lambda)');
+    if (st.stack.length > st.maxDepth) depthTrap(callNode);
     const inner = new Env(closure.env);
     closure.lambda.params.forEach((p, i) => inner.declare(p.name, args[i]));
     st.stack.push({ name: '(lambda)', env: inner, line: closure.lambda.pos.line, rootEnv: inner, file: closure.lambda.fileLabel });
@@ -865,7 +858,7 @@ export function createRun(src, ast, opts = {}) {
   }
 
   function* callFn(decl, args, callNode) {
-    if (st.stack.length > st.maxDepth) depthTrap(callNode, decl.name);
+    if (st.stack.length > st.maxDepth) depthTrap(callNode);
     const fnEnv = new Env(decl.mod && !decl.mod.isEntry ? st.modGlobals : st.globals);
     decl.params.forEach((p, i) => fnEnv.declare(p.name, args[i]));
 
@@ -924,5 +917,5 @@ export function createRun(src, ast, opts = {}) {
   }
 
   // builtins: exposed so the compiled backend (lang/runtime.js) reuses the exact same table
-  return { gen: program(), state: st, invoke: hostCtx.invoke, builtins };
+  return { gen: program(), state: st, builtins };
 }

@@ -1,6 +1,6 @@
 // Vow parser — recursive descent + Pratt expressions. No parser libraries.
 
-import { VowError } from './diagnostics.js';
+import { VowError, editDistance } from './diagnostics.js';
 import { lex } from './lexer.js';
 import { BUILTIN_NAMES } from './checker.js';
 
@@ -12,16 +12,7 @@ const BINARY_PREC = {
   '*': 6, '/': 6, '%': 6,
 };
 
-function editDistance(a, b) {
-  const m = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
-  for (let j = 0; j <= b.length; j++) m[0][j] = j;
-  for (let i = 1; i <= a.length; i++)
-    for (let j = 1; j <= b.length; j++)
-      m[i][j] = Math.min(m[i - 1][j] + 1, m[i][j - 1] + 1, m[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
-  return m[a.length][b.length];
-}
-
-// opts (all optional; a plain parse(src) is a single-file program, as before):
+// opts (all optional; a plain parse(src) is a single-file program):
 //   base       offset of this file in the combined source of a multi-file program
 //   onImport   ({ path, pathTok, alias, aliasTok }) => module info (lang/modules.js loads it)
 //   noImports  { title, detail, fix } for hosts without files (playground, MCP without a path)
@@ -178,7 +169,7 @@ export function parse(src, opts = {}) {
       const n = opts.noImports ?? {};
       fail(kw, n.title ?? 'imports work in the Vow CLI; this runs one file',
         n.detail ?? 'This host runs a single source text with no files around it, so there is nothing to import from.',
-        n.fix ?? 'run the program with the CLI, which loads imported files from disk: node cli.js main.vow (or paste the module\'s fns into this file).', 'ImportError');
+        n.fix ?? 'run the program with the CLI, which loads imported files from disk: vow main.vow (or paste the module\'s fns into this file).', 'ImportError');
     }
     const mod = opts.onImport({ path, pathTok, alias, aliasTok });
     for (const [other, a] of aliases) {
@@ -274,8 +265,7 @@ export function parse(src, opts = {}) {
     const usedIn = (body) => {
       const names = new Set();
       walk(body, (n) => {
-        if (n.t === 'Ident') names.add(n.name);
-        if (n.t === 'Call' && typeof n.callee === 'string') names.add(n.callee);
+        if (n.t === 'Ident') names.add(n.name); // a call's calleeNode is an Ident too
       });
       return names;
     };
@@ -629,7 +619,7 @@ export function parse(src, opts = {}) {
         next();
         const index = parseExpr();
         const close = expectPunct(']', 'close the index.');
-        e = { t: 'Index', target: e, index, pos: peekPos(e), start: e.start, end: close.end };
+        e = { t: 'Index', target: e, index, pos: e.pos, start: e.start, end: close.end };
         continue;
       }
       if (atPunct('?')) {
@@ -648,7 +638,6 @@ export function parse(src, opts = {}) {
     return e;
   }
 
-  const peekPos = (e) => e.pos;
 
   function parenIsLambda() {
     let q = p + 1; // just past '('
@@ -676,7 +665,7 @@ export function parse(src, opts = {}) {
       body = parseBlock('the lambda body');
     } else {
       const e = parseExpr();
-      body = { t: 'Block', stmts: [{ t: 'Return', value: e, pos: e.pos, start: e.start, end: e.end }], pos: e.pos, start: e.start, end: e.end, exprBody: true };
+      body = { t: 'Block', stmts: [{ t: 'Return', value: e, pos: e.pos, start: e.start, end: e.end }], pos: e.pos, start: e.start, end: e.end };
     }
     return { t: 'Lambda', params, body, pos: arrow, start: startTok.start, end: body.end };
   }
@@ -771,7 +760,7 @@ export function parse(src, opts = {}) {
           next();
           expectPunct(':', 'each map entry is "key": value.');
           const value = parseExpr();
-          entries.push({ key: key.value, keyTok: key, value });
+          entries.push({ key: key.value, value });
           if (atPunct(',')) { next(); skipNewlines(); if (atPunct('}')) break; continue; }
           skipNewlines();
           break;

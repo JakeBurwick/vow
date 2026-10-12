@@ -1,6 +1,6 @@
-// Runs one Vow program in isolation for the MCP server. Sandboxed: the default
-// interpreter builtins stub readFile/writeFile/httpGet/env as err Results, so a
-// program sent by an agent can't touch the disk, the network, or secrets.
+// Runs one Vow program in isolation for the MCP server. Sandboxed: readFile/writeFile/
+// httpGet/env are replaced below with err Results, so a program sent by an agent can't
+// touch the disk, the network, or secrets.
 import { parentPort, workerData } from 'node:worker_threads';
 import { check } from '../lang/checker.js';
 import { loadCode } from './server-load.js';
@@ -33,7 +33,7 @@ try {
   while (!r.done) r = gen.next();
   parentPort.postMessage({ ok: true, output: out.join('\n'), truncated: out.length >= MAX_OUT });
 } catch (e) {
-  if (e instanceof VowError) parentPort.postMessage({ ok: false, output: out.join('\n'), error: formatDiag(src, e.diag), diag: e.diag });
+  if (e instanceof VowError) parentPort.postMessage({ ok: false, output: out.join('\n'), error: formatDiag(src, e.diag) });
   else if (e instanceof RangeError) parentPort.postMessage({ ok: false, output: out.join('\n'), error: '✗ RuntimeError: ran out of stack space\n  Likely fix: turn the deepest recursion into a loop.' });
   else parentPort.postMessage({ ok: false, output: out.join('\n'), error: `internal error: ${e.message}` });
 }

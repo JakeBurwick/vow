@@ -1,7 +1,7 @@
 // Vow type checker — full inference, no annotations needed.
 // No nulls. Results must be handled. Errors read like repair instructions.
 
-import { VowError, nodeLoc } from './diagnostics.js';
+import { VowError, nodeLoc, editDistance } from './diagnostics.js';
 import { prove } from './prove.js';
 
 // ---------- types ----------
@@ -9,8 +9,8 @@ import { prove } from './prove.js';
 let nextVarId = 0;
 const tvar = () => ({ k: 'var', id: nextVarId++, ref: null });
 const NUM = { k: 'num' }, STR = { k: 'str' }, BOOL = { k: 'bool' }, UNIT = { k: 'unit' };
-// json is opaque: a parsed JSON tree navigated with get()/jsonNum()/etc,
-// every step returning a Result — so untyped data never bypasses the checker.
+// json is opaque: a parsed JSON tree. Reads that can fail (get, jsonNum, jsonStr, jsonBool)
+// return a Result; field/at/jsonList/jsonKeys give json null or [] instead.
 const JSONT = { k: 'json' };
 const RESPONSE = { k: 'response' }; // an HTTP response built by html/text/respond, returned from a serve handler
 const listT = (el) => ({ k: 'list', el });
@@ -28,7 +28,7 @@ function prune(t) {
 // generalization (instantiate copies the constraint):
 //   { k: 'ord' }               num or str (sort, comparisons of unknowns)
 //   { k: 'len' }               list or str
-//   { k: 'index', key, el }    list (key num), map (key str), or json (el json):
+//   { k: 'index', key, el }    list (key num), str (key num), map (key str), or json (el json):
 //                              t[key] / get(t, key) yields el
 const cvar = (cons) => { const v = tvar(); v.cons = cons; return v; };
 
@@ -56,12 +56,10 @@ function satisfies(cons, t) {
 function mergeCons(a, b) {
   if (!a) return b;
   if (!b) return a;
-  if (a.k === b.k) {
-    if (a.k !== 'index') return a;
-    if (!(unify(a.key, b.key) && unify(a.el, b.el))) return null;
-    return { k: 'index', key: a.key, el: a.el, seq: a.seq || b.seq };
-  }
-  return null; // ord vs len vs index: no single type is promised by both... except str
+  // same kind here: unify() resolves mixed kinds (ord/len/index) before calling this
+  if (a.k !== 'index') return a;
+  if (!(unify(a.key, b.key) && unify(a.el, b.el))) return null;
+  return { k: 'index', key: a.key, el: a.el, seq: a.seq || b.seq };
 }
 
 function occurs(v, t) {
@@ -161,13 +159,13 @@ function instantiate(scheme) {
       case 'map': return mapT(go(t.val));
       case 'result': return resultT(go(t.ok), go(t.err));
       case 'fn': return fnT(t.params.map(go), go(t.ret));
-      default: return t; // num/str/bool/unit/struct
+      default: return t; // num/str/bool/unit/json/response/struct
     }
   };
   return go(scheme.type);
 }
 
-export function typeName(t, names = new Map()) {
+function typeName(t, names = new Map()) {
   t = prune(t);
   switch (t.k) {
     case 'var': {
@@ -207,15 +205,6 @@ class Scope {
   }
 }
 
-function editDistance(a, b) {
-  const m = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
-  for (let j = 0; j <= b.length; j++) m[0][j] = j;
-  for (let i = 1; i <= a.length; i++)
-    for (let j = 1; j <= b.length; j++)
-      m[i][j] = Math.min(m[i - 1][j] + 1, m[i][j - 1] + 1, m[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
-  return m[a.length][b.length];
-}
-
 export const BUILTIN_NAMES = ['print', 'str', 'num', 'len', 'range', 'push', 'pop', 'get', 'keys', 'has', 'join', 'split', 'abs', 'floor', 'round', 'fixed', 'min', 'max', 'ok', 'err',
   'sort', 'sortBy', 'reverse', 'contains', 'slice', 'trim', 'upper', 'lower', 'sum',
   'replace', 'startsWith', 'endsWith', 'indexOf', 'repeat', 'padLeft', 'padRight', 'lines',
@@ -227,7 +216,7 @@ export const BUILTIN_NAMES = ['print', 'str', 'num', 'len', 'range', 'push', 'po
   'dateParts', 'isoDate', 'parseDate', 'daysBetween'];
 
 // fields of the struct dateParts(ms) returns, in display order
-export const DATE_PARTS_FIELDS = ['year', 'month', 'day', 'hour', 'minute', 'second', 'weekday'];
+const DATE_PARTS_FIELDS = ['year', 'month', 'day', 'hour', 'minute', 'second', 'weekday'];
 
 // ---------- checker ----------
 
@@ -299,7 +288,7 @@ export function check(src, ast) {
       `${currentMod.label} is a module: it sees only its own fns and structs, the modules it imports, and builtins. That keeps a module working the same whoever imports it.`,
       `move fn ${name} into ${currentMod.label} (or into a module both files import), or pass it in as a parameter.`);
   }
-  const fnInfo = new Map(); // Fn node -> {paramTypes, retType, firstReturnLine}
+  const fnInfo = new Map(); // Fn node -> {paramTypes, retType, firstReturnLine, tryLine}
   let currentFn = null;
   let loopDepth = 0;
   let fieldPending = [];
@@ -333,8 +322,7 @@ export function check(src, ast) {
 
   function diag(node, title, detail, fix, kind = 'TypeError') {
     // A Result handed to something that wants the plain value: the generic
-    // "pass a list" fix doesn't help, unwrapping does. (bench: json-flatten,
-    // sort(jsonKeys(j)) — jsonKeys returns a Result.)
+    // "pass a list" fix doesn't help, unwrapping does.
     if (kind === 'TypeError' && /takes an? .*, but this is a Result</.test(title)) {
       const s = snippet(node);
       fix = `this value is a Result; unwrap it first. Inside a fn: ${s}? . Anywhere: match ${s} { ok(v) => ...  err(e) => ... }`;
@@ -452,7 +440,7 @@ export function check(src, ast) {
         return;
       }
       for (const k in node) {
-        if (k === 'pos' || k === 'tok' || k === 'nameTok' || k === 'start' || k === 'end' || k === 'mod' || k === 'calleeNode') continue;
+        if (k === 'pos' || k === 'tok' || k === 'nameTok' || k === 'start' || k === 'end' || k === 'calleeNode') continue;
         const v = node[k];
         if (v != null && typeof v === 'object') collect(v, required, inMod);
       }
@@ -705,7 +693,7 @@ export function check(src, ast) {
     }
 
     const prevFn = currentFn;
-    currentFn = { name: dname(s), info, scope };
+    currentFn = { name: dname(s), info };
     implicitReturn(s.body);
     checkStmt(s.body, new Scope(scope));
     currentFn = prevFn;
@@ -928,7 +916,7 @@ export function check(src, ast) {
 
     const info = { paramTypes, retType, firstReturnLine: null, tryLine: null };
     const prevFn = currentFn, prevLoop = loopDepth;
-    currentFn = { name: '(lambda)', info, scope: inner };
+    currentFn = { name: '(lambda)', info };
     loopDepth = 0; // break/continue can't escape a lambda into an outer loop
     implicitReturn(e.body);
     checkStmt(e.body, inner);
@@ -1124,7 +1112,7 @@ export function check(src, ast) {
     if (pt.k === 'var') {
       // list, map, str, or json, whichever the caller passes (the key type narrows it; checked per call)
       const el = tvar();
-      if (!unify(targetT, cvar({ k: 'index', key: indexT, el }))) diag(e.target, `only lists, maps, and json can be indexed, but this is a ${tn(targetT)}`, '', 'index a list with a number or a map with a string.');
+      if (!unify(targetT, cvar({ k: 'index', key: indexT, el }))) diag(e.target, `only strs, lists, maps, and json can be indexed, but this is a ${tn(targetT)}`, '', 'index a list with a number or a map with a string.');
       return el;
     }
     if (pt.k === 'list') {
@@ -1159,7 +1147,7 @@ export function check(src, ast) {
       return STR;
     }
     diag(e.target, `can't index into a ${tn(targetT)}`,
-      'Only lists (by num) and maps (by str key) can be indexed.', 'check the type of this value.');
+      'Only strs and lists (by a num position), maps (by a str key) and json values can be indexed.', 'check the type of this value.');
   }
 
   function inferCall(e, scope) {

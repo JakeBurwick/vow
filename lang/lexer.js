@@ -26,7 +26,7 @@ export function lex(src) {
   // Open brackets, innermost last. Newlines are ignored inside ( and [ but count again
   // inside a { block, even one nested in parens: sortBy(xs, x => {\n ... \n}) works.
   const nest = [];
-  const interp = []; // active string interpolations: { braces, strLine, strCol, braceLine, braceCol }
+  const interp = []; // active string interpolations: { braces, strLine, braceLine, braceCol }
 
   const err = (title, detail, fix, len = 1) => {
     throw new VowError({ kind: 'SyntaxError', title, line, col, length: len, detail, fix });
@@ -78,7 +78,7 @@ export function lex(src) {
       if (src[i] === '$' && src[i + 1] === '{') {
         const braceLine = line, braceCol = col;
         i += 2; col += 2; // consume the ${
-        interp.push({ braces: 0, strLine: startLine, strCol: startCol, braceLine, braceCol });
+        interp.push({ braces: 0, strLine: startLine, braceLine, braceCol });
         push(resuming ? 'istrMid' : 'istrStart', out, startLine, startCol, start, { bare });
         return; // the main loop lexes the expression until the matching }
       }
@@ -117,7 +117,7 @@ export function lex(src) {
     const startLine = line, startCol = col, start = i;
 
     if (/[0-9]/.test(c)) {
-      let s = i;
+      const s = i;
       while (i < src.length && /[0-9]/.test(src[i])) { i++; col++; }
       if (src[i] === '.' && /[0-9]/.test(src[i + 1])) {
         i++; col++;
@@ -128,7 +128,7 @@ export function lex(src) {
     }
 
     if (/[A-Za-z_]/.test(c)) {
-      let s = i;
+      const s = i;
       while (i < src.length && /[A-Za-z0-9_]/.test(src[i])) { i++; col++; }
       const word = src.slice(s, i);
       push(KEYWORDS.has(word) ? 'kw' : 'ident', word, startLine, startCol, start);

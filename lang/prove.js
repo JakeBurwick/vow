@@ -1,4 +1,4 @@
-// Vow static contract prover (v0.7) — runs after type checking.
+// Vow static contract prover — runs after type checking.
 // Conservative abstract interpretation over constants and numeric intervals.
 // It only acts on certainties: an expects no call can ever satisfy, an
 // ensures a return can never keep, a division that is always by zero.
@@ -157,6 +157,18 @@ export function prove(src, ast) {
           if (arm.binder) armEnv.set(arm.binder, null);
           if (arm.body.t === 'Block') walkStmt(arm.body, armEnv, { fn: null });
           else evalExpr(arm.body, armEnv);
+        }
+        return null;
+      }
+      case 'IfExpr': {
+        // an if/else used as a value: check each branch like a match arm
+        let st = e.stmt;
+        while (st) {
+          evalExpr(st.cond, env);
+          walkStmt(st.then, new Map(env), { fn: null });
+          if (st.alt && st.alt.t === 'If') { st = st.alt; continue; }
+          if (st.alt) walkStmt(st.alt, new Map(env), { fn: null });
+          break;
         }
         return null;
       }
@@ -370,7 +382,7 @@ export function prove(src, ast) {
             if (r === false) report(s.value ?? s, `fn ${ctx.fn.name} provably breaks its own ensures`,
               `fn ${ctx.fn.name} declares:  ensures ${snippet(cond)}\nbut this return makes result ${v ? describe(v) : 'nothing (unit)'}, so the promise is false before the program even runs. The bug is INSIDE fn ${ctx.fn.name}.`,
               'return a value that satisfies the ensures clause, or fix the clause if the promise itself is wrong.');
-            if (r === true) proved++;
+            if (r === true && !silent) proved++;
           }
         }
         return;

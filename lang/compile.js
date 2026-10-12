@@ -12,7 +12,7 @@
 
 import { BUILTIN_NAMES } from './checker.js';
 
-export class Unsupported extends Error {}
+class Unsupported extends Error {}
 
 // builtins the host (CLI) may implement asynchronously; calls to them are awaited
 const ASYNC_BUILTINS = new Set(['readFile', 'writeFile', 'httpGet', 'serve', 'env']);
@@ -22,7 +22,7 @@ const TRAP_BUILTINS = new Set(['range', 'repeat', 'redirect', 'toJson', 'matches
 // builtins that call back into Vow code: compiled to prelude helpers ($map / $mapA, ...),
 // in the same item order and with the same short-circuiting as lang/interp.js
 const HIGHER_ORDER = { map: 2, filter: 2, any: 2, all: 2, count: 2, fold: 3 };
-const SKIP_KEYS = new Set(['pos', 'tok', 'nameTok', 'tagTok', 'binderTok', 'keyTok', 'calleeNode', 'mod']);
+const SKIP_KEYS = new Set(['pos', 'tok', 'nameTok', 'tagTok', 'binderTok', 'calleeNode', 'mod']);
 
 function forEachChild(node, f) {
   for (const k in node) {
@@ -749,7 +749,7 @@ export function compile(src, ast, opts = {}) {
     globalLets.length ? `let ${globalLets.join(', ')};` : '',
     ...fnCode,
     `async function $main() {\n${mainOut.join('\n')}\n}`,
-    'return { main: $main, ctx: $ctx };',
+    'return { main: $main };',
   ].join('\n');
-  return { code, nodes, allAsync, asyncFns };
+  return { code, nodes };
 }

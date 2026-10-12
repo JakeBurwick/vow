@@ -9,9 +9,15 @@
     "node": ">=20"
   },
   "bin": {
-    "vow": "cli.js"
+    "vow": "cli.js",
+    "vow-mcp": "mcp/server.js"
   },
   "scripts": {
     "test": "node test.js && node compile-test.js"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JakeBurwick/vow.git"
+  },
+  "homepage": "https://vow-lang.vercel.app"
 }
