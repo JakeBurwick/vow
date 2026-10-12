@@ -1,0 +1,310 @@
+struct Context {
+  current,
+  outer
+}
+
+struct ParseResult {
+  body,
+  pos
+}
+
+fn getValue(ctx, name) {
+  if jsonType(ctx.current) == "object" {
+    let v = field(ctx.current, name)
+    if not isNull(v) {
+      return ok(v)
+    }
+  }
+  if jsonType(ctx.outer) == "object" {
+    let v = field(ctx.outer, name)
+    if not isNull(v) {
+      return ok(v)
+    }
+  }
+  return err("missing")
+}
+
+fn isTruthy(v) {
+  if isNull(v) { return false }
+  match jsonType(v) {
+    "bool" => {
+      match jsonBool(v) {
+        ok(b) => return b
+        err(e) => return false
+      }
+    }
+    "number" => {
+      match jsonNum(v) {
+        ok(n) => return n != 0
+        err(e) => return false
+      }
+    }
+    "string" => {
+      match jsonStr(v) {
+        ok(s) => return len(s) > 0
+        err(e) => return false
+      }
+    }
+    "array" => return len(jsonList(v)) > 0
+    "object" => return len(jsonKeys(v)) > 0
+    _ => return false
+  }
+}
+
+fn formatValue(v) {
+  match jsonType(v) {
+    "string" => {
+      match jsonStr(v) {
+        ok(s) => return ok(s)
+        err(e) => return err("error: not printable")
+      }
+    }
+    "number" => {
+      match jsonNum(v) {
+        ok(n) => return ok(str(n))
+        err(e) => return err("error: not printable")
+      }
+    }
+    "bool" => {
+      match jsonBool(v) {
+        ok(b) => return ok(if b { "true" } else { "false" })
+        err(e) => return err("error: not printable")
+      }
+    }
+    "null" => return ok("")
+    "array" => return err("error: not printable")
+    "object" => return err("error: not printable")
+    _ => return err("error: not printable")
+  }
+}
+
+fn trimWs(s) {
+  let result = s
+  while len(result) > 0 and (result[0] == " " or result[0] == "\t") {
+    result = slice(result, 1, len(result))
+  }
+  while len(result) > 0 and (result[len(result) - 1] == " " or result[len(result) - 1] == "\t") {
+    result = slice(result, 0, len(result) - 1)
+  }
+  return result
+}
+
+fn findNextTag(s, pos) {
+  while pos < len(s) - 1 {
+    if s[pos] == "{" and s[pos + 1] == "{" {
+      return ok(pos)
+    }
+    pos = pos + 1
+  }
+  return err("none")
+}
+
+fn parseTemplate(template, ctx) {
+  let output = ""
+  let pos = 0
+
+  while pos < len(template) {
+    match findNextTag(template, pos) {
+      ok(tagPos) => {
+        output = output + slice(template, pos, tagPos)
+        let afterOpen = tagPos + 2
+        match findEndTag(template, afterOpen) {
+          ok(closePos) => {
+            let tagContent = slice(template, afterOpen, closePos)
+            let tagTrimmed = trimWs(tagContent)
+
+            if tagTrimmed == "" {
+              output = output + ""
+              pos = closePos + 2
+            } else if tagTrimmed == "." {
+              match formatCurrentElement(ctx) {
+                ok(val) => {
+                  output = output + val
+                  pos = closePos + 2
+                }
+                err(e) => return err(e)
+              }
+            } else if startsWith(tagTrimmed, "#if ") {
+              let varName = trimWs(slice(tagTrimmed, 4, len(tagTrimmed)))
+              match findMatchingEnd(template, closePos + 2, "if") {
+                ok(info) => {
+                  let bodyText = info.body
+                  let afterEnd = info.pos
+                  match getValue(ctx, varName) {
+                    ok(v) => {
+                      if isTruthy(v) {
+                        match parseTemplate(bodyText, ctx) {
+                          ok(res) => {
+                            output = output + res
+                            pos = afterEnd
+                          }
+                          err(e) => return err(e)
+                        }
+                      } else {
+                        pos = afterEnd
+                      }
+                    }
+                    err(e) => {
+                      pos = afterEnd
+                    }
+                  }
+                }
+                err(e) => return err(e)
+              }
+            } else if startsWith(tagTrimmed, "#each ") {
+              let varName = trimWs(slice(tagTrimmed, 6, len(tagTrimmed)))
+              match findMatchingEnd(template, closePos + 2, "each") {
+                ok(info) => {
+                  let bodyText = info.body
+                  let afterEnd = info.pos
+                  match getValue(ctx, varName) {
+                    ok(v) => {
+                      if jsonType(v) == "array" {
+                        let items = jsonList(v)
+                        for item in items {
+                          let itemCtx = Context { current: item, outer: ctx.outer }
+                          match parseTemplate(bodyText, itemCtx) {
+                            ok(res) => {
+                              output = output + res
+                            }
+                            err(e) => return err(e)
+                          }
+                        }
+                      } else {
+                        return err("error: not a list: " + varName)
+                      }
+                      pos = afterEnd
+                    }
+                    err(e) => {
+                      return err("error: not a list: " + varName)
+                    }
+                  }
+                }
+                err(e) => return err(e)
+              }
+            } else if startsWith(tagTrimmed, "/if") {
+              return err("error: unexpected /if")
+            } else if startsWith(tagTrimmed, "/each") {
+              return err("error: unexpected /each")
+            } else {
+              match getValue(ctx, tagTrimmed) {
+                ok(v) => {
+                  match formatValue(v) {
+                    ok(s) => {
+                      output = output + s
+                      pos = closePos + 2
+                    }
+                    err(e) => return err(e)
+                  }
+                }
+                err(e) => {
+                  pos = closePos + 2
+                }
+              }
+            }
+          }
+          err(e) => return err("error: malformed template")
+        }
+      }
+      err(e) => {
+        output = output + slice(template, pos, len(template))
+        pos = len(template)
+      }
+    }
+  }
+
+  return ok(output)
+}
+
+fn formatCurrentElement(ctx) {
+  match formatValue(ctx.current) {
+    ok(s) => return ok(s)
+    err(e) => return err(e)
+  }
+}
+
+fn findEndTag(s, pos) {
+  while pos < len(s) - 1 {
+    if s[pos] == "}" and s[pos + 1] == "}" {
+      return ok(pos)
+    }
+    pos = pos + 1
+  }
+  return err("unclosed tag")
+}
+
+fn findMatchingEnd(template, startPos, blockType) {
+  let pos = startPos
+  let body = ""
+
+  while pos < len(template) {
+    match findNextTag(template, pos) {
+      ok(tagPos) => {
+        body = body + slice(template, pos, tagPos)
+        let afterOpen = tagPos + 2
+        match findEndTag(template, afterOpen) {
+          ok(closePos) => {
+            let tagContent = slice(template, afterOpen, closePos)
+            let tagTrimmed = trimWs(tagContent)
+
+            if tagTrimmed == "/if" and blockType == "if" {
+              return ok(ParseResult { body: body, pos: closePos + 2 })
+            } else if tagTrimmed == "/each" and blockType == "each" {
+              return ok(ParseResult { body: body, pos: closePos + 2 })
+            } else {
+              body = body + "{{" + tagContent + "}}"
+              pos = closePos + 2
+            }
+          }
+          err(e) => return err("error: unclosed " + blockType)
+        }
+      }
+      err(e) => {
+        return err("error: unclosed " + blockType)
+      }
+    }
+  }
+
+  return err("error: unclosed " + blockType)
+}
+
+fn main() {
+  let args_list = args()
+
+  if len(args_list) < 2 {
+    return err("not enough args")
+  }
+
+  let template = args_list[0]
+  let dataStr = args_list[1]
+
+  match parseJson(dataStr) {
+    ok(data) => {
+      if jsonType(data) != "object" {
+        print("error: bad data")
+        return ok(true)
+      }
+
+      let ctx = Context { current: data, outer: data }
+      match parseTemplate(template, ctx) {
+        ok(result) => {
+          print(result)
+          return ok(true)
+        }
+        err(e) => {
+          print(e)
+          return ok(true)
+        }
+      }
+    }
+    err(e) => {
+      print("error: bad data")
+      return ok(true)
+    }
+  }
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

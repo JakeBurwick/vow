@@ -1,0 +1,93 @@
+fn parseIni(content) {
+  let lines_list = lines(content)
+  let config = {}
+  let currentSection = ""
+  let lineNum = 0
+
+  for line in lines_list {
+    lineNum = lineNum + 1
+    let trimmedLine = trim(line)
+
+    // Skip blank lines and comments
+    if len(trimmedLine) == 0 or startsWith(trimmedLine, ";") or startsWith(trimmedLine, "#") {
+      continue
+    }
+
+    // Check for section header
+    if startsWith(trimmedLine, "[") and endsWith(trimmedLine, "]") {
+      let sectionName = trim(slice(trimmedLine, 1, len(trimmedLine) - 1))
+      currentSection = sectionName
+      if not has(config, currentSection) {
+        config[currentSection] = {}
+      }
+      continue
+    }
+
+    // Check for key = value
+    match indexOf(trimmedLine, "=") {
+      ok(eqPos) => {
+        if len(currentSection) == 0 {
+          return err("error line " + str(lineNum) + ": key outside section")
+        }
+
+        let keyPart = trim(slice(trimmedLine, 0, eqPos))
+        let valuePart = trim(slice(trimmedLine, eqPos + 1, len(trimmedLine)))
+
+        // Validate key (lowercase letters, digits, underscores)
+        let validKey = true
+        for c in split(keyPart, "") {
+          if not ((c >= "a" and c <= "z") or (c >= "0" and c <= "9") or c == "_") {
+            validKey = false
+            break
+          }
+        }
+
+        if not validKey {
+          return err("error line " + str(lineNum) + ": bad line")
+        }
+
+        config[currentSection][keyPart] = valuePart
+      }
+      err(_) => {
+        return err("error line " + str(lineNum) + ": bad line")
+      }
+    }
+  }
+
+  return ok(config)
+}
+
+let args_list = args()
+if len(args_list) < 1 {
+  return
+}
+
+let iniContent = args_list[0]
+
+match parseIni(iniContent) {
+  ok(config) => {
+    for i in range(1, len(args_list)) {
+      let query = args_list[i]
+
+      // Parse query as "section.key"
+      match indexOf(query, ".") {
+        ok(dotPos) => {
+          let section = slice(query, 0, dotPos)
+          let key = slice(query, dotPos + 1, len(query))
+
+          if has(config, section) and has(config[section], key) {
+            print(query + " = " + config[section][key])
+          } else {
+            print(query + " missing")
+          }
+        }
+        err(_) => {
+          print(query + " missing")
+        }
+      }
+    }
+  }
+  err(e) => {
+    print(e)
+  }
+}

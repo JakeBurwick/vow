@@ -1,0 +1,276 @@
+struct Token {
+  type,
+  value
+}
+
+struct Parser {
+  tokens,
+  pos,
+  vars
+}
+
+fn main() {
+  let input = args()[0]
+  let program_lines = lines(input)
+
+  let vars = {}
+  let line_num = 0
+
+  for line in program_lines {
+    line_num = line_num + 1
+
+    // Skip blank lines
+    if len(trim(line)) == 0 {
+      continue
+    }
+
+    // Parse "name = expr"
+    match parseAssignment(line, vars, line_num) {
+      ok(result_vars) => {
+        vars = result_vars
+      }
+      err(e) => {
+        print(e)
+        return ok(true)
+      }
+    }
+  }
+
+  // Print variables sorted by name
+  let sorted_keys = sort(keys(vars))
+  for key in sorted_keys {
+    let val = vars[key]
+    print("${key} = ${formatNum(val)}")
+  }
+
+  return ok(true)
+}
+
+fn parseAssignment(line, vars, line_num) {
+  let eq_pos = indexOf(line, "=")
+  match eq_pos {
+    ok(pos) => {
+      let name_part = trim(slice(line, 0, pos))
+      let expr_part = trim(slice(line, pos + 1, len(line)))
+
+      // Validate name
+      if not isValidName(name_part) {
+        return err("error line ${line_num}: syntax")
+      }
+
+      // Tokenize and parse expression
+      match tokenizeExpr(expr_part) {
+        ok(tokens) => {
+          let p = Parser { tokens: tokens, pos: 0, vars: vars }
+          match parseExpr(p) {
+            ok(val) => {
+              // Check we consumed all tokens
+              if p.pos != len(p.tokens) {
+                return err("error line ${line_num}: syntax")
+              }
+              p.vars[name_part] = val
+              return ok(p.vars)
+            }
+            err(e) => {
+              return err("error line ${line_num}: ${e}")
+            }
+          }
+        }
+        err(e) => {
+          return err("error line ${line_num}: ${e}")
+        }
+      }
+    }
+    err(_) => {
+      return err("error line ${line_num}: syntax")
+    }
+  }
+}
+
+fn isValidName(s) {
+  if len(s) == 0 {
+    return false
+  }
+  // First char: letter or underscore
+  let first = s[0]
+  if not ((first >= "a" and first <= "z") or (first >= "A" and first <= "Z") or first == "_") {
+    return false
+  }
+  // Rest: letters, digits, underscores
+  for i in range(1, len(s)) {
+    let c = s[i]
+    let is_letter = (c >= "a" and c <= "z") or (c >= "A" and c <= "Z")
+    let is_digit = c >= "0" and c <= "9"
+    if not (is_letter or is_digit or c == "_") {
+      return false
+    }
+  }
+  return true
+}
+
+fn tokenizeExpr(s) {
+  let tokens = []
+  let i = 0
+  while i < len(s) {
+    let c = s[i]
+    if c == " " {
+      i = i + 1
+    } else if c == "(" {
+      push(tokens, Token { type: "lparen", value: "(" })
+      i = i + 1
+    } else if c == ")" {
+      push(tokens, Token { type: "rparen", value: ")" })
+      i = i + 1
+    } else if c == "+" {
+      push(tokens, Token { type: "op", value: "+" })
+      i = i + 1
+    } else if c == "-" {
+      push(tokens, Token { type: "op", value: "-" })
+      i = i + 1
+    } else if c == "*" {
+      push(tokens, Token { type: "op", value: "*" })
+      i = i + 1
+    } else if c == "/" {
+      push(tokens, Token { type: "op", value: "/" })
+      i = i + 1
+    } else if c >= "0" and c <= "9" {
+      let num_str = ""
+      while i < len(s) and ((s[i] >= "0" and s[i] <= "9") or s[i] == ".") {
+        num_str = num_str + s[i]
+        i = i + 1
+      }
+      push(tokens, Token { type: "num", value: num_str })
+    } else if (c >= "a" and c <= "z") or (c >= "A" and c <= "Z") or c == "_" {
+      let ident = ""
+      while i < len(s) and ((s[i] >= "a" and s[i] <= "z") or (s[i] >= "A" and s[i] <= "Z") or (s[i] >= "0" and s[i] <= "9") or s[i] == "_") {
+        ident = ident + s[i]
+        i = i + 1
+      }
+      push(tokens, Token { type: "var", value: ident })
+    } else {
+      return err("syntax")
+    }
+  }
+  return ok(tokens)
+}
+
+fn peek(p) {
+  if p.pos >= len(p.tokens) {
+    return Token { type: "eof", value: "" }
+  }
+  return p.tokens[p.pos]
+}
+
+fn advance(p) {
+  p.pos = p.pos + 1
+}
+
+fn parseExpr(p) {
+  let left = parseTerm(p)?
+  while true {
+    let tok = peek(p)
+    if tok.type == "op" and (tok.value == "+" or tok.value == "-") {
+      let op = tok.value
+      advance(p)
+      let right = parseTerm(p)?
+      if op == "+" {
+        left = left + right
+      } else {
+        left = left - right
+      }
+    } else {
+      break
+    }
+  }
+  return ok(left)
+}
+
+fn parseTerm(p) {
+  let left = parseFactor(p)?
+  while true {
+    let tok = peek(p)
+    if tok.type == "op" and (tok.value == "*" or tok.value == "/") {
+      let op = tok.value
+      advance(p)
+      let right = parseFactor(p)?
+      if op == "*" {
+        left = left * right
+      } else {
+        if right == 0 {
+          return err("division by zero")
+        }
+        left = left / right
+      }
+    } else {
+      break
+    }
+  }
+  return ok(left)
+}
+
+fn parseFactor(p) {
+  let tok = peek(p)
+  if tok.type == "op" and tok.value == "-" {
+    // Unary minus
+    advance(p)
+    let val = parseFactor(p)?
+    return ok(0 - val)
+  } else if tok.type == "op" and tok.value == "+" {
+    // Unary plus
+    advance(p)
+    return parseFactor(p)
+  } else if tok.type == "num" {
+    advance(p)
+    match num(tok.value) {
+      ok(n) => {
+        return ok(n)
+      }
+      err(e) => {
+        return err("syntax")
+      }
+    }
+  } else if tok.type == "var" {
+    let var_name = tok.value
+    advance(p)
+    if has(p.vars, var_name) {
+      return ok(p.vars[var_name])
+    } else {
+      return err("unknown variable ${var_name}")
+    }
+  } else if tok.type == "lparen" {
+    advance(p)
+    let val = parseExpr(p)?
+    let close = peek(p)
+    if close.type != "rparen" {
+      return err("syntax")
+    }
+    advance(p)
+    return ok(val)
+  } else {
+    return err("syntax")
+  }
+}
+
+fn formatNum(n) {
+  // Check if it's a whole number
+  if n == floor(n) {
+    return str(int(n))
+  } else {
+    // Format with 10 significant digits, no trailing zeros
+    let s = sig(n, 10)
+    return str(s)
+  }
+}
+
+fn int(n) {
+  if n >= 0 {
+    return floor(n)
+  } else {
+    return ceil(n)
+  }
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

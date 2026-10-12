@@ -1,0 +1,190 @@
+fn tokenize(s) {
+  let tokens = []
+  let chars = split(s, "\n")
+  let i = 0
+  while i < len(chars) {
+    let line = chars[i]
+    if line == "" {
+      i = i + 1
+      continue
+    }
+    let parts = split(line, "=")
+    if len(parts) != 2 {
+      return err("syntax")
+    }
+    let name = parts[0]
+    let expr = parts[1]
+    if len(name) == 0 or name[0] == "_" or name[0] >= "9" {
+      return err("name")
+    }
+    if len(expr) == 0 {
+      return err("empty expression")
+    }
+    let exprTok = tokenize(expr)
+    if exprTok.type != "num" {
+      return err("expression")
+    }
+    let exprValue = num(exprTok.value)!
+    push(tokens, Token { name, exprValue })
+    i = i + 1
+  }
+  return ok(tokens)
+}
+
+struct Parser {
+  tokens,
+  pos
+}
+
+fn parseExpr(p) {
+  let left = parseTerm(p)?
+  while true {
+    let tok = peek(p)
+    if tok.type == "op" and (tok.value == "+" or tok.value == "-") {
+      let op = tok.value
+      advance(p)
+      let right = parseTerm(p)?
+      if op == "+" {
+        left = left + right
+      } else {
+        left = left - right
+      }
+    } else {
+      break
+    }
+  }
+  return ok(left)
+}
+
+fn parseTerm(p) {
+  let left = parseFactor(p)?
+  while true {
+    let tok = peek(p)
+    if tok.type == "op" and (tok.value == "*" or tok.value == "/") {
+      let op = tok.value
+      advance(p)
+      let right = parseFactor(p)?
+      if op == "*" {
+        left = left * right
+      } else {
+        if right == 0 {
+          return err("division by zero")
+        }
+        left = left / right
+      }
+    } else {
+      break
+    }
+  }
+  return ok(left)
+}
+
+fn parseFactor(p) {
+  let tok = peek(p)
+  if tok.type == "num" {
+    advance(p)
+    let val = num(tok.value)!
+    return ok(val)
+  } else if tok.type == "lparen" {
+    advance(p)
+    let val = parseExpr(p)?
+    let close = peek(p)
+    if close.type != "rparen" {
+      return err("syntax")
+    }
+    advance(p)
+    return ok(val)
+  } else if tok.type == "minus" {
+    advance(p)
+    return ok(-num(peek(p).value)!)
+  } else if tok.type == "id" {
+    advance(p)
+    let val = lookupValue(peek(p).value, values)
+    if val == null {
+      return err("unknown variable")
+    }
+    return ok(val)
+  } else if tok.type == "id" {
+    advance(p)
+    let val = lookupValue(peek(p).value, values)
+    if val == null {
+      return err("unknown variable")
+    }
+    return ok(val)
+  } else if tok.type == "not" {
+    advance(p)
+    return ok(not num(peek(p).value)!)
+  } else if tok.type == "id" {
+    advance(p)
+    let val = lookupValue(peek(p).value, values)
+    if val == null {
+      return err("unknown variable")
+    }
+    return ok(val)
+  } else {
+    return err("unknown token")
+  }
+}
+
+fn lookupValue(name, values) {
+  if has(values, name) {
+    return values[name]
+  } else {
+    return err("unknown variable")
+  }
+}
+
+fn not(x) {
+  return x != 0
+}
+
+fn main() uses env {
+  let args = args()
+  if len(args) == 0 {
+    print("{}")
+    return ok(true)
+  }
+
+  let input = args[0]
+
+  if input == "" {
+    print("{}")
+    return ok(true)
+  }
+
+  let tokens_list = split(input, "\n")
+  let json_parts = []
+
+  for token in tokens_list {
+    let parts = split(token, "=")
+    if len(parts) != 2 {
+      print("syntax")
+      return
+    }
+
+    let name = parts[0]
+    let expr = parts[1]
+
+    match parseExpr({ tokens: tokens_list, pos: 0 }) {
+      ok(exprValue) => {
+        push(json_parts, "{\"name\":\"${name}\",\"value\":${exprValue}}")
+      }
+      err(e) => {
+        print("syntax")
+        return
+      }
+    }
+  }
+
+  print("{" + join(json_parts, ",") + "}")
+  return ok(true)
+}
+
+match main() {
+  ok(v) => {
+    let done = v
+  }
+  err(e) => {
+    print(e)
+  }
+}

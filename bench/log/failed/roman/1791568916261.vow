@@ -1,0 +1,128 @@
+fn romanNumeral(n) {
+  if n < 1 or n > 3999 {
+    print("error")
+    return
+  }
+  let result = ""
+  if n >= 1000 {
+    result = result + "M" + repeat("M", n - 1000)
+  }
+  if n >= 900 {
+    result = result + "CM"
+    n = n - 900
+  }
+  if n >= 500 {
+    result = result + "D" + repeat("D", n - 500)
+  }
+  if n >= 400 {
+    result = result + "CD"
+    n = n - 400
+  }
+  if n >= 100 {
+    result = result + "C" + repeat("C", n - 100)
+  }
+  if n >= 90 {
+    result = result + "XC"
+    n = n - 90
+  }
+  if n >= 50 {
+    result = result + "L" + repeat("L", n - 50)
+  }
+  if n >= 40 {
+    result = result + "XL"
+    n = n - 40
+  }
+  if n >= 10 {
+    result = result + "X" + repeat("X", n - 10)
+  }
+  if n >= 9 {
+    result = result + "IX"
+    n = n - 9
+  }
+  if n >= 5 {
+    result = result + "V" + repeat("V", n - 5)
+  }
+  if n >= 4 {
+    result = result + "IV"
+    n = n - 4
+  }
+  if n >= 1 {
+    result = result + "I" + repeat("I", n - 1)
+  }
+  if len(result) == 0 {
+    print("error")
+    return
+  }
+  return result
+}
+
+fn isRoman(s) {
+  if len(s) == 0 {
+    return false
+  }
+  let s = s.trim()
+  if len(s) != len(replace(s, /[^IVXLCDM]/, "")) {
+    return false
+  }
+  let i = 0
+  while i < len(s) {
+    if s[i] == 'I' {
+      if i + 1 >= len(s) or s[i + 1] != 'V' and s[i + 1] != 'X' {
+        return false
+      }
+      i = i + 2
+    } else if s[i] == 'V' {
+      if i + 1 >= len(s) or s[i + 1] != 'I' {
+        return false
+      }
+      i = i + 2
+    } else if s[i] == 'X' {
+      if i + 1 >= len(s) or s[i + 1] != 'L' or s[i + 1] != 'C' {
+        return false
+      }
+      i = i + 2
+    } else if s[i] == 'L' {
+      if i + 1 >= len(s) or s[i + 1] != 'X' {
+        return false
+      }
+      i = i + 2
+    } else if s[i] == 'C' {
+      if i + 1 >= len(s) or s[i + 1] != 'D' or s[i + 1] != 'M' {
+        return false
+      }
+      i = i + 2
+    } else if s[i] == 'D' {
+      if i + 1 >= len(s) or s[i + 1] != 'C' {
+        return false
+      }
+      i = i + 2
+    } else if s[i] == 'M' {
+      if i + 1 >= len(s) {
+        return false
+      }
+      i = i + 1
+    } else {
+      return false
+    }
+  }
+  return true
+}
+
+fn main() {
+  let num = match num(args()[0]) {
+    ok(n) => n,
+    err(_) => 0
+  }
+  if num > 0 {
+    print(romanNumeral(num))
+  } else {
+    let roman = args()[0]
+    if isRoman(roman) {
+      print(roman)
+    } else {
+      print("error")
+    }
+  }
+}
+
+main()

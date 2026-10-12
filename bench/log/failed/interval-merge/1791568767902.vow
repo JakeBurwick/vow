@@ -1,0 +1,80 @@
+fn parseInterval(piece) {
+  let parts = split(piece, "-")
+  if len(parts) != 2 {
+    return err("bad interval: " + piece)
+  }
+  let [a, b] = [num(parts[0]), num(parts[1])]
+  if a > b {
+    return err("bad interval: " + piece)
+  }
+  return ok([a, b])
+}
+
+fn mergeIntervals(intervals) {
+  let merged = []
+  for interval in intervals {
+    let [a, b] = interval
+    let i = 0
+    while i < len(merged) {
+      let [c, d] = merged[i]
+      if c <= b and d >= a {
+        merged[i] = [min(a, c), max(b, d)]
+        if a == c {
+          i = i + 1
+        } else if d == b {
+          i = i - 1
+        } else {
+          i = i + 1
+        }
+      } else {
+        i = i + 1
+      }
+    }
+    if a < b {
+      push(merged, [a, b])
+    }
+  }
+  return merged
+}
+
+fn printIntervals(intervals) {
+  if len(intervals) == 0 {
+    print("")
+    return
+  }
+  let sorted = sortBy(intervals, i => i[0])
+  let output = []
+  for interval in sorted {
+    let [a, b] = interval
+    output.push(str(a) + "-" + str(b))
+  }
+  print(",".join(output))
+}
+
+fn main() {
+  let input = args()[0]
+  if input == "" {
+    print("")
+    return
+  }
+  let intervals = split(input, ",")
+  let valid = true
+  for interval in intervals {
+    match parseInterval(interval) {
+      ok(interval) => {
+        push(intervals, interval)
+      }
+      err(e) => {
+        print("error: bad interval " + interval)
+        valid = false
+        break
+      }
+    }
+  }
+  if valid {
+    let merged = mergeIntervals(intervals)
+    printIntervals(merged)
+  }
+}
+
+main()

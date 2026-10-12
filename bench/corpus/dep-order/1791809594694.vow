@@ -1,0 +1,139 @@
+// Topological sort for package dependencies
+
+struct ParsedEntry {
+  name,
+  deps
+}
+
+fn isValidName(name) {
+  if len(name) == 0 { return false }
+  for c in split(name, "") {
+    if not (c >= "a" and c <= "z") { return false }
+  }
+  return true
+}
+
+fn parseEntry(entry) {
+  if len(entry) == 0 { return err("empty") }
+
+  let colonPos = -1
+  let chars = split(entry, "")
+  for i in range(0, len(chars)) {
+    if chars[i] == ":" {
+      if colonPos != -1 { return err("multiple colons") }
+      colonPos = i
+    }
+  }
+
+  if colonPos == -1 { return err("no colon") }
+
+  let name = slice(entry, 0, colonPos)
+  let depsStr = slice(entry, colonPos + 1, len(entry))
+
+  if not isValidName(name) { return err("bad name") }
+
+  let deps = []
+  if depsStr != "" {
+    let depList = split(depsStr, ",")
+    for dep in depList {
+      if not isValidName(dep) { return err("bad dep") }
+      push(deps, dep)
+    }
+  }
+
+  return ok(ParsedEntry { name: name, deps: deps })
+}
+
+fn main() {
+  let input = args()[0]
+  let entries = split(input, ";")
+
+  let graph = {}
+  let packages = {}
+
+  for entry in entries {
+    let trimmed = trim(entry)
+    if trimmed == "" { continue }
+
+    match parseEntry(trimmed) {
+      ok(parsed) => {
+        let name = parsed.name
+        let deps = parsed.deps
+
+        packages[name] = true
+
+        if has(graph, name) {
+          let existing = graph[name]
+          for dep in deps {
+            if not contains(existing, dep) {
+              push(existing, dep)
+            }
+          }
+        } else {
+          graph[name] = deps
+        }
+
+        for dep in deps {
+          if not has(packages, dep) {
+            packages[dep] = true
+          }
+          if not has(graph, dep) {
+            graph[dep] = []
+          }
+        }
+      }
+      err(e) => {
+        print("error: bad entry " + trimmed)
+        return
+      }
+    }
+  }
+
+  let allPackages = keys(packages)
+
+  // Count how many dependencies each package has
+  let depCount = {}
+  for pkg in allPackages {
+    depCount[pkg] = len(graph[pkg])
+  }
+
+  // Topological sort: Kahn's algorithm
+  let result = []
+  let processed = {}
+
+  while len(result) < len(allPackages) {
+    // Find all unprocessed packages with no dependencies
+    let ready = []
+    for pkg in allPackages {
+      if not has(processed, pkg) and depCount[pkg] == 0 {
+        push(ready, pkg)
+      }
+    }
+
+    // If no packages are ready, we have a cycle
+    if len(ready) == 0 {
+      print("error: cycle")
+      return
+    }
+
+    // Sort ready packages alphabetically
+    ready = sort(ready)
+
+    // Process them
+    for pkg in ready {
+      push(result, pkg)
+      processed[pkg] = true
+
+      // Decrement dependency count for packages that depend on pkg
+      for other in allPackages {
+        if not has(processed, other) and contains(graph[other], pkg) {
+          depCount[other] = depCount[other] - 1
+        }
+      }
+    }
+  }
+
+  print(join(result, " "))
+}
+
+main()

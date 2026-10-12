@@ -1,0 +1,156 @@
+fn trimSpaces(s) {
+  let result = s
+  while len(result) > 0 and (result[0] == " " or result[0] == "\t") {
+    result = slice(result, 1, len(result))
+  }
+  while len(result) > 0 and (result[len(result) - 1] == " " or result[len(result) - 1] == "\t") {
+    result = slice(result, 0, len(result) - 1)
+  }
+  return result
+}
+
+fn isValidName(s) {
+  if len(s) == 0 { return false }
+  for c in split(s, "") {
+    let ch = c
+    if not ((ch >= "a" and ch <= "z") or (ch >= "0" and ch <= "9") or ch == "_") {
+      return false
+    }
+  }
+  return true
+}
+
+fn parseSection(line) {
+  let trimmed = trimSpaces(line)
+  if len(trimmed) < 3 { return err("not a section") }
+  if trimmed[0] != "[" { return err("not a section") }
+  if trimmed[len(trimmed) - 1] != "]" { return err("not a section") }
+
+  let sectionName = slice(trimmed, 1, len(trimmed) - 1)
+  if not isValidName(sectionName) { return err("invalid section name") }
+  return ok(sectionName)
+}
+
+fn parseKeyValue(line) {
+  let eqPos = -1
+  let i = 0
+  while i < len(line) {
+    if line[i] == "=" {
+      eqPos = i
+      break
+    }
+    i = i + 1
+  }
+
+  if eqPos == -1 { return err("no equals") }
+
+  let keyPart = trimSpaces(slice(line, 0, eqPos))
+  let valuePart = trimSpaces(slice(line, eqPos + 1, len(line)))
+
+  if not isValidName(keyPart) { return err("invalid key") }
+
+  return ok([keyPart, valuePart])
+}
+
+fn main() {
+  let args_list = args()
+  if len(args_list) < 1 { return err("no args") }
+
+  let content = args_list[0]
+  let configLines = lines(content)
+
+  let data = {}
+  let currentSection = ""
+  let hasError = false
+  let errorMsg = ""
+
+  let lineNum = 0
+  for line in configLines {
+    lineNum = lineNum + 1
+
+    let trimmed = trimSpaces(line)
+
+    if len(trimmed) == 0 { continue }
+
+    if trimmed[0] == ";" or trimmed[0] == "#" { continue }
+
+    match parseSection(trimmed) {
+      ok(sectionName) => {
+        currentSection = sectionName
+        if not has(data, sectionName) {
+          data[sectionName] = {}
+        }
+        continue
+      }
+      err(e) => {}
+    }
+
+    match parseKeyValue(trimmed) {
+      ok(kv) => {
+        let key = kv[0]
+        let value = kv[1]
+
+        if currentSection == "" {
+          hasError = true
+          errorMsg = "error line " + str(lineNum) + ": key outside section"
+          break
+        }
+
+        let sectionMap = data[currentSection]
+        sectionMap[key] = value
+      }
+      err(e) => {
+        hasError = true
+        errorMsg = "error line " + str(lineNum) + ": bad line"
+        break
+      }
+    }
+  }
+
+  if hasError {
+    print(errorMsg)
+    return ok(true)
+  }
+
+  let queries = slice(args_list, 1, len(args_list))
+  for query in queries {
+    let dotPos = -1
+    let i = 0
+    while i < len(query) {
+      if query[i] == "." {
+        dotPos = i
+        break
+      }
+      i = i + 1
+    }
+
+    if dotPos == -1 {
+      print(query + " missing")
+      continue
+    }
+
+    let section = slice(query, 0, dotPos)
+    let key = slice(query, dotPos + 1, len(query))
+
+    if not has(data, section) {
+      print(query + " missing")
+      continue
+    }
+
+    let sectionMap = data[section]
+    if not has(sectionMap, key) {
+      print(query + " missing")
+      continue
+    }
+
+    let value = sectionMap[key]
+    print(query + " = " + value)
+  }
+
+  return ok(true)
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

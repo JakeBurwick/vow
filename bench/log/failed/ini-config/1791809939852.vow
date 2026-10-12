@@ -1,0 +1,93 @@
+fn parseIni(content) {
+  let lines = split(content, "\n")
+  let config = {}
+  let current_section = ""
+  let line_num = 1
+
+  for line in lines {
+    let trimmed = trim(line)
+
+    if len(trimmed) == 0 {
+      line_num = line_num + 1
+      continue
+    }
+
+    if startsWith(trimmed, ";") or startsWith(trimmed, "#") {
+      line_num = line_num + 1
+      continue
+    }
+
+    if startsWith(trimmed, "[") and endsWith(trimmed, "]") {
+      let section_name = slice(trimmed, 1, len(trimmed) - 1)
+      section_name = trim(section_name)
+      current_section = section_name
+      if not has(config, current_section) {
+        config[current_section] = {}
+      }
+      line_num = line_num + 1
+      continue
+    }
+
+    if contains(trimmed, "=") {
+      if current_section == "" {
+        return err("error line " + str(line_num) + ": key outside section")
+      }
+
+      let parts = split(trimmed, "=")
+      if len(parts) != 2 {
+        return err("error line " + str(line_num) + ": bad line")
+      }
+
+      let key = trim(parts[0])
+      let value = trim(parts[1])
+
+      if len(key) == 0 {
+        return err("error line " + str(line_num) + ": bad line")
+      }
+
+      config[current_section][key] = value
+      line_num = line_num + 1
+      continue
+    }
+
+    return err("error line " + str(line_num) + ": bad line")
+  }
+
+  return ok(config)
+}
+
+fn main() {
+  let args_list = args()
+
+  if len(args_list) < 1 {
+    return
+  }
+
+  let ini_content = args_list[0]
+
+  match parseIni(ini_content) {
+    ok(config) => {
+      for i in range(1, len(args_list)) {
+        let query = args_list[i]
+        let parts = split(query, ".")
+
+        if len(parts) != 2 {
+          print(query + " missing")
+          continue
+        }
+
+        let section = parts[0]
+        let key = parts[1]
+
+        if has(config, section) and has(config[section], key) {
+          print(query + " = " + config[section][key])
+        } else {
+          print(query + " missing")
+        }
+      }
+    }
+    err(e) => print(e)
+  }
+}
+
+main()

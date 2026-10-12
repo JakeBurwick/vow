@@ -10,15 +10,15 @@
 <style>
 /* Use Vow with your AI (Home). Kept here so style.css stays untouched by this section. */
 .ai { margin-top: 64px; }
-.ai h2 { font-size: 26px; letter-spacing: -0.4px; margin-bottom: 12px; scroll-margin-top: 16px; }
+.ai h2 { font-family: var(--display); font-weight: 600; font-size: 26px; letter-spacing: -0.4px; margin-bottom: 12px; scroll-margin-top: 16px; }
 .steps { list-style: none; counter-reset: step; margin-top: 24px; border-top: 1px solid var(--border); }
 .steps > li {
   counter-increment: step; display: grid; grid-template-columns: 56px minmax(0, 1fr);
   padding: 22px 0 24px; border-bottom: 1px solid var(--border);
 }
 .steps > li::before {
-  content: counter(step, decimal-leading-zero); grid-row: 1 / span 5;
-  font-family: var(--mono); font-size: 12px; color: var(--accent2); padding-top: 3px;
+  content: counter(step) "."; grid-row: 1 / span 5;
+  font-family: var(--display); font-size: 18px; color: var(--muted); padding-top: 0;
 }
 .steps > li > * { grid-column: 2; }
 .steps h3 { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 10px; }
@@ -26,7 +26,7 @@
   font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: 0.04em;
   border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; margin-left: 6px; vertical-align: 2px;
 }
-.step-note { font-size: 14.5px; color: #b9c2d4; line-height: 1.6; margin-bottom: 12px; max-width: 72ch; }
+.step-note { font-size: 14.5px; color: #c9c6bf; line-height: 1.6; margin-bottom: 12px; max-width: 72ch; }
 .step-note code {
   font-family: var(--mono); font-size: 0.86em; background: var(--panel2);
   border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; color: var(--builtin);
@@ -36,7 +36,7 @@
 .step-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; margin-bottom: 12px; font-size: 14px; }
 a.btn {
   display: inline-block; text-decoration: none; color: var(--bg); background: var(--accent);
-  border: 1px solid var(--accent); border-radius: 6px; padding: 7px 16px; font-size: 13.5px; font-weight: 600;
+  border: 1px solid var(--accent); border-radius: 4px; padding: 7px 16px; font-size: 13.5px; font-weight: 600;
 }
 @media (hover: hover) { a.btn:hover { filter: brightness(1.18); } }
 .file-peek summary { cursor: pointer; font-size: 13.5px; color: var(--muted); margin-bottom: 10px; width: fit-content; }
@@ -55,7 +55,7 @@ a.btn {
 <body>
 
 <header>
-  <a class="brand" href="#home" data-go="home"><span class="gem" aria-hidden="true">◆</span> Vow <span class="ver">v1.0</span></a>
+  <a class="brand" href="#home" data-go="home">Vow <span class="ver">v1.0</span></a>
   <nav aria-label="Site sections">
     <button class="tab active" data-view="home" aria-current="page">Home</button>
     <button class="tab" data-view="learn">Learn</button>
@@ -103,7 +103,7 @@ abc: "abc" is not a number
     </div>
 
     <ol class="points">
-      <li><strong>Compiles to JavaScript.</strong> Recursive fib(32) runs in 0.09 s, against 0.14 s for Python.</li>
+      <li><strong>Compiles to JavaScript.</strong> Recursive fib(32) runs in 0.09 s, against 0.14 s for Python <span class="asof">(measured Oct 7, 2026)</span>.</li>
       <li><strong>Errors are repair instructions,</strong> written for an agent to act on without a human.</li>
       <li><strong>Capabilities are checked before anything runs:</strong> <code>--sandbox</code> refuses a program that reaches beyond what you allow.</li>
     </ol>
@@ -150,7 +150,7 @@ abc: "abc" is not a number
         </li>
       </ol>
 
-      <p class="model-note">Tested with Claude Haiku 4.5, Anthropic's smallest current model. Larger models should do at least as well. Comparable small models from other labs should behave similarly, since everything Vow needs is in its guide, but they have not been measured. A very small local model (Llama 3.2 3B) could not solve these tasks in Vow or in TypeScript.</p>
+      <p class="model-note">Tested in October 2026 with Claude Haiku 4.5, Anthropic's smallest current model at the time. Larger models should do at least as well. Comparable small models from other labs should behave similarly, since everything Vow needs is in its guide, but they have not been measured. A very small local model (Llama 3.2 3B) could not solve these tasks in Vow or in TypeScript.</p>
     </section>
 
     <div class="split">
@@ -173,7 +173,7 @@ abc: "abc" is not a number
       </div>
     </div>
 
-    <p class="honest">Built and measured by Jake Burwick. On new problems, AI agents write correct Vow about as reliably as TypeScript on easy tasks and need about twice as many attempts on hard ones; the code they finish is as correct as TypeScript on fresh hidden tests (99.5% vs 99.3%). <a href="#benchmarks" data-go="benchmarks">See the benchmarks</a>.</p>
+    <p class="honest">Built and measured by Jake Burwick. On new problems, AI agents write correct Vow about as reliably as TypeScript on easy tasks and need about twice as many attempts on hard ones; the code they finish is as correct as TypeScript on fresh hidden tests (99.5% vs 99.3%). Measured October 2026; numbers may have changed since. <a href="#benchmarks" data-go="benchmarks">See the benchmarks</a>.</p>
 
     <section id="install" class="install" aria-labelledby="install-h">
       <h2 id="install-h">Install</h2>
@@ -579,11 +579,12 @@ let m = {"n": "x", "q": 3}  // ✗ one value type per map;
     </div>
 
     <h2 id="benchmarks">Benchmarks</h2>
-    <p class="prose">Agent tests use Claude Haiku in a fresh context per run, judged against answers from Python reference solutions on tasks the language was never tuned on. Vow agents get the language guide and a short pack of example programs; TypeScript agents get nothing. Every number comes from the benchmark logs in the repository.</p>
+    <p class="prose">Agent tests use Claude Haiku in a fresh context per run, judged against answers from Python reference solutions on tasks the language was never tuned on. Vow agents get the language guide and a short pack of example programs; TypeScript agents get nothing. Every number comes from the benchmark logs in the repository. Each table shows the date it was measured; the newest numbers are in <code>RESULTS.md</code>.</p>
 
     <div class="bench">
       <div class="bench-item">
         <h3 class="result-h">Speed: recursive fib(32)</h3>
+        <p class="result-note">Measured Oct 7, 2026.</p>
         <div class="result-wrap"><table class="result">
           <thead><tr><th scope="col">runtime</th><th scope="col">time</th></tr></thead>
           <tbody>
@@ -596,7 +597,7 @@ let m = {"n": "x", "q": 3}  // ✗ one value type per map;
 
       <div class="bench-item">
         <h3 class="result-h">Correctness on fresh hidden tests</h3>
-        <p class="result-note">Agent-written solutions to 8 unseen tasks, 150 fresh inputs each.</p>
+        <p class="result-note">Agent-written solutions to 8 unseen tasks, 150 fresh inputs each. Measured Oct 8, 2026.</p>
         <div class="result-wrap"><table class="result">
           <thead><tr><th scope="col">language</th><th scope="col">hidden tests passed</th></tr></thead>
           <tbody>
@@ -607,20 +608,32 @@ let m = {"n": "x", "q": 3}  // ✗ one value type per map;
       </div>
 
       <div class="bench-item">
+        <h3 class="result-h">Hard unseen tasks, agents may run their code</h3>
+        <p class="result-note">4 hard tasks, 3 runs each, Claude Haiku. Agents could check and run their program before each judged submission, as real coding agents do. Every run solved its task. Fewer is better. Measured Oct 12, 2026.</p>
+        <div class="result-wrap"><table class="result">
+          <thead><tr><th scope="col">language</th><th scope="col">failed submissions</th></tr></thead>
+          <tbody>
+            <tr><td>TypeScript</td><td class="best">3 of 15</td></tr>
+            <tr><td>Vow</td><td>7 of 19 <span class="muted">(all logic slips, no type or language errors)</span></td></tr>
+          </tbody>
+        </table></div>
+      </div>
+
+      <div class="bench-item">
         <h3 class="result-h">Failed attempts on hard unseen tasks</h3>
-        <p class="result-note">4 hard tasks, 3 runs each, Claude Haiku. Fewer is better.</p>
+        <p class="result-note">Same tasks, but agents had to submit without running their code first. Fewer is better. Measured Oct 8, 2026.</p>
         <div class="result-wrap"><table class="result">
           <thead><tr><th scope="col">language</th><th scope="col">failed attempts</th></tr></thead>
           <tbody>
             <tr><td>TypeScript</td><td class="best">7</td></tr>
-            <tr><td>Vow</td><td>15 <span class="muted">(24 before this month's language changes)</span></td></tr>
+            <tr><td>Vow</td><td>15 <span class="muted">(24 before the Oct 8 language changes)</span></td></tr>
           </tbody>
         </table></div>
       </div>
 
       <div class="bench-item">
         <h3 class="result-h">Safety: 7 attack programs</h3>
-        <p class="result-note">Each program does a real job plus one attack, under the tightest permissions each runtime supports.</p>
+        <p class="result-note">Each program does a real job plus one attack, under the tightest permissions each runtime supports. Measured Oct 2, 2026.</p>
         <div class="result-wrap"><table class="result">
           <thead><tr><th scope="col">runtime</th><th scope="col">attacks blocked</th></tr></thead>
           <tbody>

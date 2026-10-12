@@ -79,7 +79,7 @@ Vow is meant to be written by AI coding tools. Give your tool the guide once and
 3. **Add it to your project (optional).** Copy [`templates/AGENTS.md`](templates/AGENTS.md) into your project root as `AGENTS.md` so your agent picks it up automatically. It has the same instructions plus the five rules agents miss most.
 4. **Connect the Vow tools (optional).** In Claude Code, `claude mcp add vow -- vow-mcp` gives the agent `vow_guide`, `vow_check` and `vow_run` tools. Any other MCP client can launch the `vow-mcp` command over stdio.
 
-Tested with Claude Haiku 4.5, Anthropic's smallest current model. Larger models should do at least as well. Comparable small models from other labs should behave similarly, since everything Vow needs is in its guide, but they have not been measured. A very small local model (Llama 3.2 3B) could not solve these tasks in Vow or in TypeScript.
+Tested in October 2026 with Claude Haiku 4.5, Anthropic's smallest current model at the time. Larger models should do at least as well. Comparable small models from other labs should behave similarly, since everything Vow needs is in its guide, but they have not been measured. A very small local model (Llama 3.2 3B) could not solve these tasks in Vow or in TypeScript.
 
 ## Learn
 
@@ -91,14 +91,17 @@ Tested with Claude Haiku 4.5, Anthropic's smallest current model. Larger models 
 
 Vow was measured with AI agents (Claude Haiku) on problems it was never tuned on. The full method and every number are in [`RESULTS.md`](RESULTS.md).
 
-| Measure | Vow | Comparison |
-|---|---|---|
-| Recursive fib(32) | 0.09 s | Python 0.14 s |
-| Agent code passing 150 fresh hidden tests per task | 99.5% | TypeScript 99.3% |
-| Failed attempts, 4 hard unseen tasks | 15 | TypeScript 7 |
-| Attack programs blocked by the sandbox | 6 of 7 | Deno 7 of 7 |
+Measured October 2026 (dates per row). Numbers may be out of date; `RESULTS.md` has the latest.
 
-On easy tasks agents write correct Vow about as reliably as TypeScript; on hard ones they need about twice as many attempts. The sandbox does not yet support a read-only file grant, which is the one attack Deno blocks and Vow does not.
+| Measure | Vow | Comparison | Measured |
+|---|---|---|---|
+| Recursive fib(32) | 0.09 s | Python 0.14 s | 2026-10-07 |
+| Agent code passing 150 fresh hidden tests per task | 99.5% | TypeScript 99.3% | 2026-10-08 |
+| Failed submissions, 4 hard unseen tasks, agents may run code first | 7 of 19 | TypeScript 3 of 15 | 2026-10-12 |
+| Failed attempts, same tasks, no running allowed | 15 | TypeScript 7 | 2026-10-08 |
+| Attack programs blocked by the sandbox | 6 of 7 | Deno 7 of 7 | 2026-10-02 |
+
+On easy tasks agents write correct Vow about as reliably as TypeScript. On hard ones they still need about twice as many attempts, even when they can run their code before submitting; every run in both languages finished the task. The sandbox does not yet support a read-only file grant, which is the one attack Deno blocks and Vow does not.
 
 ## Development
 

@@ -1,0 +1,143 @@
+fn main() {
+  let input = args()[0]
+  let entries = split(input, ";")
+  
+  // Parse entries and collect all packages and deps
+  let allPackages = []
+  let pkgDeps = {}    // pkgDeps[name] = list of packages that name depends on
+  
+  for entry in entries {
+    let trimmed = trim(entry)
+    if len(trimmed) == 0 {
+      continue
+    }
+    
+    // Find colon position
+    let colonPos = -1
+    for i in range(0, len(trimmed)) {
+      if trimmed[i] == ":" {
+        if colonPos == -1 {
+          colonPos = i
+        } else {
+          // More than one colon
+          print("error: bad entry " + entry)
+          return ok(true)
+        }
+      }
+    }
+    
+    if colonPos == -1 {
+      print("error: bad entry " + entry)
+      return ok(true)
+    }
+    
+    let name = slice(trimmed, 0, colonPos)
+    let depStr = slice(trimmed, colonPos + 1, len(trimmed))
+    
+    // Validate name (lowercase letters only)
+    if len(name) == 0 {
+      print("error: bad entry " + entry)
+      return ok(true)
+    }
+    
+    for i in range(0, len(name)) {
+      let c = name[i]
+      if not (c >= "a" and c <= "z") {
+        print("error: bad entry " + entry)
+        return ok(true)
+      }
+    }
+    
+    // Add package if not already present
+    if not has(pkgDeps, name) {
+      push(allPackages, name)
+      pkgDeps[name] = []
+    }
+    
+    // Parse dependencies
+    if len(depStr) > 0 {
+      let depList = split(depStr, ",")
+      for dep in depList {
+        let depTrimmed = trim(dep)
+        
+        // Validate dep name
+        if len(depTrimmed) > 0 {
+          for i in range(0, len(depTrimmed)) {
+            let c = depTrimmed[i]
+            if not (c >= "a" and c <= "z") {
+              print("error: bad entry " + entry)
+              return ok(true)
+            }
+          }
+          
+          // Add dep to this package's dependency list
+          if not contains(pkgDeps[name], depTrimmed) {
+            push(pkgDeps[name], depTrimmed)
+          }
+          
+          // Add dep as a package if not present
+          if not has(pkgDeps, depTrimmed) {
+            push(allPackages, depTrimmed)
+            pkgDeps[depTrimmed] = []
+          }
+        }
+      }
+    }
+  }
+  
+  // Kahn's algorithm for topological sort
+  let inDegree = {}
+  
+  for pkg in allPackages {
+    inDegree[pkg] = 0
+  }
+  
+  for pkg in allPackages {
+    for dep in pkgDeps[pkg] {
+      inDegree[pkg] = inDegree[pkg] + 1
+    }
+  }
+  
+  let result = []
+  let ready = []
+  
+  for pkg in allPackages {
+    if inDegree[pkg] == 0 {
+      push(ready, pkg)
+    }
+  }
+  
+  ready = sort(ready)
+  
+  while len(ready) > 0 {
+    ready = sort(ready)
+    let pkg = ready[0]
+    ready = slice(ready, 1, len(ready))
+    
+    push(result, pkg)
+    
+    // Find packages that depend on this one (need to remove edge from dep to pkg)
+    for other in allPackages {
+      if contains(pkgDeps[other], pkg) {
+        inDegree[other] = inDegree[other] - 1
+        if inDegree[other] == 0 {
+          push(ready, other)
+        }
+      }
+    }
+  }
+  
+  // Check if all packages were processed
+  if len(result) != len(allPackages) {
+    print("error: cycle")
+    return ok(true)
+  }
+  
+  print(join(result, " "))
+  return ok(true)
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

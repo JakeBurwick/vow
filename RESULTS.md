@@ -171,3 +171,14 @@ The JSON redesign more than halved template's failures. Of Vow's remaining 15, 8
 ## Other models (2026-10-09)
 
 `bench/model-loop.py` runs any chat model through the same write, judge, fix loop (5 tries) for Vow (guide + examples) and TypeScript. Llama 3.2 3B (local, Ollama) solved 0 of the held-out tasks in Vow and 0 in TypeScript, so models that small cannot do this kind of work in either language; it does not locate Vow's own floor. Gemini could not be measured (the free API key returned errors for every model). All other results in this file are Claude Haiku 4.5.
+
+## Hard tasks with code-running allowed (2026-10-12)
+
+The earlier hard-task rounds made agents submit without running their code. Real coding agents run code before they hand it in, so this round allowed it: Vow agents could use `vow --check` and run the program, TypeScript agents could use `deno check` and `deno run`, as often as they liked before each judged submission. Same 4 hard tasks (dep-order, calc-vars, template, ini-config), 3 runs each, Claude Haiku 4.5, fresh context per run. Counted from `bench/log/attempts.jsonl` (tags `run-vow`, `run-ts`).
+
+| | runs solved | judged submissions | failed submissions |
+|---|---|---|---|
+| Vow + guide + examples | 12 of 12 | 19 | 7 |
+| TypeScript, no help | 12 of 12 | 15 | 3 |
+
+Being able to run code halved the failures in both languages and every run in both solved its task, but the gap held at about 2x. All 7 Vow failures were wrong outputs from the agent's own logic, and none were type or language errors: skipping 8 characters past the 9-character `{{/each}}` tag, the `[Bad]` section-name rule (twice), an unclosed `#if`, `vip: false`, and two calc-vars edge cases (an unknown variable after a blank line, unary minus on a variable). TypeScript agents make the same kind of slip less often, most likely because they have seen far more TypeScript.

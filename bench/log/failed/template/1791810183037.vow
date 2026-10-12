@@ -1,0 +1,175 @@
+fn processTemplate(template, data, context) {
+  let result = ""
+  let i = 0
+  let len_t = len(template)
+
+  while i < len_t {
+    if i + 1 < len_t and template[i] == "{" and template[i + 1] == "{" {
+      let j = i + 2
+      while j + 1 < len_t {
+        if template[j] == "}" and template[j + 1] == "}" {
+          break
+        }
+        j = j + 1
+      }
+
+      if j + 1 >= len_t {
+        return err("error: unclosed if")
+      }
+
+      let tagContent = slice(template, i + 2, j)
+      let trimmed = trim(tagContent)
+
+      if startsWith(trimmed, "#if ") {
+        let varName = trim(slice(trimmed, 4, len(trimmed)))
+        let value = field(context, varName)
+
+        // Find matching /if
+        let endPos = 0
+        let found = false
+        let depth = 1
+        let k = j + 2
+        while k + 7 <= len_t and depth > 0 {
+          if startsWith(slice(template, k, len_t), "{{#if") {
+            depth = depth + 1
+            k = k + 1
+          } else if startsWith(slice(template, k, len_t), "{{/if") {
+            depth = depth - 1
+            if depth == 0 {
+              endPos = k
+              found = true
+              break
+            }
+            k = k + 1
+          } else if startsWith(slice(template, k, len_t), "{{#each") {
+            depth = depth + 1
+            k = k + 1
+          } else if startsWith(slice(template, k, len_t), "{{/each") {
+            depth = depth - 1
+            k = k + 1
+          } else {
+            k = k + 1
+          }
+        }
+
+        if not found {
+          return err("error: unclosed if")
+        }
+
+        let blockContent = slice(template, j + 2, endPos)
+
+        if truthy(value) {
+          match processTemplate(blockContent, data, context) {
+            ok(blockResult) => result = result + blockResult
+            err(e) => return err(e)
+          }
+        }
+
+        i = endPos + 8
+      } else if startsWith(trimmed, "#each ") {
+        let varName = trim(slice(trimmed, 6, len(trimmed)))
+        let value = field(context, varName)
+
+        // Find matching /each
+        let endPos = 0
+        let found = false
+        let depth = 1
+        let k = j + 2
+        while k + 8 <= len_t and depth > 0 {
+          if startsWith(slice(template, k, len_t), "{{#if") {
+            depth = depth + 1
+            k = k + 1
+          } else if startsWith(slice(template, k, len_t), "{{/if") {
+            depth = depth - 1
+            k = k + 1
+          } else if startsWith(slice(template, k, len_t), "{{#each") {
+            depth = depth + 1
+            k = k + 1
+          } else if startsWith(slice(template, k, len_t), "{{/each") {
+            depth = depth - 1
+            if depth == 0 {
+              endPos = k
+              found = true
+              break
+            }
+            k = k + 1
+          } else {
+            k = k + 1
+          }
+        }
+
+        if not found {
+          return err("error: unclosed each")
+        }
+
+        let blockContent = slice(template, j + 2, endPos)
+
+        if jsonType(value) == "array" {
+          let items = jsonList(value)
+          for item in items {
+            match processTemplate(blockContent, data, item) {
+              ok(blockResult) => result = result + blockResult
+              err(e) => return err(e)
+            }
+          }
+        } else if not isNull(value) {
+          return err("error: not a list: " + varName)
+        }
+
+        i = endPos + 9
+      } else if startsWith(trimmed, "/if") {
+        return err("error: unexpected /if")
+      } else if startsWith(trimmed, "/each") {
+        return err("error: unexpected /each")
+      } else {
+        let value = ""
+        if trimmed == "." {
+          if jsonType(context) == "array" or jsonType(context) == "object" {
+            return err("error: not printable")
+          }
+          if not isNull(context) {
+            value = str(context)
+          }
+        } else {
+          let v = field(context, trimmed)
+          if jsonType(v) == "array" or jsonType(v) == "object" {
+            return err("error: not printable")
+          }
+          if not isNull(v) {
+            value = str(v)
+          }
+        }
+
+        result = result + value
+        i = j + 2
+      }
+    } else {
+      result = result + template[i]
+      i = i + 1
+    }
+  }
+
+  return ok(result)
+}
+
+let args_list = args()
+if len(args_list) < 2 {
+  print("error: bad data")
+} else {
+  let template = args_list[0]
+  let data_str = args_list[1]
+
+  match parseJson(data_str) {
+    ok(data) => {
+      if jsonType(data) != "object" {
+        print("error: bad data")
+      } else {
+        match processTemplate(template, data, data) {
+          ok(result) => print(result)
+          err(e) => print(e)
+        }
+      }
+    }
+    err(e) => print("error: bad data")
+  }
+}

@@ -1,0 +1,255 @@
+struct Token {
+  type,
+  value
+}
+
+struct ParsedTag {
+  tagType,
+  name
+}
+
+struct ProcessResult {
+  text,
+  nextIdx
+}
+
+fn parseTemplate(template) {
+  let tokens = []
+  let i = 0
+  let len_t = len(template)
+
+  while i < len_t {
+    if i + 1 < len_t and template[i] == "{" and template[i + 1] == "{" {
+      let j = i + 2
+      while j + 1 < len_t and not (template[j] == "}" and template[j + 1] == "}") {
+        j = j + 1
+      }
+      if j + 1 >= len_t {
+        return err("unclosed tag")
+      }
+      let tagContent = slice(template, i + 2, j)
+      tagContent = trim(tagContent)
+      push(tokens, Token { type: "tag", value: tagContent })
+      i = j + 2
+    } else {
+      let j = i + 1
+      while j < len_t and not (j + 1 < len_t and template[j] == "{" and template[j + 1] == "{") {
+        j = j + 1
+      }
+      let textPart = slice(template, i, j)
+      if len(textPart) > 0 {
+        push(tokens, Token { type: "text", value: textPart })
+      }
+      i = j
+    }
+  }
+
+  return ok(tokens)
+}
+
+fn parseTag(content) {
+  if startsWith(content, "#if ") {
+    let name = trim(slice(content, 4, len(content)))
+    return ok(ParsedTag { tagType: "if", name: name })
+  }
+  if startsWith(content, "#each ") {
+    let name = trim(slice(content, 6, len(content)))
+    return ok(ParsedTag { tagType: "each", name: name })
+  }
+  if startsWith(content, "/if") {
+    return ok(ParsedTag { tagType: "endif", name: "" })
+  }
+  if startsWith(content, "/each") {
+    return ok(ParsedTag { tagType: "endeach", name: "" })
+  }
+  if content == "." {
+    return ok(ParsedTag { tagType: "insert", name: "." })
+  }
+  return ok(ParsedTag { tagType: "insert", name: content })
+}
+
+fn getValue(data, name) {
+  if name == "." {
+    return ok(data)
+  }
+  return ok(field(data, name))
+}
+
+fn isTruthy(val) {
+  return truthy(val)
+}
+
+fn valueToString(val) {
+  if isNull(val) { return ok("") }
+  if jsonType(val) == "string" {
+    return ok(str(val))
+  }
+  if jsonType(val) == "number" {
+    return ok(str(val))
+  }
+  if jsonType(val) == "bool" {
+    return ok(str(val))
+  }
+  if jsonType(val) == "array" {
+    return err("not printable")
+  }
+  if jsonType(val) == "object" {
+    return err("not printable")
+  }
+  return ok("")
+}
+
+fn skipBlock(tokens, startIdx, blockType) {
+  let depth = 1
+  let i = startIdx
+
+  while i < len(tokens) {
+    let token = tokens[i]
+    if token.type == "tag" {
+      match parseTag(token.value) {
+        ok(parsed) => {
+          if blockType == "if" and parsed.tagType == "if" {
+            depth = depth + 1
+          } else if blockType == "if" and parsed.tagType == "endif" {
+            depth = depth - 1
+            if depth == 0 {
+              return ok(i + 1)
+            }
+          } else if blockType == "each" and parsed.tagType == "each" {
+            depth = depth + 1
+          } else if blockType == "each" and parsed.tagType == "endeach" {
+            depth = depth - 1
+            if depth == 0 {
+              return ok(i + 1)
+            }
+          }
+        }
+        err(e) => return err(e)
+      }
+    }
+    i = i + 1
+  }
+
+  if blockType == "if" {
+    return err("unclosed if")
+  } else {
+    return err("unclosed each")
+  }
+}
+
+fn processTokens(tokens, data, startIdx, expectedEnd) {
+  let result = ""
+  let i = startIdx
+
+  while i < len(tokens) {
+    let token = tokens[i]
+
+    if token.type == "text" {
+      result = result + token.value
+      i = i + 1
+    } else if token.type == "tag" {
+      match parseTag(token.value) {
+        ok(parsed) => {
+          if parsed.tagType == "insert" {
+            let val = getValue(data, parsed.name)?
+            let str_val = valueToString(val)?
+            result = result + str_val
+            i = i + 1
+          } else if parsed.tagType == "if" {
+            let val = getValue(data, parsed.name)?
+            if isTruthy(val) {
+              let inner_result = processTokens(tokens, data, i + 1, "if")?
+              result = result + inner_result.text
+              i = inner_result.nextIdx
+            } else {
+              let skipped_result = skipBlock(tokens, i + 1, "if")?
+              i = skipped_result
+            }
+          } else if parsed.tagType == "each" {
+            let val = getValue(data, parsed.name)?
+            if jsonType(val) == "array" {
+              let items = jsonList(val)
+              let body_start = i + 1
+              if len(items) == 0 {
+                let skip_result = skipBlock(tokens, body_start, "each")?
+                i = skip_result
+              } else {
+                let next_i = body_start
+                for item in items {
+                  let item_result = processTokens(tokens, item, body_start, "each")?
+                  result = result + item_result.text
+                  next_i = item_result.nextIdx
+                }
+                i = next_i
+              }
+            } else if not isNull(val) and jsonType(val) != "array" {
+              return err("not a list: " + parsed.name)
+            } else {
+              let skipped_result = skipBlock(tokens, i + 1, "each")?
+              i = skipped_result
+            }
+          } else if parsed.tagType == "endif" {
+            if expectedEnd == "if" {
+              return ok(ProcessResult { text: result, nextIdx: i + 1 })
+            } else {
+              return err("unexpected /if")
+            }
+          } else if parsed.tagType == "endeach" {
+            if expectedEnd == "each" {
+              return ok(ProcessResult { text: result, nextIdx: i + 1 })
+            } else {
+              return err("unexpected /each")
+            }
+          }
+        }
+        err(e) => return err(e)
+      }
+    } else {
+      i = i + 1
+    }
+  }
+
+  if expectedEnd == "if" {
+    return err("unclosed if")
+  } else if expectedEnd == "each" {
+    return err("unclosed each")
+  }
+
+  return ok(ProcessResult { text: result, nextIdx: len(tokens) })
+}
+
+fn main() {
+  let args_list = args()
+
+  if len(args_list) < 2 {
+    print("error: bad data")
+    return
+  }
+
+  let template = args_list[0]
+  let data_str = args_list[1]
+
+  match parseJson(data_str) {
+    ok(data) => {
+      if jsonType(data) != "object" {
+        print("error: bad data")
+        return
+      }
+
+      match parseTemplate(template) {
+        ok(tokens) => {
+          match processTokens(tokens, data, 0, "") {
+            ok(result_pair) => {
+              print(result_pair.text)
+            }
+            err(e) => print("error: " + e)
+          }
+        }
+        err(e) => print("error: " + e)
+      }
+    }
+    err(e) => print("error: bad data")
+  }
+}
+
+main()

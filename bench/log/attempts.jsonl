@@ -724,3 +724,37 @@
 {"ts":"2026-10-09T18:51:54.935Z","tag":"model-llama3-2-3b-ts","mode":"scratch","task":"calc-vars","lang":"ts","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"\u001b[0m\u001b[1m\u001b[31merror\u001b[0m: SyntaxError: Identifier cannot follow number","failedCopy":"failed/calc-vars/1791571914935.ts"}
 {"ts":"2026-10-09T18:52:16.680Z","tag":"model-llama3-2-3b-ts","mode":"scratch","task":"calc-vars","lang":"ts","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"\u001b[0m\u001b[1m\u001b[31merror\u001b[0m: SyntaxError: Identifier cannot follow number","failedCopy":"failed/calc-vars/1791571936680.ts"}
 {"ts":"2026-10-09T18:52:41.865Z","tag":"model-llama3-2-3b-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic","diagnostic"],"firstError":"✗ SyntaxError: only named functions can be called","failedCopy":"failed/template/1791571961864.vow"}
+{"ts":"2026-10-12T12:52:25.298Z","tag":"run-ts","mode":"scratch","task":"dep-order","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-12T12:53:14.693Z","tag":"run-vow","mode":"scratch","task":"dep-order","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-12T12:53:24.094Z","tag":"run-ts","mode":"scratch","task":"calc-vars","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-12T12:53:47.767Z","tag":"run-vow","mode":"scratch","task":"template","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-12T12:54:13.631Z","tag":"run-vow","mode":"scratch","task":"calc-vars","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"x = 1\\n\\ny = x + q\"]","failedCopy":"failed/calc-vars/1791809653630.vow"}
+{"ts":"2026-10-12T12:54:52.059Z","tag":"run-vow","mode":"scratch","task":"calc-vars","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-12T12:54:53.793Z","tag":"run-vow","mode":"scratch","task":"ini-config","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-12T12:55:01.585Z","tag":"run-ts","mode":"scratch","task":"template","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-12T12:55:25.755Z","tag":"run-ts","mode":"scratch","task":"ini-config","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-12T12:56:01.240Z","tag":"run-vow","mode":"scratch","task":"dep-order","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-12T12:56:04.106Z","tag":"run-ts","mode":"scratch","task":"dep-order","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-12T12:56:46.692Z","tag":"run-vow","mode":"scratch","task":"calc-vars","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"r = 2.5 * 4\\ns = -r + 0.25\"]","failedCopy":"failed/calc-vars/1791809806691.vow"}
+{"ts":"2026-10-12T12:57:05.485Z","tag":"run-ts","mode":"scratch","task":"calc-vars","lang":"ts","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"r = 2.5 * 4\\ns = -r + 0.25\"]","failedCopy":"failed/calc-vars/1791809825485.ts"}
+{"ts":"2026-10-12T12:57:13.381Z","tag":"run-ts","mode":"scratch","task":"calc-vars","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-12T12:57:23.553Z","tag":"run-ts","mode":"scratch","task":"template","lang":"ts","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"oops{{/each}}\",\"{}\"]","failedCopy":"failed/template/1791809843552.ts"}
+{"ts":"2026-10-12T12:57:30.963Z","tag":"run-vow","mode":"scratch","task":"calc-vars","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-12T12:57:39.441Z","tag":"run-ts","mode":"scratch","task":"template","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-12T12:58:04.543Z","tag":"run-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output"],"firstError":"wrong output for [\"{{#if x}}never closed\",\"{\\\"x\\\":1}\"]","failedCopy":"failed/template/1791809884542.vow"}
+{"ts":"2026-10-12T12:58:12.216Z","tag":"run-ts","mode":"scratch","task":"ini-config","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-12T12:58:33.090Z","tag":"run-ts","mode":"scratch","task":"dep-order","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-12T12:58:39.524Z","tag":"run-vow","mode":"scratch","task":"template","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-12T12:58:49.655Z","tag":"run-vow","mode":"scratch","task":"dep-order","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-12T12:58:59.852Z","tag":"run-vow","mode":"scratch","task":"ini-config","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"[Bad]\\nk=1\",\"bad.k\"]","failedCopy":"failed/ini-config/1791809939852.vow"}
+{"ts":"2026-10-12T12:59:18.223Z","tag":"run-vow","mode":"scratch","task":"ini-config","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-12T12:59:32.307Z","tag":"run-ts","mode":"scratch","task":"calc-vars","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-12T12:59:50.992Z","tag":"run-ts","mode":"scratch","task":"template","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-12T12:59:52.851Z","tag":"run-vow","mode":"scratch","task":"calc-vars","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-12T13:00:28.265Z","tag":"run-ts","mode":"scratch","task":"ini-config","lang":"ts","ok":false,"failKinds":["wrong-output","wrong-output"],"firstError":"wrong output for [\"[a]\\nk = 1\\nk = 2\\n[a]\\nj =\",\"a.k\",\"a.j\"]","failedCopy":"failed/ini-config/1791810028265.ts"}
+{"ts":"2026-10-12T13:00:46.608Z","tag":"run-ts","mode":"scratch","task":"ini-config","lang":"ts","ok":true,"failKinds":[]}
+{"ts":"2026-10-12T13:02:39.050Z","tag":"run-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output"],"firstError":"wrong output for [\"{{#each xs}}[{{.}}]{{/each}}\",\"{\\\"xs\\\":[1,\\\"two\\\",3.5]}\"]","failedCopy":"failed/template/1791810159050.vow"}
+{"ts":"2026-10-12T13:03:03.037Z","tag":"run-vow","mode":"scratch","task":"template","lang":"vow","ok":false,"failKinds":["wrong-output","wrong-output"],"firstError":"wrong output for [\"{{#if vip}}VIP {{/if}}{{name}}\",\"{\\\"name\\\":\\\"Bo\\\",\\\"vip\\\":false}\"]","failedCopy":"failed/template/1791810183037.vow"}
+{"ts":"2026-10-12T13:04:20.269Z","tag":"run-vow","mode":"scratch","task":"template","lang":"vow","ok":true,"failKinds":[]}
+{"ts":"2026-10-12T13:08:01.424Z","tag":"run-vow","mode":"scratch","task":"ini-config","lang":"vow","ok":false,"failKinds":["wrong-output"],"firstError":"wrong output for [\"[Bad]\\nk=1\",\"bad.k\"]","failedCopy":"failed/ini-config/1791810481424.vow"}
+{"ts":"2026-10-12T13:08:09.079Z","tag":"run-vow","mode":"scratch","task":"ini-config","lang":"vow","ok":true,"failKinds":[]}

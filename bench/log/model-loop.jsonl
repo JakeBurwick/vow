@@ -1,0 +1,12 @@
+{"ts": "2026-10-09T13:59:27", "model": "ollama:llama3.2:3b", "task": "interval-merge", "lang": "vow", "tries": 5, "pass": false, "seconds": 103}
+{"ts": "2026-10-09T14:00:07", "model": "ollama:llama3.2:3b", "task": "interval-merge", "lang": "ts", "tries": 5, "pass": false, "seconds": 39}
+{"ts": "2026-10-09T14:03:59", "model": "ollama:llama3.2:3b", "task": "roman", "lang": "vow", "tries": 5, "pass": false, "seconds": 214}
+{"ts": "2026-10-09T14:05:15", "model": "ollama:llama3.2:3b", "task": "roman", "lang": "ts", "tries": 5, "pass": false, "seconds": 76}
+{"ts": "2026-10-09T14:42:13", "model": "ollama:llama3.2:3b", "task": "csv-diff", "lang": "vow", "tries": null, "pass": null, "seconds": 2218}
+{"ts": "2026-10-09T14:43:13", "model": "ollama:llama3.2:3b", "task": "csv-diff", "lang": "ts", "tries": 5, "pass": false, "seconds": 59}
+{"ts": "2026-10-09T14:44:21", "model": "ollama:llama3.2:3b", "task": "text-wrap", "lang": "vow", "tries": 5, "pass": false, "seconds": 68}
+{"ts": "2026-10-09T14:44:50", "model": "ollama:llama3.2:3b", "task": "text-wrap", "lang": "ts", "tries": 5, "pass": false, "seconds": 29}
+{"ts": "2026-10-09T14:46:37", "model": "ollama:llama3.2:3b", "task": "dep-order", "lang": "vow", "tries": 5, "pass": false, "seconds": 107}
+{"ts": "2026-10-09T14:47:55", "model": "ollama:llama3.2:3b", "task": "dep-order", "lang": "ts", "tries": 5, "pass": false, "seconds": 78}
+{"ts": "2026-10-09T14:50:42", "model": "ollama:llama3.2:3b", "task": "calc-vars", "lang": "vow", "tries": 5, "pass": false, "seconds": 167}
+{"ts": "2026-10-09T14:52:16", "model": "ollama:llama3.2:3b", "task": "calc-vars", "lang": "ts", "tries": 5, "pass": false, "seconds": 94}

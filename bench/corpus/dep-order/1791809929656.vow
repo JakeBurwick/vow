@@ -1,0 +1,156 @@
+fn main() {
+  let input = args()[0]
+  let entries = split(input, ";")
+
+  // Map to store dependencies for each package
+  let deps_map = {}
+  let all_packages = {}
+
+  // Parse entries
+  for entry in entries {
+    // Skip empty entries
+    if len(trim(entry)) == 0 {
+      continue
+    }
+
+    // Find colon
+    let colon_pos = indexOf(entry, ":")
+    match colon_pos {
+      ok(pos) => {
+        // Validate: exactly one colon
+        let rest = slice(entry, pos + 1, len(entry))
+        match indexOf(rest, ":") {
+          ok(_) => {
+            print("error: bad entry ${entry}")
+            return ok(true)
+          }
+          err(_) => {}
+        }
+
+        let name = slice(entry, 0, pos)
+        let deps_str = slice(entry, pos + 1, len(entry))
+
+        // Validate name: lowercase letters only
+        if not isLowercaseLetters(name) {
+          print("error: bad entry ${entry}")
+          return ok(true)
+        }
+
+        // Parse dependencies
+        let deps = if deps_str == "" { [] } else { split(deps_str, ",") }
+
+        // Validate each dependency name
+        for dep in deps {
+          if not isLowercaseLetters(dep) {
+            print("error: bad entry ${entry}")
+            return ok(true)
+          }
+        }
+
+        // Track all packages
+        all_packages[name] = true
+        for dep in deps {
+          all_packages[dep] = true
+        }
+
+        // Store or merge dependencies
+        if has(deps_map, name) {
+          let existing = deps_map[name]
+          for dep in deps {
+            if not contains(existing, dep) {
+              push(existing, dep)
+            }
+          }
+        } else {
+          deps_map[name] = deps
+        }
+      }
+      err(_) => {
+        print("error: bad entry ${entry}")
+        return ok(true)
+      }
+    }
+  }
+
+  // Initialize missing packages with empty dependencies
+  for pkg in keys(all_packages) {
+    if not has(deps_map, pkg) {
+      deps_map[pkg] = []
+    }
+  }
+
+  // Build in-degree map and reverse dependency map
+  let in_degree = {}
+  let rdeps = {}
+
+  for pkg in keys(all_packages) {
+    in_degree[pkg] = 0
+    rdeps[pkg] = []
+  }
+
+  for pkg in keys(deps_map) {
+    let deps = deps_map[pkg]
+    in_degree[pkg] = len(deps)
+    for dep in deps {
+      push(rdeps[dep], pkg)
+    }
+  }
+
+  // Kahn's algorithm: topological sort with alphabetical ordering
+  let ready = []
+  for pkg in keys(all_packages) {
+    if in_degree[pkg] == 0 {
+      push(ready, pkg)
+    }
+  }
+  ready = sort(ready)
+
+  let result = []
+  while len(ready) > 0 {
+    // Pick alphabetically smallest
+    ready = sort(ready)
+    let pkg = ready[0]
+    ready = slice(ready, 1, len(ready))
+    push(result, pkg)
+
+    // Process reverse dependencies
+    let pkgs_to_add = []
+    for rdep in rdeps[pkg] {
+      in_degree[rdep] = in_degree[rdep] - 1
+      if in_degree[rdep] == 0 {
+        push(pkgs_to_add, rdep)
+      }
+    }
+
+    for pkg_to_add in pkgs_to_add {
+      push(ready, pkg_to_add)
+    }
+  }
+
+  // Check for cycle
+  if len(result) != len(keys(all_packages)) {
+    print("error: cycle")
+    return ok(true)
+  }
+
+  print(join(result, " "))
+  return ok(true)
+}
+
+fn isLowercaseLetters(s) {
+  if len(s) == 0 {
+    return false
+  }
+  for i in range(0, len(s)) {
+    let c = s[i]
+    if not (c >= "a" and c <= "z") {
+      return false
+    }
+  }
+  return true
+}
+
+match main() {
+  ok(v) => {}
+  err(e) => print(e)
+}

@@ -1,0 +1,67 @@
+fn wordWidth(w) {
+  if num(w) {
+    return num(w) > 0
+  } else {
+    return err("error: bad width")
+  }
+}
+
+fn fillLine(line, width, words) {
+  let wordsLeft = words
+  let lineLength = 0
+  let line = ""
+  for word in wordsLeft {
+    let wordLength = len(word)
+    if lineLength + wordLength + 1 > width {
+      if lineLength > 0 {
+        line = line + " "
+      }
+      line = line + word
+      wordsLeft = wordsLeft - 1
+      lineLength = wordLength
+    } else {
+      if lineLength > 0 {
+        line = line + " "
+      }
+      line = line + word
+      lineLength = lineLength + wordLength
+    }
+  }
+  return line
+}
+
+fn pushLine(lines, line) {
+  push(lines, line)
+}
+
+fn main() {
+  let text = args()[0]
+  let width = num(args()[1])
+  if not wordWidth(width) {
+    return
+  }
+  let words = split(text, " ")
+  let lines = []
+  let line = ""
+  for word in words {
+    if len(word) > width {
+      if len(line) > 0 {
+        pushLine(lines, line)
+      }
+      line = word
+    } else {
+      if len(line) > 0 {
+        line = line + " "
+      }
+      line = line + word
+    }
+  }
+  if len(line) > 0 {
+    pushLine(lines, line)
+  }
+  for i in range(len(lines)) {
+    print("${i + 1}: ${fillLine(lines[i], width, words)}")
+  }
+}
+
+main()

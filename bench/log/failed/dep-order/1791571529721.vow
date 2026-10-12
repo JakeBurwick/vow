@@ -1,0 +1,105 @@
+fn parseEntry(entry) {
+  let parts = split(entry, ";")
+  if len(parts) != 2 {
+    return err("error: bad entry " + entry)
+  }
+  let name = match get(parts, 0) { ok(s) => s err(e) => "" }
+  if not startsWith(name, "a") or not all(c in "abcdefghijklmnopqrstuvwxyz") {
+    return err("error: bad entry " + entry)
+  }
+  let deps = split(get(parts, 1), ",")
+  if len(deps) == 0 {
+    return { name, deps: [] }
+  }
+  let deps = map(deps, dep => {
+    let depParts = split(dep, ":")
+    if len(depParts) != 2 {
+      return err("error: bad entry " + entry)
+    }
+    let depName = depParts[0]
+    if not startsWith(depName, "a") or not all(c in "abcdefghijklmnopqrstuvwxyz") {
+      return err("error: bad entry " + entry)
+    }
+    let depDeps = split(depParts[1], ",")
+    if len(depDeps) == 0 {
+      return { depName, deps: [] }
+    }
+    return { depName, deps: depDeps }
+  })
+  return { name, deps }
+}
+
+fn buildGraph(entries) {
+  let graph = {}
+  for entry in entries {
+    let name = entry.name
+    let deps = entry.deps
+    if has(graph, name) {
+      graph[name].deps = deps
+    } else {
+      graph[name] = { name, deps }
+    }
+  }
+  return graph
+}
+
+fn has(g, name) {
+  return has(g, name) or has(g, name + "_")
+}
+
+fn has(g, name) {
+  return has(g, name) or has(g, name + "_")
+}
+
+fn dfs(g, name, visited, stack) {
+  if has(visited, name) {
+    return false
+  }
+  visited[name] = true
+  stack[name] = true
+  for dep in g[name].deps {
+    if has(stack, dep) {
+      return true
+    }
+    if not dfs(g, dep, visited, stack) {
+      return true
+    }
+  }
+  stack[name] = false
+  return false
+}
+
+fn findCycle(g, visited, stack) {
+  for name in keys(g) {
+    if has(visited, name) {
+      continue
+    }
+    if dfs(g, name, visited, stack) {
+      return true
+    }
+  }
+  return false
+}
+
+fn main() {
+  let entries = map(args(), parseEntry)
+  if has(entries, "") {
+    print("error: cycle")
+    return
+  }
+  let graph = buildGraph(entries)
+  let sorted = sortBy(keys(graph), name => {
+    let deps = graph[name].deps
+    if len(deps) == 0 {
+      return 0
+    }
+    let firstDep = deps[0]
+    return match has(graph, firstDep) {
+      true => 0
+      false => 1
+    }
+  })
+  for name in sorted {
+    print(name + " ")
+  }
+}

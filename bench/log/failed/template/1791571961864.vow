@@ -1,0 +1,145 @@
+fn printTemplate(template) {
+  let lines = lines(template)
+  let i = 0
+  while i < len(lines) {
+    let line = lines[i]
+    if startsWith(line, "{{") {
+      let end = line.indexOf("}}")
+      if end == -1 {
+        print("error: unclosed if")
+        return
+      }
+      let tag = slice(line, 2, end)
+      let name = match get(tag, "name") { ok(n) => n err(e) => "" }
+      if name == "" {
+        i = i + 1
+        continue
+      }
+      let value = match name {
+        ok(n) => match num(n) {
+          ok(n) => n
+          err(_) => n
+        }
+        err(_) => match str(n) {
+          ok(s) => s
+          err(_) => ""
+        }
+      }
+      if value == null {
+        i = i + 1
+        continue
+      }
+      if startsWith(tag, "#if") {
+        let body = slice(tag, 3, end)
+        if not truthy(value) {
+          i = i + 1
+          continue
+        }
+      } else if startsWith(tag, "#each") {
+        let body = slice(tag, 4, end)
+        let list = match jsonList(value) {
+          ok(xs) => xs
+          err(_) => []
+        }
+        if len(list) == 0 {
+          i = i + 1
+          continue
+        }
+        for element in list {
+          let elementValue = match element {
+            ok(e) => match json(e) {
+              ok(j) => match jsonStr(get(j, "name")?) {
+                ok(n) => n
+                err(_) => ""
+              }
+              err(_) => ""
+            }
+            err(_) => ""
+          }
+          if elementValue == null {
+            i = i + 1
+            continue
+          }
+          if startsWith(body, ".") {
+            print(".")
+          }
+          if startsWith(body, "{") {
+            let innerBody = slice(body, 1, end)
+            let inner = match json(innerBody) {
+              ok(j) => j
+              err(_) => ""
+            }
+            if has(inner, "name") {
+              let innerName = match get(inner, "name") { ok(n) => n err(e) => "" }
+              if innerName == "" {
+                i = i + 1
+                continue
+              }
+              print(match innerName {
+                ok(n) => match num(n) {
+                  ok(n) => n
+                  err(_) => n
+                }
+                err(_) => match str(n) {
+                  ok(s) => s
+                  err(_) => ""
+                }
+              })
+            }
+          } else if startsWith(body, "[") {
+            let innerBody = slice(body, 1, end)
+            let inner = match json(innerBody) {
+              ok(xs) => xs
+              err(_) => []
+            }
+            if len(inner) == 0 {
+              i = i + 1
+              continue
+            }
+            for element in inner {
+              let elementValue = match element {
+                ok(e) => match json(e) {
+                  ok(j) => match jsonStr(get(j, "name")?) {
+                    ok(n) => n
+                    err(_) => ""
+                  }
+                  err(_) => ""
+                }
+                err(_) => ""
+              }
+              if elementValue == null {
+                i = i + 1
+                continue
+              }
+              if startsWith(body, ".") {
+                print(".")
+              }
+              print(elementValue)
+            }
+          } else {
+            print("error: unexpected /if")
+            return
+          }
+        }
+      } else {
+        print("error: unexpected /each")
+        return
+      }
+    } else {
+      print(line)
+    }
+    i = i + 1
+  }
+}
+
+fn main() {
+  let template = args()[0]
+  let data = match parseJson(args()[1]) { ok(j) => j err(e) => "" }
+  if jsonType(data) != "object" {
+    print("error: bad data")
+    return
+  }
+  printTemplate(template)
+}
+
+main()
