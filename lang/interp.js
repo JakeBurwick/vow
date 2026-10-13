@@ -58,6 +58,22 @@ function sameHash(a, b) {
 // JSON values are wrapped so a parsed object can never masquerade as a
 // Vow map, struct, or Result at runtime.
 export const isJson = (v) => v !== null && typeof v === 'object' && '__json' in v;
+// Strings are ordered by code point (so "😀" sorts after "ｚ", as ord() would say), not by UTF-16
+// unit like JavaScript's <. Surrogates (D800-DFFF) are lifted above every BMP unit: at the first
+// differing position that gives exactly the code-point order. Used by <, sort and sortBy.
+export function compareText(a, b) {
+  const n = a.length < b.length ? a.length : b.length;
+  for (let i = 0; i < n; i++) {
+    let x = a.charCodeAt(i), y = b.charCodeAt(i);
+    if (x === y) continue;
+    if (x >= 0xD800 && x <= 0xDFFF) x += 0x2800;
+    if (y >= 0xD800 && y <= 0xDFFF) y += 0x2800;
+    return x < y ? -1 : 1;
+  }
+  return a.length === b.length ? 0 : a.length < b.length ? -1 : 1;
+}
+// sortBy keys: str by code point, num (or anything else) by <
+export const compareKeys = (a, b) => typeof a === 'string' ? compareText(a, b) : (a < b ? -1 : a > b ? 1 : 0);
 // __key: where the value came from (an object key or an array index), so jsonNum("36") can
 // say `the JSON value at "age"`; absent for the root of parseJson and for built values
 const J = (raw, key) => key === undefined ? { __json: raw } : { __json: raw, __key: key };
@@ -206,6 +222,53 @@ function parseIsoDate(s) {
   return { tag: 'ok', val: ms };
 }
 
+// ---------- built-in tests (test "name" { ... } blocks; shared by both backends) ----------
+
+// The I/O a program sees inside run(args, stdin) from a test: print is captured into `lines`,
+// args() is the given list, readLine/readAll read the given text exactly like the CLI reads
+// standard input (a partial last line still counts; \r\n is one newline; err at the end).
+export function testIO(argv, stdin, lines) {
+  let buf = stdin;
+  return {
+    print: (args) => { lines.push(args.map(a => display(a)).join(' ')); return UNIT; },
+    args: () => [...argv],
+    readLine: () => {
+      if (buf === '') return { tag: 'err', val: 'end of input' };
+      const nl = buf.indexOf('\n');
+      let line;
+      if (nl >= 0) { line = buf.slice(0, nl); buf = buf.slice(nl + 1); } else { line = buf; buf = ''; }
+      return { tag: 'ok', val: line.endsWith('\r') ? line.slice(0, -1) : line };
+    },
+    readAll: () => { const t = buf; buf = ''; return { tag: 'ok', val: t }; },
+  };
+}
+// what the CLI would have written to stdout: every printed line ends in a newline
+export const runOutput = (lines) => lines.map(l => l + '\n').join('');
+// a trap inside run(...): the program's own diagnostic, plus where the test called run
+export function runTrap(e, node, src) {
+  if (e instanceof VowError) {
+    const loc = nodeLoc(src, node);
+    e.diag.notes = [...(e.diag.notes ?? []), '', `the program trapped inside run(...), called from ${loc.file ? loc.file + ', ' : ''}line ${loc.line} of the test`];
+  }
+  return e;
+}
+// the detail of a failed expectEq: both values, and for multi-line text the first line that differs
+export function eqDetail(actual, expected) {
+  let d = `expected: ${display(expected, 1)}\nactual:   ${display(actual, 1)}`;
+  if (typeof actual === 'string' && typeof expected === 'string' && (actual.includes('\n') || expected.includes('\n'))) {
+    // a trailing newline leaves an empty last piece: drop it, so the pieces are the printed lines
+    const pieces = (t) => { const xs = t.split('\n'); return xs.length > 1 && xs[xs.length - 1] === '' ? xs.slice(0, -1) : xs; };
+    const a = pieces(actual), b = pieces(expected);
+    let i = 0;
+    while (i < a.length && i < b.length && a[i] === b[i]) i++;
+    const show = (xs) => xs[i] === undefined ? 'nothing (the text ends here)' : JSON.stringify(xs[i]);
+    d += i === a.length && i === b.length
+      ? '\nthe lines are the same; only the newline at the end differs'
+      : `\nfirst difference at line ${i + 1}: expected ${show(b)}, actual ${show(a)}`;
+  }
+  return d;
+}
+
 export function createRun(src, ast, opts = {}) {
   const st = {
     out: opts.out ?? (() => {}),
@@ -258,21 +321,21 @@ export function createRun(src, ast, opts = {}) {
   const ok = (v) => ({ tag: 'ok', val: v });
   const err = (v) => ({ tag: 'err', val: v });
 
-  function vowToRaw(v, node) {
+  function vowToRaw(v, node, who = 'toJson') {
     if (typeof v === 'number' || typeof v === 'string' || typeof v === 'boolean') return v;
-    if (Array.isArray(v)) return v.map(x => vowToRaw(x, node));
+    if (Array.isArray(v)) return v.map(x => vowToRaw(x, node, who));
     if (v instanceof Map) {
       const o = {};
-      for (const [k, x] of v) o[k] = vowToRaw(x, node);
+      for (const [k, x] of v) o[k] = vowToRaw(x, node, who);
       return o;
     }
     if (v && v.__struct) {
       const o = {};
-      for (const [k, x] of v.fields) o[k] = vowToRaw(x, node);
+      for (const [k, x] of v.fields) o[k] = vowToRaw(x, node, who);
       return o;
     }
     if (isJson(v)) return v.__json;
-    trap(node, 'RuntimeError', `toJson() can't serialize ${display(v, 1)}`,
+    trap(node, 'RuntimeError', `${who}() can't serialize ${display(v, 1)}`,
       'Only nums, strs, bools, lists, maps, structs and json values have a JSON form.',
       v && v.tag ? 'match the Result first and serialize the ok value.' : 'convert or unwrap the value first.');
   }
@@ -401,7 +464,7 @@ export function createRun(src, ast, opts = {}) {
     max: ([a, b]) => Math.max(a, b),
     ok: ([v]) => ok(v),
     err: ([v]) => err(v),
-    sort: ([l]) => [...l].sort((a, b) => typeof a === 'string' ? (a < b ? -1 : a > b ? 1 : 0) : a - b),
+    sort: ([l]) => [...l].sort((a, b) => typeof a === 'string' ? compareText(a, b) : a - b),
     reverse: ([l]) => [...l].reverse(),
     contains: ([c, v]) => typeof c === 'string' ? c.includes(v) : c.some(x => deepEq(x, v)),
     slice: ([c, a, b]) => c.slice(Math.max(0, Math.floor(a)), Math.max(0, Math.floor(b))),
@@ -423,6 +486,17 @@ export function createRun(src, ast, opts = {}) {
         'check the kind first: if jsonType(j) == "object" { ... }; to build a list, use a Vow list and toJson(...) instead.');
       return J({ ...(raw ?? {}), [k]: vowToRaw(v, node) });
     },
+    jsonDelete: ([j, k], node) => {
+      const raw = j.__json;
+      if (raw !== null && !isJsonObject(raw)) trap(node, 'RuntimeError', `jsonDelete() needs a JSON object, but ${jsonFound(j)}`,
+        'jsonDelete(j, key) returns a copy of the object j without that key (a json null counts as an empty object).',
+        'check the kind first: if jsonType(j) == "object" { ... }; to drop items from an array, filter jsonList(j) and rebuild it with json(...).');
+      const out = { ...(raw ?? {}) };
+      delete out[k];
+      return J(out);
+    },
+    // json(v): a Vow value as a json value, directly (no Result: it can't fail for the types the checker lets through)
+    json: ([v], node) => J(vowToRaw(v, node, 'json')),
     jsonMerge: ([a, b]) => J(rawJsonMerge(a.__json, b.__json)),
     jsonNum: ([j]) => typeof j.__json === 'number' ? ok(j.__json) : err(`${jsonFound(j)}, not a number`),
     jsonStr: ([j]) => typeof j.__json === 'string' ? ok(j.__json) : err(`${jsonFound(j)}, not a string`),
@@ -519,8 +593,15 @@ export function createRun(src, ast, opts = {}) {
     urlEncode: ([t]) => encodeURIComponent(t),
     urlDecode: ([t]) => {
       try { return ok(decodeURIComponent(t)); }
-      catch { return err(`"${t.length > 60 ? t.slice(0, 57) + '...' : t}" is not valid URL encoding (a % must be followed by two hex digits)`); }
+      catch {
+        const shown = t.length > 60 ? t.slice(0, 57) + '...' : t;
+        const why = /%(?![0-9a-fA-F]{2})/.test(t)
+          ? 'a % must be followed by two hex digits'
+          : 'the %-escapes are not valid UTF-8';
+        return err(`"${shown}" is not valid URL encoding (${why})`);
+      }
     },
+    chars: ([t]) => [...t], // one str per code point: chars("a😀") is ["a", "😀"]
     ord: ([t], node) => {
       if (t === '') trap(node, 'RuntimeError', 'ord() of an empty string', 'ord(text) gives the code point of the first character, and "" has none.', 'check first: if s != "" { ord(s) }');
       return t.codePointAt(0);
@@ -581,6 +662,32 @@ export function createRun(src, ast, opts = {}) {
     param: ([query, name]) => {
       const v = new URLSearchParams(query.startsWith('?') ? query.slice(1) : query).get(name);
       return v === null ? err(`query has no parameter "${name}"`) : ok(v);
+    },
+    // ---- tests: only reachable from a test block (the checker refuses them elsewhere) ----
+    expect: ([c], node) => {
+      if (c === true) return UNIT;
+      trap(node, 'TestFailure', 'expect(...) failed', `The condition ${src.slice(node.args[0].start, node.args[0].end).replace(/\s+/g, ' ')} is false.`);
+    },
+    expectEq: ([actual, expected], node) => {
+      if (deepEq(actual, expected)) return UNIT;
+      trap(node, 'TestFailure', 'expectEq(...) failed: the values differ', eqDetail(actual, expected));
+    },
+    expectErr: ([r], node) => {
+      if (r.tag === 'err') return UNIT;
+      trap(node, 'TestFailure', 'expectErr(...) failed: the Result is ok', `expected an err, actual: ${display(r, 1)}`);
+    },
+    // run(args, stdin): this file's top-level code, in a fresh state, with print captured;
+    // returns what it printed. The compiled backend has its own $run with the same contract.
+    run: async ([argv, stdin], node) => {
+      const lines = [];
+      const saved = { print: builtins.print, args: builtins.args, readLine: builtins.readLine, readAll: builtins.readAll };
+      const outer = { globals: st.globals, modGlobals: st.modGlobals, stack: st.stack, steps: st.steps };
+      Object.assign(builtins, testIO(argv, stdin, lines));
+      fresh();
+      try { await drive(program()); }
+      catch (e) { throw runTrap(e, node, src); }
+      finally { Object.assign(builtins, saved); Object.assign(st, outer); }
+      return runOutput(lines);
     },
     ...(opts.builtins ?? {}),
   };
@@ -737,10 +844,10 @@ export function createRun(src, ast, opts = {}) {
             return l % r;
           case '==': return deepEq(l, r);
           case '!=': return !deepEq(l, r);
-          case '<': return l < r;
-          case '<=': return l <= r;
-          case '>': return l > r;
-          case '>=': return l >= r;
+          case '<': return typeof l === 'string' ? compareText(l, r) < 0 : l < r;
+          case '<=': return typeof l === 'string' ? compareText(l, r) <= 0 : l <= r;
+          case '>': return typeof l === 'string' ? compareText(l, r) > 0 : l > r;
+          case '>=': return typeof l === 'string' ? compareText(l, r) >= 0 : l >= r;
         }
       }
       case 'Index': {
@@ -801,7 +908,7 @@ export function createRun(src, ast, opts = {}) {
             const k = kf.fn ? yield* callFn(kf.fn, [xs[i]], e) : yield* callLambda(kf, [xs[i]], e);
             keyed.push({ k, i, v: xs[i] });
           }
-          keyed.sort((a, b) => (a.k < b.k ? -1 : a.k > b.k ? 1 : a.i - b.i));
+          keyed.sort((a, b) => compareKeys(a.k, b.k) || a.i - b.i);
           return keyed.map(x => x.v);
         }
         // higher-order builtins; a user fn or lambda variable with the same name wins
@@ -954,15 +1061,34 @@ export function createRun(src, ast, opts = {}) {
     return result;
   }
 
-  function* program() {
-    // Hoist fn declarations so calls work before their definition line.
+  // Hoist fn declarations so calls work before their definition line.
+  function hoist() {
     for (const s of ast.stmts) if (s.t === 'Fn') {
       st.globals.declare(s.name, { fn: s });
       if (s.mod && !s.mod.isEntry) st.modGlobals.declare(s.name, { fn: s });
     }
+  }
+  // a program state as if nothing had run yet: run(...) in a test, and each test, start here
+  function fresh() {
+    st.globals = new Env();
+    st.modGlobals = new Env();
+    st.stack = [{ name: '(top level)', env: st.globals, line: 1, rootEnv: st.globals }];
+    st.steps = 0;
+    hoist();
+  }
+  // runs a generator to the end, awaiting async builtins (the same loop every host uses)
+  async function drive(g) {
+    let r = g.next();
+    while (!r.done) r = (r.value && r.value.await) ? g.next(await r.value.await) : g.next();
+    return r.value;
+  }
+
+  function* program() {
+    hoist();
     try {
       for (const s of ast.stmts) {
-        if (s.t === 'Fn' || s.t === 'Struct') continue;
+        // test blocks never run as part of the program (vow test runs them)
+        if (s.t === 'Fn' || s.t === 'Struct' || s.t === 'Test') continue;
         // a top-level return ends the program
         if ((yield* execStmt(s, st.globals)).sig === 'return') return;
       }
@@ -971,6 +1097,16 @@ export function createRun(src, ast, opts = {}) {
     }
   }
 
+  // one test block, in a fresh state (a bare return ends it early, like the top level)
+  function* testBody(t) {
+    fresh();
+    try { yield* execBlock(t.body, new Env(st.globals)); }
+    catch (ex) { if (!(ex instanceof ErrPropagation)) throw ex; }
+  }
+  // the file's tests: { name, node, run } where run() resolves when the test passes and
+  // rejects with the VowError (a TestFailure or a trap) when it fails
+  const tests = ast.stmts.filter(s => s.t === 'Test').map(t => ({ name: t.name, node: t, run: () => drive(testBody(t)) }));
+
   // builtins: exposed so the compiled backend (lang/runtime.js) reuses the exact same table
-  return { gen: program(), state: st, builtins };
+  return { gen: program(), state: st, builtins, tests };
 }

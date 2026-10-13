@@ -1,0 +1,3 @@
+fn area(r) { return r * r * 3 }
+test "area" { expectEq(area(2), 12) }
+test "area wrong on purpose" { expectEq(area(1), 4) }

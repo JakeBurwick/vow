@@ -96,6 +96,8 @@ export function loadProgram(entrySrc, entryAbs, host) {
     try { ast = parse(text, { base: start, onImport: onImportFrom(abs, label), module: { label } }); }
     catch (e) { tag(e, f); throw e; }
     loading.pop();
+    // a module's own test blocks run with `vow test module.vow`; an importer never runs them
+    ast.stmts = ast.stmts.filter(s => s.t !== 'Test');
 
     const stem = (abs.split(/[\\/]/).pop() ?? 'module').replace(/\.vow$/, '') || 'module';
     let prefix = stem;

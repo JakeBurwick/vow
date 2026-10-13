@@ -3,8 +3,9 @@
 // interpreter (lang/interp.js) exactly: output, trap text, call-stack notes, step and depth
 // limits, contract blame. lang/runtime.js turns the generated source into a runnable program.
 //
-// Shape of the output: the body of a factory `($rt, $nodes) => ({ main, ctx })`. Vow fns become
-// JS function declarations, lambdas become arrows, top-level code becomes `async $main()`.
+// Shape of the output: the body of a factory `($rt, $nodes) => ({ main, tests })`. Vow fns become
+// JS function declarations, lambdas become arrows, top-level code becomes `async $main()`, and
+// each `test "name" { ... }` block becomes an async function in `tests` (never part of $main).
 // Expressions that need statements (match / if-else as values, `?`) are lowered into
 // "pre" statements in evaluation order, so `?` and a `return` inside a value arm are plain JS
 // returns. Anything the compiler does not handle throws Unsupported and the CLI falls back
@@ -15,10 +16,13 @@ import { BUILTIN_NAMES } from './checker.js';
 class Unsupported extends Error {}
 
 // builtins the host (CLI) may implement asynchronously; calls to them are awaited
-const ASYNC_BUILTINS = new Set(['readFile', 'writeFile', 'httpGet', 'httpRequest', 'serve', 'env']);
+const ASYNC_BUILTINS = new Set(['readFile', 'writeFile', 'httpGet', 'httpRequest', 'serve', 'env', 'run']);
 // builtins that can trap: their VowError needs the compiled call stack as notes
-const TRAP_BUILTINS = new Set(['range', 'repeat', 'redirect', 'toJson', 'prettyJson', 'jsonSet', 'ord', 'chr', 'matches', 'find', 'findAll', 'replaceAll', 'splitOn', 'sig',
-  'sqrt', 'pow', 'exp', 'ln', 'log', 'sin', 'cos', 'tan', 'atan2', 'ceil', 'trunc', 'randomInt', 'dateParts', 'isoDate', 'daysBetween']);
+const TRAP_BUILTINS = new Set(['range', 'repeat', 'redirect', 'toJson', 'prettyJson', 'jsonSet', 'jsonDelete', 'json', 'ord', 'chr', 'matches', 'find', 'findAll', 'replaceAll', 'splitOn', 'sig',
+  'sqrt', 'pow', 'exp', 'ln', 'log', 'sin', 'cos', 'tan', 'atan2', 'ceil', 'trunc', 'randomInt', 'dateParts', 'isoDate', 'daysBetween', 'expect', 'expectEq', 'expectErr']);
+// builtins that run(args, stdin) in a test swaps out for the inner program run: compiled
+// calls look them up on $B at call time instead of binding them once
+const SWAPPABLE = new Set(['print', 'args', 'readLine', 'readAll']);
 // builtins that call back into Vow code: compiled to prelude helpers ($map / $mapA, ...),
 // in the same item order and with the same short-circuiting as lang/interp.js
 const HIGHER_ORDER = { map: 2, filter: 2, any: 2, all: 2, count: 2, fold: 3 };
@@ -223,15 +227,20 @@ function PRELUDE() {
   function $sortBy(xs, kf, e) {
     const keyed = [];
     for (let i = 0; i < xs.length; i++) keyed.push({ k: kf(xs[i], e), i, v: xs[i] });
-    keyed.sort((a, b) => (a.k < b.k ? -1 : a.k > b.k ? 1 : a.i - b.i));
+    keyed.sort((a, b) => compareKeys(a.k, b.k) || a.i - b.i);
     return keyed.map(x => x.v);
   }
   async function $sortByA(xs, kf, e) {
     const keyed = [];
     for (let i = 0; i < xs.length; i++) keyed.push({ k: await kf(xs[i], e), i, v: xs[i] });
-    keyed.sort((a, b) => (a.k < b.k ? -1 : a.k > b.k ? 1 : a.i - b.i));
+    keyed.sort((a, b) => compareKeys(a.k, b.k) || a.i - b.i);
     return keyed.map(x => x.v);
   }
+  // < <= > >= when the checker could not pin both sides to num: strs compare by code point
+  function $lt(a, b) { return typeof a === 'string' ? compareText(a, b) < 0 : a < b; }
+  function $le(a, b) { return typeof a === 'string' ? compareText(a, b) <= 0 : a <= b; }
+  function $gt(a, b) { return typeof a === 'string' ? compareText(a, b) > 0 : a > b; }
+  function $ge(a, b) { return typeof a === 'string' ? compareText(a, b) >= 0 : a >= b; }
   function $map(xs, f, e) { const out = []; for (const x of [...xs]) out.push(f(x, e)); return out; }
   async function $mapA(xs, f, e) { const out = []; for (const x of [...xs]) out.push(await f(x, e)); return out; }
   function $filter(xs, f, e) { const out = []; for (const x of [...xs]) if (f(x, e)) out.push(x); return out; }
@@ -253,6 +262,20 @@ function PRELUDE() {
       finally { $D = d0; $ln = l0; }
     },
   };
+  // run(args, stdin) from a test: the top-level code again, in a fresh state (stack, steps,
+  // top-level lets are reassigned by $main), with print/args/readLine/readAll swapped for the
+  // test's I/O. Same contract as the interpreter's run builtin (lang/interp.js).
+  async function $run(argv, stdin, node) {
+    const lines = [];
+    const saved = { print: $B.print, args: $B.args, readLine: $B.readLine, readAll: $B.readAll };
+    const d0 = $D, l0 = $ln, s0 = $S;
+    Object.assign($B, testIO(argv, stdin, lines));
+    $D = 0; $ln = 1; $S = 0;
+    try { await $main(); }
+    catch (e) { throw runTrap(e, node, $src); }
+    finally { Object.assign($B, saved); $D = d0; $ln = l0; $S = s0; }
+    return runOutput(lines);
+  }
 }
 /* eslint-enable no-undef */
 const preludeSrc = (() => {
@@ -296,7 +319,7 @@ export function compile(src, ast, opts = {}) {
   // which file a frame belongs to, for call-stack notes (multi-file programs only)
   const fileOf = (node) => node.fileLabel ? ` $F[$D] = ${JSON.stringify(node.fileLabel)};` : '';
   const usedB = new Set();
-  const bref = (name) => { usedB.add(name); return `$B_${name}`; };
+  const bref = (name) => { if (SWAPPABLE.has(name)) return `$B.${name}`; usedB.add(name); return `$B_${name}`; };
   const unsupported = (what) => { throw new Unsupported(what); };
 
   const { asyncFns, allAsync } = analyzeAsync(ast);
@@ -412,8 +435,14 @@ export function compile(src, ast, opts = {}) {
         }
         const [l, r] = cExprs([e.left, e.right], scope, out, fx);
         switch (e.op) {
-          case '+': case '-': case '*': case '<': case '<=': case '>': case '>=':
+          case '+': case '-': case '*':
             return `(${l} ${e.op} ${r})`;
+          case '<': case '<=': case '>': case '>=': {
+            // the checker tags each comparison: 'num' needs no dispatch, 'str' / unknown go by code point
+            if (e.cmp === 'num') return `(${l} ${e.op} ${r})`;
+            const h = { '<': '$lt', '<=': '$le', '>': '$gt', '>=': '$ge' }[e.op];
+            return e.cmp === 'str' ? `(compareText(${l}, ${r}) ${e.op} 0)` : `${h}(${l}, ${r})`;
+          }
           case '/': return `$div(${l}, ${r}, ${nref(e)})`;
           case '%': return `$mod(${l}, ${r}, ${nref(e)})`;
           case '==': return (isLit(e.left) || isLit(e.right)) ? `(${l} === ${r})` : `$eq(${l}, ${r})`;
@@ -521,6 +550,10 @@ export function compile(src, ast, opts = {}) {
 
   function cBuiltin(name, args, nr, fx) {
     if (!builtinNames.has(name)) unsupported(`unknown builtin ${name}`);
+    if (name === 'run') {
+      if (args.length !== 2) unsupported('run arity');
+      return aw(`$run(${args[0]}, ${args[1]}, ${nr})`, true, fx);
+    }
     if (name === 'sortBy') {
       if (args.length !== 2) unsupported('sortBy arity');
       return allAsync ? aw(`$sortByA(${args[0]}, ${args[1]}, ${nr})`, true, fx) : `$sortBy(${args[0]}, ${args[1]}, ${nr})`;
@@ -564,6 +597,9 @@ export function compile(src, ast, opts = {}) {
       case 'Struct':
         if (scope === globals) return;
         return unsupported('nested struct');
+      case 'Test':
+        if (scope === globals) return; // never part of $main; compiled separately below
+        return unsupported('nested test');
     }
     out.push(step(s));
     switch (s.t) {
@@ -666,7 +702,7 @@ export function compile(src, ast, opts = {}) {
         return;
       }
       case 'Return': {
-        if (fx.kind === 'top') {
+        if (fx.kind === 'top' || fx.kind === 'test') { // a bare return ends the program / the test
           if (s.value) { const x = cExpr(s.value, scope, out, fx); out.push(`(${x});`); }
           out.push('return;');
           return;
@@ -736,10 +772,17 @@ export function compile(src, ast, opts = {}) {
   const fnCode = fnDecls.map(cFn);
   const mainOut = [];
   cBlock(ast.stmts, globals, mainOut, { kind: 'top', async: true });
+  // test blocks: one async function each, started from a fresh stack and step budget
+  // (a trap in an earlier test leaves $D raised, so every test resets it)
+  const testCode = ast.stmts.filter(s => s.t === 'Test').map((t) => {
+    const out = [];
+    cBlock(t.body.stmts, new Scope(globals), out, { kind: 'test', async: true });
+    return `{ name: ${JSON.stringify(t.name)}, node: ${nref(t)}, run: async () => {\n$D = 0; $ln = 1; $S = 0;\n${out.join('\n')}\n} }`;
+  });
 
   const code = [
     '"use strict";',
-    'const { $B, display, deepEq, isJson, UNIT: $U, VowError, nodeLoc, src: $src } = $rt;',
+    'const { $B, display, deepEq, isJson, compareText, compareKeys, UNIT: $U, VowError, nodeLoc, src: $src, testIO, runOutput, runTrap } = $rt;',
     `const $MAXS = ${MAXS}, $MAXD = ${MAXD};`,
     'let $D = 0, $S = 0, $ln = 1;',
     "const $L = [0], $N = ['(top level)'], $F = [];",
@@ -749,7 +792,7 @@ export function compile(src, ast, opts = {}) {
     globalLets.length ? `let ${globalLets.join(', ')};` : '',
     ...fnCode,
     `async function $main() {\n${mainOut.join('\n')}\n}`,
-    'return { main: $main };',
+    `return { main: $main, tests: [${testCode.join(',\n')}] };`,
   ].join('\n');
   return { code, nodes };
 }

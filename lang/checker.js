@@ -211,10 +211,13 @@ export const BUILTIN_NAMES = ['print', 'str', 'num', 'len', 'range', 'push', 'po
   'matches', 'find', 'findAll', 'replaceAll', 'splitOn', 'words', 'sig', 'isInt', 'int',
   'map', 'filter', 'any', 'all', 'count', 'fold', 'uniq', 'values',
   'readFile', 'writeFile', 'httpGet', 'httpRequest', 'readLine', 'readAll', 'args', 'env', 'serve', 'html', 'text', 'respond', 'redirect', 'param', 'escape', 'checkLogin', 'askLogin', 'now',
-  'urlEncode', 'urlDecode', 'ord', 'chr',
-  'parseJson', 'toJson', 'prettyJson', 'jsonSet', 'jsonMerge', 'jsonNum', 'jsonStr', 'jsonBool', 'jsonList', 'jsonKeys', 'jsonType', 'field', 'at', 'isNull', 'truthy',
+  'urlEncode', 'urlDecode', 'ord', 'chr', 'chars',
+  'parseJson', 'toJson', 'prettyJson', 'json', 'jsonSet', 'jsonDelete', 'jsonMerge', 'jsonNum', 'jsonStr', 'jsonBool', 'jsonList', 'jsonKeys', 'jsonType', 'field', 'at', 'isNull', 'truthy',
   'sqrt', 'pow', 'exp', 'ln', 'log', 'sin', 'cos', 'tan', 'atan2', 'ceil', 'trunc', 'pi', 'random', 'randomInt',
   'dateParts', 'isoDate', 'parseDate', 'daysBetween'];
+
+// builtins that exist only inside a `test "name" { ... }` block (see checkTest)
+export const TEST_BUILTINS = ['expect', 'expectEq', 'expectErr', 'run'];
 
 // fields of the struct dateParts(ms) returns, in display order
 const DATE_PARTS_FIELDS = ['year', 'month', 'day', 'hour', 'minute', 'second', 'weekday'];
@@ -233,15 +236,25 @@ export function compileRegex(p, flags = '') {
 // ---------- checker ----------
 
 function callsBuiltin(node, name) {
-  if (node == null || typeof node !== 'object') return false;
-  if (Array.isArray(node)) return node.some(n => callsBuiltin(n, name));
-  if (node.t === 'Call' && node.callee === name) return true;
+  return findNode(node, (n) => n.t === 'Call' && n.callee === name) != null;
+}
+// every identifier name read inside a node (a call's callee is an Ident too), in source order
+function identNames(node) {
+  const names = new Set();
+  findNode(node, (n) => { if (n.t === 'Ident') names.add(n.name); return false; });
+  return names;
+}
+// first AST node (pre-order) that satisfies pred, or null
+function findNode(node, pred) {
+  if (node == null || typeof node !== 'object') return null;
+  if (Array.isArray(node)) { for (const n of node) { const r = findNode(n, pred); if (r) return r; } return null; }
+  if (node.t != null && pred(node)) return node;
   for (const k in node) {
     if (k === 'pos' || k === 'tok' || k === 'nameTok' || k === 'tagTok' || k === 'binderTok' || k === 'calleeNode') continue;
     const v = node[k];
-    if (v != null && typeof v === 'object' && callsBuiltin(v, name)) return true;
+    if (v != null && typeof v === 'object') { const r = findNode(v, pred); if (r) return r; }
   }
-  return false;
+  return null;
 }
 
 export function check(src, ast) {
@@ -300,9 +313,17 @@ export function check(src, ast) {
       `${currentMod.label} is a module: it sees only its own fns and structs, the modules it imports, and builtins. That keeps a module working the same whoever imports it.`,
       `move fn ${name} into ${currentMod.label} (or into a module both files import), or pass it in as a parameter.`);
   }
+  // a test naming one of the file's top-level variables: say why it can't see it
+  function testVarHint(node, name) {
+    if (!inTest || !globals.vars.has(name) || globals.vars.get(name).isFn) return;
+    diag(node, `'${name}' is a top-level variable, which a test can't see`,
+      `vow test never runs the file's top-level code (run(...) does that, in its own fresh state), so '${name}' has no value inside a test. A test sees the file's fns and structs only.`,
+      `declare it inside the test (let ${name} = ...), or move the code that needs it into a fn and call that fn from the test.`);
+  }
   const fnInfo = new Map(); // Fn node -> {paramTypes, retType, firstReturnLine, tryLine}
   let currentFn = null;
   let loopDepth = 0;
+  let inTest = false; // inside a test block: expect/expectEq/expectErr/run exist, top-level lets don't
   let fieldPending = [];
   function resolveFieldPending() {
     let progress = true;
@@ -405,6 +426,22 @@ export function check(src, ast) {
   // Pass 2: check everything in order.
   for (const s of ast.stmts) checkStmt(s, globals);
   resolvePending();
+  // Pass 2b: test blocks, once every fn is checked (and generalized). A test sees the file's
+  // fns and structs but none of its top-level variables: `vow test` never runs the top-level
+  // code (run(...) does that, in a fresh state), so those variables would have no value.
+  const testScope = new Scope();
+  testScope.resolve = (name) => { const g = globals.lookup(name); return g && g.isFn ? g : null; };
+  testScope.names = () => [...globals.vars].filter(([, g]) => g.isFn).map(([n]) => n);
+  const testNames = new Map();
+  for (const s of ast.stmts) {
+    if (s.t !== 'Test') continue;
+    if (testNames.has(s.name)) diag(s.nameTok, `test ${JSON.stringify(s.name)} is declared twice`,
+      `Another test with this name is at line ${testNames.get(s.name)}. vow test reports tests by name, so each needs its own.`, 'rename one of them.');
+    testNames.set(s.name, s.pos.line);
+    inTest = true;
+    try { checkStmt(s.body, new Scope(testScope)); } finally { inTest = false; }
+    resolvePending();
+  }
 
   // Pass 3: capability effects — a fn can't touch net/fs/env unless its signature says so.
   const effects = checkEffects();
@@ -441,7 +478,8 @@ export function check(src, ast) {
       if (Array.isArray(node)) { for (const n of node) collect(n, required, inMod); return; }
       const usesOf = (name) => inMod && !name.includes('.') ? undefined : fnUses.get(name);
       if (node.t === 'Call') {
-        const eff = BUILTIN_EFFECTS.get(node.callee);
+        // a user fn/variable named httpGet, env, ... shadows the builtin (node.resolved is set by inferCall)
+        const eff = node.resolved === 'user' ? undefined : BUILTIN_EFFECTS.get(node.callee);
         if (eff && !required.has(eff)) {
           required.set(eff, { node, why: `calls ${node.callee}(...), which needs the '${eff}' capability` });
         }
@@ -509,6 +547,7 @@ export function check(src, ast) {
     switch (s.t) {
       case 'Fn': return checkFn(s);
       case 'Struct': return;
+      case 'Test': return; // checked after every fn (pass 2b in check)
       case 'Let': {
         if (structByName(s.name) && !structByName(s.name).builtin) {
           diag(s.nameTok, `'${s.name}' is already a struct name`,
@@ -548,7 +587,7 @@ export function check(src, ast) {
         // one as a statement is always a bug (sort(xs) leaves xs unsorted)
         const PURE = ['replace', 'startsWith', 'endsWith', 'indexOf', 'repeat', 'padLeft', 'padRight', 'lines', 'checkLogin', 'askLogin', 'now', 'fixed', 'html', 'text', 'respond', 'redirect', 'param', 'escape', 'sort', 'sortBy', 'reverse', 'slice', 'trim', 'upper', 'lower', 'join', 'split', 'keys', 'str', 'abs', 'floor', 'min', 'max', 'sum', 'len', 'contains', 'has', 'toJson',
           'matches', 'findAll', 'replaceAll', 'splitOn', 'words', 'sig', 'isInt', 'map', 'filter', 'any', 'all', 'count', 'fold', 'uniq', 'values', 'field', 'at', 'isNull', 'truthy', 'jsonType', 'jsonKeys', 'jsonList',
-          'urlEncode', 'ord', 'chr', 'prettyJson', 'jsonSet', 'jsonMerge',
+          'urlEncode', 'ord', 'chr', 'chars', 'prettyJson', 'json', 'jsonSet', 'jsonDelete', 'jsonMerge',
           'sqrt', 'pow', 'exp', 'ln', 'log', 'sin', 'cos', 'tan', 'atan2', 'ceil', 'trunc', 'pi', 'random', 'randomInt', 'dateParts', 'isoDate', 'daysBetween'];
         if (s.expr.t === 'Call' && PURE.includes(s.expr.callee) && !scope.lookup(s.expr.callee)) {
           const a0 = s.expr.args[0] ? snippet(s.expr.args[0]) : 'x';
@@ -789,6 +828,30 @@ export function check(src, ast) {
       case 'If': return node.alt != null && definitelyReturns(node.then) && definitelyReturns(node.alt);
       // the checker rejects non-exhaustive matches, so every arm returning means the match returns
       case 'MatchStmt': return node.match.arms.every(a => a.body.t === 'Block' && definitelyReturns(a.body));
+      // `while true { ... }` with no break of its own can only be left by a return (or a trap),
+      // so nothing after it is reachable: the usual shape of a find/read loop that returns from inside
+      case 'While': return node.cond.t === 'Bool' && node.cond.value === true && !hasBreak(node.body);
+      default: return false;
+    }
+  }
+  // any `return` at all (bare or with a value), not looking inside nested lambdas
+  function hasReturn(node) {
+    switch (node.t) {
+      case 'Return': return true;
+      case 'Block': return node.stmts.some(hasReturn);
+      case 'If': return hasReturn(node.then) || (node.alt != null && hasReturn(node.alt));
+      case 'While': case 'For': return hasReturn(node.body);
+      case 'MatchStmt': return node.match.arms.some(a => a.body.t === 'Block' && hasReturn(a.body));
+      default: return false;
+    }
+  }
+  // a `break` that targets the loop whose body this is (one inside a nested loop targets that loop)
+  function hasBreak(node) {
+    switch (node.t) {
+      case 'Break': return true;
+      case 'Block': return node.stmts.some(hasBreak);
+      case 'If': return hasBreak(node.then) || (node.alt != null && hasBreak(node.alt));
+      case 'MatchStmt': return node.match.arms.some(a => a.body.t === 'Break' || (a.body.t === 'Block' && hasBreak(a.body)));
       default: return false;
     }
   }
@@ -804,6 +867,7 @@ export function check(src, ast) {
         const entry = lookupName(scope, e, 'name');
         if (entry) return entry.scheme ? instantiate(entry.scheme) : entry.type;
         mainNameHint(e, e.name);
+        testVarHint(e, e.name);
         const hint = importHint(e.name);
         if (hint) diag(e, `'${e.name}' is in an imported module: write ${hint}`,
           `Names from another file are always used through the module's name, so they can never collide with names here.`, `write ${hint}`);
@@ -816,7 +880,7 @@ export function check(src, ast) {
             'A plain Vow value is never missing. JSON nulls are json values: field(j, "key") and at(j, i) give a json null when the key or index is missing, and isNull(j) tests for one.',
             'for json data, return field(...)/at(...) (a json null when missing) and test with isNull(v); for anything else that may be missing, return a Result: ok(value) / err("missing").');
         }
-        const names = [...new Set([...scope.allNames(), ...BUILTIN_NAMES])].filter(n => !n.includes('.'));
+        const names = [...new Set([...scope.allNames(), ...BUILTIN_NAMES, ...(inTest ? TEST_BUILTINS : [])])].filter(n => !n.includes('.'));
         let best = null, bestD = 3;
         for (const n of names) {
           const d = editDistance(e.name, n);
@@ -887,8 +951,10 @@ export function check(src, ast) {
         }
         if (!currentFn) {
           diag(e, `'?' only works inside a function`,
-            `When the value is err(e), '?' makes the surrounding function return that err; at the top level there's nothing to return from.`,
-            `handle the Result with match instead:\n  match ${snippet(e.operand)} { ok(v) => ...  err(e) => ... }`);
+            `When the value is err(e), '?' makes the surrounding function return that err; ${inTest ? 'in a test block' : 'at the top level'} there's nothing to return from.`,
+            inTest
+              ? `compare the whole Result: expectEq(${snippet(e.operand)}, ok(...)) or expectErr(${snippet(e.operand)}); or handle it with match:\n  match ${snippet(e.operand)} { ok(v) => ...  err(e) => ... }`
+              : `handle the Result with match instead:\n  match ${snippet(e.operand)} { ok(v) => ...  err(e) => ... }`);
         }
         const info = currentFn.info;
         if (!unify(info.retType, resultT(tvar(), errT))) {
@@ -946,7 +1012,9 @@ export function check(src, ast) {
 
     const info = { paramTypes, retType, firstReturnLine: null, tryLine: null };
     const prevFn = currentFn, prevLoop = loopDepth;
-    currentFn = { name: '(lambda)', info };
+    // a nested fn that reads its parent's variables is parsed as a closure (e.fnName set);
+    // its diagnostics still call it `fn visit`, the name the author wrote
+    currentFn = { name: e.fnName ?? '(lambda)', info, lambda: e };
     loopDepth = 0; // break/continue can't escape a lambda into an outer loop
     implicitReturn(e.body);
     checkStmt(e.body, inner);
@@ -955,6 +1023,9 @@ export function check(src, ast) {
     const ret = prune(retType);
     if (ret.k === 'var' && !usesRet(e.body)) unify(retType, UNIT);
     if (prune(retType).k !== 'unit' && !definitelyReturns(e.body)) {
+      if (e.fnName) diag(e.nameTok ?? e, `fn ${e.fnName} might finish without returning a value`,
+        `This function returns ${tn(retType)}, but there's a path through the body that reaches the end with no return statement.`,
+        'add a return at the end of the function, or make sure every if/else and match arm returns.');
       diag(e, 'this lambda might finish without returning a value',
         `It returns ${tn(retType)}, but there's a path through the body that reaches the end with no return statement.`,
         'add a return at the end of the lambda body.');
@@ -1113,6 +1184,7 @@ export function check(src, ast) {
       else if (both.k !== 'num' && both.k !== 'str') {
         diag(e, `'${op}' can't order two ${tn(lt)} values`, 'Only nums and strs have an ordering.', 'compare a specific field or use == instead.');
       }
+      e.cmp = both.k === 'num' ? 'num' : both.k === 'str' ? 'str' : 'any'; // for the compiler: strs order by code point
       return BOOL;
     }
 
@@ -1183,6 +1255,9 @@ export function check(src, ast) {
   function inferCall(e, scope) {
     const entry = lookupName(scope, e, 'callee');
     const cn = e.shown ?? e.callee; // as written: geo.area for a module fn
+    // a user fn, param, let or lambda named like a builtin shadows it in its scope; later
+    // passes (checkEffects) must not treat such a call as the builtin
+    e.resolved = entry ? 'user' : 'builtin';
     if (entry) {
       const ft = prune(entry.scheme ? instantiate(entry.scheme) : entry.type);
       if (ft.k === 'var') {
@@ -1214,7 +1289,7 @@ export function check(src, ast) {
               : ak === 'json' && (pk === 'str' || pk === 'num' || pk === 'bool')
               ? (pk === 'str' ? `str(${snippet(a)}) gives its text (strings as-is, numbers like str(num), null as "null").` : pk === 'bool' ? `truthy(${snippet(a)}) gives a bool.` : `unwrap it: jsonNum(${snippet(a)}) gives a Result<num, str>.`)
               : pk === 'json' && ak === 'map'
-              ? `fn ${cn} reads this parameter as json; pass a json value, or convert: parseJson(toJson(${snippet(a)})).`
+              ? `fn ${cn} reads this parameter as json; pass a json value, or convert: json(${snippet(a)}).`
               : 'convert the value (str(...) / num(...)), or pass a different one.');
         }
       });
@@ -1286,6 +1361,56 @@ export function check(src, ast) {
     diag(a, `${name}() reads a json value, but this is a ${tn(t)}`,
       'json values come from parseJson(...), and from field()/at()/get()/jsonList() on another json value.',
       fixes[pt.k] ?? 'pass a json value.');
+  }
+
+  // expect / expectEq / expectErr / run: the builtins of a test block
+  function inferTestCall(e, scope) {
+    const args = () => e.args.map(a => inferExpr(a, scope));
+    const name = e.callee;
+    if (!inTest) diag(e.calleeNode ?? e, `${name}() only works inside a test block`,
+      `${name}() is part of a program's built-in tests, which live in test "name" { ... } blocks at the top level of the file and run with: vow test file.vow. A normal run never reaches them.`,
+      `move this line into a test block:\n  test "describe what it checks" {\n    ${snippet(e)}\n  }`);
+    switch (name) {
+      case 'expect': {
+        arity(e, 1, 'expect(condition)');
+        const [t] = args();
+        if (!unify(t, BOOL)) {
+          const s = snippet(e.args[0]);
+          diag(e.args[0], `expect() needs a bool condition, but this is a ${tn(t)}`, 'A test passes expect() a comparison that must hold.',
+            prune(t).k === 'result' ? `compare the whole Result: expectEq(${s}, ok(...)), or expectErr(${s}) when it must be an err.` : `compare it to the value you expect: expectEq(${s}, ...)`);
+        }
+        return UNIT;
+      }
+      case 'expectEq': {
+        arity(e, 2, 'expectEq(actual, expected)');
+        const [a, b] = args();
+        if (prune(a).k === 'unit') diag(e.args[0], 'expectEq() got a call that returns nothing (unit)',
+          'The first argument is the value to check, but this call has no value.', 'check what the program printed instead: expectEq(run([...], ""), "...\\n")');
+        if (!unify(a, b)) diag(e.args[1], `expectEq() compares two values of the same type, but the actual value is a ${tn(a)} and the expected one is a ${tn(b)}`,
+          'expectEq(actual, expected) passes when the two are equal (==), so they must have one type.',
+          prune(a).k === 'str' && prune(b).k === 'num' ? `expect text: expectEq(${snippet(e.args[0])}, "${snippet(e.args[1])}") (run(...) returns the printed output as a str, with a newline after each line).`
+            : prune(a).k === 'result' ? `wrap the expected value: ok(${snippet(e.args[1])}) or err("...").`
+              : 'convert one side (str(...) / num(...)), or compare against a value of the actual type.');
+        return UNIT;
+      }
+      case 'expectErr': {
+        arity(e, 1, 'expectErr(result)');
+        const [t] = args();
+        if (!unify(t, resultT(tvar(), tvar()))) diag(e.args[0], `expectErr() checks that a Result is an err, but this is a ${tn(t)}`, '',
+          `pass a Result (the value of a call that can fail), or write expect(${snippet(e.args[0])} == ...) for a plain value.`);
+        return UNIT;
+      }
+      case 'run': {
+        arity(e, 2, 'run(argsList, stdinText)');
+        const [at, st] = args();
+        if (!unify(at, listT(STR))) diag(e.args[0], `run() takes the program's arguments as a list<str> first, but this is a ${tn(at)}`,
+          'run(args, stdin) runs this file\'s top-level code as if from the command line: args() returns that list.',
+          prune(at).k === 'str' ? `put it in a list: run([${snippet(e.args[0])}], ${e.args[1] ? snippet(e.args[1]) : '""'})` : 'pass a list of strs, [] for no arguments.');
+        if (!unify(st, STR)) diag(e.args[1], `run() takes the text of standard input as a str second, but this is a ${tn(st)}`,
+          'readLine() and readAll() inside the program read from that text.', 'pass a str, "" for no input; separate lines with \\n.');
+        return STR;
+      }
+    }
   }
 
   function inferBuiltinCall(e, scope) {
@@ -1479,6 +1604,13 @@ export function check(src, ast) {
           if (!unify(it, STR)) diag(e.args[1], `searching a str for a ${tn(it)}`, 'A string can only contain another string.', 'convert it: contains(text, str(x)).');
           return BOOL;
         }
+        // not known yet (an un-annotated param): a str or a list of the item's type, decided by
+        // its other uses or per call site, instead of guessing "list" here
+        if (pc.k === 'var') {
+          if (!unify(ct, cvar({ k: 'index', key: NUM, el: it, seq: true }))) diag(e.args[0], `contains() searches a list or str, but this is a ${tn(ct)}`, '',
+            `pass a list or a string that can hold a ${tn(it)}.`);
+          return BOOL;
+        }
         const el = tvar();
         if (!unify(ct, listT(el))) diag(e.args[0], `contains() searches a list or str, but this is a ${tn(ct)}`, '',
           pc.k === 'map' ? `for maps, use has(${snippet(e.args[0])}, key).` : 'pass a list or a string.');
@@ -1524,6 +1656,11 @@ export function check(src, ast) {
           if (!unify(it, STR)) diag(e.args[1], `searching a str for a ${tn(it)}`, 'A string can only contain another string.', 'convert it: indexOf(text, str(x)).');
           return resultT(NUM, STR);
         }
+        if (pc.k === 'var') { // same deferral as contains(): list<item> or str, settled later
+          if (!unify(ct, cvar({ k: 'index', key: NUM, el: it, seq: true }))) diag(e.args[0], `indexOf() searches a list or str, but this is a ${tn(ct)}`, '',
+            `pass a list or a string that can hold a ${tn(it)}.`);
+          return resultT(NUM, STR);
+        }
         const el = tvar();
         if (!unify(ct, listT(el))) diag(e.args[0], `indexOf() searches a list or str, but this is a ${tn(ct)}`, '',
           pc.k === 'map' ? `for maps, use has(${snippet(e.args[0])}, key) or get(...).` : 'pass a list or a string.');
@@ -1536,6 +1673,13 @@ export function check(src, ast) {
         const [t] = args();
         if (!unify(t, STR)) diag(e.args[0], `${e.callee}() takes a str, but this is a ${tn(t)}`, '', `convert it first: ${e.callee}(str(${snippet(e.args[0])}))`);
         return e.callee === 'urlEncode' ? STR : resultT(STR, STR);
+      }
+      case 'chars': {
+        arity(e, 1, 'chars(text)');
+        const [t] = args();
+        if (!unify(t, STR)) diag(e.args[0], `chars() takes a str, but this is a ${tn(t)}`, '',
+          prune(t).k === 'list' ? 'this is already a list; chars(text) splits a str into one-character strs.' : 'pass a str; chars("a😀") is ["a", "😀"].');
+        return listT(STR);
       }
       case 'ord': {
         arity(e, 1, 'ord(text)');
@@ -1830,6 +1974,18 @@ export function check(src, ast) {
           '', 'pass a value: a num, str, bool, list, map, struct or json.');
         return STR;
       }
+      case 'json': {
+        arity(e, 1, 'json(value)');
+        const [t] = args();
+        const pt = prune(t);
+        if (pt.k === 'result') diag(e.args[0], `json() can't convert a Result`,
+          'A Result might be an error, and JSON has no representation for that.', 'match it first and convert the ok value.');
+        if (pt.k === 'fn') diag(e.args[0], `json() can't convert a function`, 'Code has no JSON form.', 'convert the data the function works on instead.');
+        if (pt.k === 'unit') diag(e.args[0], `json() needs a value, but this returns nothing (unit)`, '', 'pass a value: a num, str, bool, list, map or struct.');
+        if (e.args[0].t === 'Str' && /^\s*[\[{]/.test(e.args[0].value)) diag(e.args[0], `json() turns a value INTO json; this text would become one json string`,
+          'json(text) does not parse: json("[1]") is the JSON string "[1]", not an array.', `to parse JSON text, use parseJson(${snippet(e.args[0])}) and match its Result.`);
+        return JSONT;
+      }
       case 'prettyJson': {
         arity(e, 1, 'prettyJson(value)');
         const [t] = args();
@@ -1849,6 +2005,14 @@ export function check(src, ast) {
         if (pv.k === 'result') diag(e.args[2], `jsonSet() can't store a Result`, 'A Result might be an error, and JSON has no representation for that.', 'match it first and store the ok value.');
         if (pv.k === 'fn') diag(e.args[2], `jsonSet() can't store a function`, 'Code has no JSON form.', 'store the data the function works on instead.');
         if (pv.k === 'unit') diag(e.args[2], `jsonSet() needs a value, but this returns nothing (unit)`, '', 'pass a num, str, bool, list, map, struct or json value.');
+        return JSONT;
+      }
+      case 'jsonDelete': {
+        arity(e, 2, 'jsonDelete(j, "key")');
+        const [jt, kt] = args();
+        jsonArg(e.args[0], jt, 'jsonDelete');
+        if (!unify(kt, STR)) diag(e.args[1], `jsonDelete() removes an object key (a str), but this is a ${tn(kt)}`, '',
+          prune(kt).k === 'num' ? 'json objects have string keys; to drop an array item, filter jsonList(j) and rebuild it with json(...).' : 'jsonDelete(j, "password")');
         return JSONT;
       }
       case 'jsonMerge': {
@@ -1916,13 +2080,40 @@ export function check(src, ast) {
         if (!unify(t, STR)) diag(e.args[0], `env() takes a str name, but this is a ${tn(t)}`, '', 'pass a name like env("HOME").');
         return resultT(STR, STR);
       }
+      case 'expect': case 'expectEq': case 'expectErr': case 'run': return inferTestCall(e, scope);
       default: {
         mainNameHint(e.calleeNode ?? e, e.callee);
+        testVarHint(e.calleeNode ?? e, e.callee);
         const hint = importHint(e.callee);
         if (hint) diag(e.calleeNode ?? e, `'${e.callee}' is in an imported module: write ${hint}(...)`,
           `Names from another file are always used through the module's name, so they can never collide with names here.`, `write ${hint}(...)`);
+        // a nested fn that reads its parent's variables is a closure (`let visit = ...` where it is
+        // written), so unlike other fns it exists only from its declaration down: a call above it
+        // (JS-style hoisting, or two nested fns calling each other) can't see it
+        const callLine = nodeLoc(src, e).line;
+        const nested = findNode(ast, (n) => n.t === 'Let' && n.name === e.callee && n.expr?.t === 'Lambda' && n.expr.fnName === e.callee && n.pos.line > callLine);
+        if (nested) {
+          const parentName = currentFn && currentFn.name !== '(lambda)' ? currentFn.name : null;
+          const mutual = parentName != null && callsBuiltin(nested.expr.body, parentName);
+          // the parent variables a closure body reads (params and lets of the fn around it)
+          const captured = (lam) => {
+            const own = new Set(lam.params.map(p => p.name));
+            return [...identNames(lam.body)].filter(n => !own.has(n) && scope.lookup(n) && !scope.lookup(n).isFn);
+          };
+          const vars = captured(nested.expr);
+          const both = [...new Set([...vars, ...(mutual && currentFn.lambda ? captured(currentFn.lambda) : [])])];
+          const why = vars.length
+            ? `A nested fn that uses ${vars.join(', ')} from the fn around it is a closure`
+            : mutual ? `fn ${e.callee} calls fn ${parentName}, a closure of the fn around them, so it is a closure too`
+            : `A nested fn that uses a variable or another nested fn of the fn around it is a closure`;
+          diag(e.calleeNode ?? e, `fn ${e.callee} is declared below this call, at line ${nested.pos.line}`,
+            `${why}: it exists only from its declaration down, so this line can't see it (top-level fns, and nested fns that use only their own params, are visible everywhere).`,
+            mutual
+              ? `fn ${e.callee} and fn ${parentName} call each other, so neither can come first; move both to the top level and pass ${both.length ? both.join(', ') : 'what they use'} in as parameters.`
+              : `move the declaration of fn ${e.callee} above this line${vars.length ? ` (and below the variables it uses: ${vars.join(', ')})` : ''}.`);
+        }
         let best = null, bestD = 3;
-        for (const n of [...new Set([...scope.allNames(), ...BUILTIN_NAMES])].filter(n => !n.includes('.'))) {
+        for (const n of [...new Set([...scope.allNames(), ...BUILTIN_NAMES, ...(inTest ? TEST_BUILTINS : [])])].filter(n => !n.includes('.'))) {
           const d = editDistance(e.callee, n);
           if (d < bestD) { bestD = d; best = n; }
         }
@@ -1990,7 +2181,10 @@ export function check(src, ast) {
   // A trailing match / if-else counts only when every branch ends in a bare expression, so
   // side-effect bodies whose branches end in assignments are left alone.
   function implicitReturn(body) {
-    if (body.t !== 'Block' || usesRet(body)) return;
+    // A bare `return` (an early exit from a fn that returns nothing: `if has(seen, n) { return }`)
+    // says the fn is a unit fn, so its trailing `push(out, n)` is a statement, not the value.
+    // (Before: that push became `return push(out, n)` and the fn "returned two different types".)
+    if (body.t !== 'Block' || hasReturn(body)) return;
     const stmts = body.stmts;
     // recursive: a branch may itself end in a match or if/else (bench: mini-query sort keys)
     const tailIsValue = (s) => s != null && (s.t === 'ExprStmt' ||

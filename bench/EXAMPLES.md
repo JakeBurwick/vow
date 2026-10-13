@@ -147,8 +147,7 @@ Task: The first CLI arg is a semicolon-separated list of commands. Command forms
 let argv = args()
 let input = match get(argv, 0) { ok(s) => s err(e) => "" }
 
-// names never contain ";" so use it as a sentinel key to pin the map type
-let accounts = {";": 0}
+let accounts = {}        // empty map: its value type is pinned by the first insert below
 let failed = false
 
 for c in split(input, ";") {
@@ -571,7 +570,7 @@ Task: The first CLI arg is a sentence: words separated by single spaces. Print t
 
 ```
 // Count words, then sort by count (highest first). sortBy is stable, so ties keep
-// first-appearance order. Helper fns live at the top level; Vow has no nested fns.
+// first-appearance order. Helper fns can live at the top level or nested inside another fn.
 fn countWords(words) {
   let counts = {}
   let order = []
@@ -603,4 +602,124 @@ if label == "only word" {
   return
 }
 print(top)
+```
+
+## form-signups
+
+Task: Each line of stdin is a form submission body such as `name=Zo%C3%AB+Li&city=S%C3%A3o+Paulo`. For each line print `<name> from <city>, map: https://maps.example.com/?q=<city, URL-encoded>`; if a field is missing or badly encoded print `skipped: <error>`. At end of input print how many signups were accepted.
+
+Verified: with the input lines `name=Zo%C3%AB+Li&city=S%C3%A3o+Paulo`, `city=Oslo`, `name=Al&city=New+York`, `name=x&city=bad%zz` it prints exactly:
+
+```
+Zoë Li from São Paulo, map: https://maps.example.com/?q=S%C3%A3o%20Paulo
+skipped: missing name
+Al from New York, map: https://maps.example.com/?q=New%20York
+skipped: "bad%zz" is not valid URL encoding (a % must be followed by two hex digits)
+2 signups
+```
+
+```
+// Forms send spaces as "+", and urlDecode leaves "+" alone, so swap it first.
+fn field(body, name) {
+  for pair in split(body, "&") {
+    let parts = split(pair, "=")
+    if parts[0] == name and len(parts) == 2 {
+      return urlDecode(replace(parts[1], "+", "%20"))
+    }
+  }
+  return err("missing ${name}")
+}
+
+fn signup(body) {
+  let name = field(body, "name")?
+  let city = field(body, "city")?
+  return ok("${name} from ${city}, map: https://maps.example.com/?q=${urlEncode(city)}")
+}
+
+let count = 0
+while true {
+  match readLine() {
+    err(e) => break                              // end of input
+    ok(line) => match signup(trim(line)) {
+      ok(msg) => {
+        count = count + 1
+        print(msg)
+      }
+      err(e) => print("skipped: ${e}")
+    }
+  }
+}
+print("${count} signups")
+```
+
+## temperature-converter (with built-in tests)
+
+Task: Convert temperatures written like `100C` or `212F`. With arguments, print one conversion per argument; without arguments, convert each non-empty line of stdin and finish with `<n> converted`. Round to one decimal. A value whose last character is not C or F prints `error: unknown unit: <value>`; a non-numeric value prints `error: not a number: <value>`.
+
+This program carries its own tests: one `test` block per example and per error line of the task, and two `run(args, stdin)` tests for the whole CLI. `node cli.js test temp.vow` prints exactly:
+
+```
+✓ celsius to fahrenheit
+✓ fahrenheit to celsius rounds to one decimal
+✓ lower-case unit and spaces are accepted
+✓ unknown unit is the spec's error line
+✓ not a number
+✓ cli: one line per argument
+✓ cli: stdin mode converts each non-empty line and counts them
+7 tests, 7 passed
+```
+
+Verified: `node cli.js temp.vow 100C 50F abcC 7` prints `100C = 212F`, `50F = 10C`, `error: not a number: abcC`, `error: unknown unit: 7`; the test blocks never run then.
+
+```
+// temp.vow: converts temperatures written like 100C or 212F.
+// With arguments: one line per argument. Without: one line per stdin line, then a count.
+fn convert(text) {
+  let t = trim(text)
+  if len(t) < 2 { return err("error: unknown unit: ${t}") }
+  let unit = upper(slice(t, len(t) - 1, len(t)))
+  if unit != "C" and unit != "F" { return err("error: unknown unit: ${t}") }
+  let n = match num(slice(t, 0, len(t) - 1)) {
+    ok(v) => v
+    err(e) => { return err("error: not a number: ${t}") }
+  }
+  if unit == "C" { return ok("${t} = ${round(n * 9 / 5 + 32, 1)}F") }
+  return ok("${t} = ${round((n - 32) * 5 / 9, 1)}C")
+}
+
+fn report(text) {
+  match convert(text) {
+    ok(line) => print(line)
+    err(e) => print(e)
+  }
+}
+
+let inputs = args()
+if len(inputs) > 0 {
+  for a in inputs { report(a) }
+} else {
+  let n = 0
+  while true {
+    match readLine() {
+      err(e) => break
+      ok(line) => {
+        if trim(line) != "" {
+          report(line)
+          n = n + 1
+        }
+      }
+    }
+  }
+  print("${n} converted")
+}
+
+test "celsius to fahrenheit" { expectEq(convert("100C"), ok("100C = 212F")) }
+test "fahrenheit to celsius rounds to one decimal" { expectEq(convert("100F"), ok("100F = 37.8C")) }
+test "lower-case unit and spaces are accepted" { expectEq(convert(" 32f "), ok("32f = 0C")) }
+test "unknown unit is the spec's error line" { expectEq(convert("100K"), err("error: unknown unit: 100K")) }
+test "not a number" { expectErr(convert("abcC")) }
+test "cli: one line per argument" { expectEq(run(["0C", "212F"], ""), "0C = 32F\n212F = 100C\n") }
+test "cli: stdin mode converts each non-empty line and counts them" {
+  expectEq(run([], "10C\n\nbadF\n"), "10C = 50F\nerror: not a number: badF\n2 converted\n")
+}
 ```

@@ -135,7 +135,7 @@ abc: "abc" is not a number
           <h3>Tell your tool about Vow</h3>
           <p class="step-note">Paste this into Claude Code, Codex, Cursor or any coding agent.</p>
           <div class="copyable">
-<pre class="codeblock prompt" id="ai-prompt">This project uses Vow, a programming language for AI agents. Before writing any Vow, read https://vow-lang.vercel.app/llms.txt and the guide it links to. Run programs with `vow file.vow`. After every edit run `vow --check file.vow` and fix each error using its "Likely fix" line. Vow has no null and no exceptions: handle every Result with match or ?.</pre>
+<pre class="codeblock prompt" id="ai-prompt">This project uses Vow, a programming language for AI agents. Before writing any Vow, read https://vow-lang.vercel.app/llms.txt and the guide it links to. Run programs with `vow file.vow`. After every edit run `vow --check file.vow` and fix each error using its "Likely fix" line. Before finishing, add test blocks for each example and error case and run `vow test file.vow`. Vow has no null and no exceptions: handle every Result with match or ?.</pre>
             <button class="copy" data-copy-from="ai-prompt">Copy</button>
           </div>
         </li>
@@ -184,7 +184,7 @@ abc: "abc" is not a number
       </div>
     </div>
 
-    <p class="honest">Built and measured by Jake Burwick. On new problems, AI agents write correct Vow about as reliably as TypeScript on easy tasks and need about twice as many attempts on hard ones; the code they finish is as correct as TypeScript on fresh hidden tests (99.5% vs 99.3%). Measured October 2026; numbers may have changed since. <a href="#benchmarks" data-go="benchmarks">See the benchmarks</a>.</p>
+    <p class="honest">Built and measured by Jake Burwick. On new problems, AI agents write correct Vow about as reliably as TypeScript on easy tasks and after the October 13 fixes need about as many attempts on hard ones too (1.0 failed submission per run in both languages, a small sample); the code they finish is as correct as TypeScript on fresh hidden tests (99.5% vs 99.3%). Measured October 2026; numbers may have changed since. <a href="#benchmarks" data-go="benchmarks">See the benchmarks</a>.</p>
 
     <section id="install" class="install" aria-labelledby="install-h">
       <h2 id="install-h">Install</h2>
@@ -585,6 +585,21 @@ now()              // current time, UTC ms
       </div>
 
       <div class="cheat">
+        <h3>Tests</h3>
+<pre class="codeblock vow">fn toF(c) { return c * 9 / 5 + 32 }
+for a in args() {
+  match num(a) {
+    ok(c) =&gt; print("${toF(c)}")
+    err(e) =&gt; print("error: ${e}")
+  }
+}
+
+test "boiling point" { expectEq(toF(100), 212) }
+test "whole program" { expectEq(run(["0", "x"], ""), "32\nerror: \"x\" is not a number\n") }</pre>
+        <p class="cheat-note">Test blocks live in the file and never run during a normal run. <code>vow test file.vow</code> runs them; <code>run(args, stdin)</code> runs the whole program and returns what it printed.</p>
+      </div>
+
+      <div class="cheat">
         <h3>Rules the checker enforces</h3>
 <pre class="codeblock vow">num("42")              // ✗ a Result must be used
 match r { ok(v) => v } // ✗ missing err arm
@@ -627,14 +642,16 @@ let m = {"n": "x", "q": 3}  // ✗ one value type per map;
 
       <div class="bench-item">
         <h3 class="result-h">Hard unseen tasks, agents may run their code</h3>
-        <p class="result-note">4 hard tasks, 3 runs each, Claude Haiku. Agents could check and run their program before each judged submission, as real coding agents do. Every run solved its task. Fewer is better. Measured Oct 12, 2026.</p>
+        <p class="result-note">4 hard tasks, Claude Haiku. Agents could check, run and test their program before each judged submission, as real coding agents do. Every run solved its task. Failed submissions per run, fewer is better.</p>
         <div class="result-wrap"><table class="result">
-          <thead><tr><th scope="col">language</th><th scope="col">failed submissions</th></tr></thead>
+          <thead><tr><th scope="col">language</th><th scope="col">failed per run</th><th scope="col">measured</th></tr></thead>
           <tbody>
-            <tr><td>TypeScript</td><td class="best">3 of 15</td></tr>
-            <tr><td>Vow</td><td>7 of 19 <span class="muted">(all logic slips, no type or language errors)</span></td></tr>
+            <tr><td>TypeScript</td><td class="best">1.0</td><td>Oct 12, 3 runs</td></tr>
+            <tr><td>Vow, current</td><td class="best">1.0</td><td>Oct 13, 2 runs</td></tr>
+            <tr><td>Vow, a day earlier</td><td>2.3</td><td>Oct 12, 3 runs</td></tr>
           </tbody>
         </table></div>
+        <p class="result-note">Between the two Vow rows: built-in tests, clearer docs, and fixes for checker bugs agents hit. With Claude Sonnet both languages failed 0 times (Oct 13, 1 run each).</p>
       </div>
 
       <div class="bench-item">
@@ -680,6 +697,8 @@ let m = {"n": "x", "q": 3}  // ✗ one value type per map;
       <li><strong>JSON redesign</strong>: <code>field</code> and <code>at</code> give a json null instead of a Result when something is missing, <code>has</code>, <code>isNull</code> and <code>truthy</code> test values, and <code>str(j)</code> renders readable text.</li>
       <li><strong>Modules</strong>: <code>import "./x.vow" as x</code>, namespaced functions and structs, private <code>_names</code>, and errors that name the file.</li>
       <li><strong>Math, random and dates</strong>: <code>sqrt</code>, <code>pow</code>, trigonometry, <code>random</code> and <code>randomInt</code> with <code>--seed</code>, and UTC date functions.</li>
+      <li><strong>Input and HTTP</strong>: <code>readLine</code> and <code>readAll</code> for standard input, <code>httpRequest</code> with methods, headers and bodies, <code>urlEncode</code>/<code>urlDecode</code>, and JSON building with <code>json</code>, <code>jsonSet</code>, <code>jsonDelete</code>, <code>jsonMerge</code> and <code>prettyJson</code>.</li>
+      <li><strong>Built-in tests</strong>: <code>test "name" { ... }</code> blocks with <code>expectEq</code> and <code>run(args, stdin)</code>, run by <code>vow test</code>; <code>vow --check</code> suggests them when a file has none.</li>
     </ul>
   </div>
 </section>

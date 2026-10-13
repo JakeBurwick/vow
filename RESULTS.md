@@ -182,3 +182,37 @@ The earlier hard-task rounds made agents submit without running their code. Real
 | TypeScript, no help | 12 of 12 | 15 | 3 |
 
 Being able to run code halved the failures in both languages and every run in both solved its task, but the gap held at about 2x. All 7 Vow failures were wrong outputs from the agent's own logic, and none were type or language errors: skipping 8 characters past the 9-character `{{/each}}` tag, the `[Bad]` section-name rule (twice), an unclosed `#if`, `vip: false`, and two calc-vars edge cases (an unknown variable after a blank line, unary minus on a variable). TypeScript agents make the same kind of slip less often, most likely because they have seen far more TypeScript.
+
+## New held-out tasks, code-running allowed (2026-10-13)
+
+Four new tasks written around the features added on 2026-10-12 (stdin-bank reads commands from standard input, json-patch edits JSON, url-query normalizes URLs, word-stats-unicode counts words in non-English text). Each was first solved in both Vow and TypeScript by the task author to prove it fair, and those solutions were deleted. Agents (Claude Haiku 4.5, fresh context) could check and run their code before each judged submission. Failed judged submissions per run:
+
+| | stdin-bank | json-patch | url-query | word-stats-unicode |
+|---|---|---|---|---|
+| TypeScript, round 1 | 0 | 0 | 1 | 1 |
+| TypeScript, round 2 | 0 | 0 | 1 | 0 |
+| Vow, round 1 | 0 | 0 | 3 | 1 |
+| Vow, round 2 (guide restructured) | 0 | 1 | 5 | 0 |
+| Vow, round 3 (urlDecode fix, 2 runs) | | | 1, 1 | |
+
+Outside url-query the two languages were even (Vow 2 failed submissions in 6 runs, TypeScript 1 in 6). url-query was the whole gap: the Vow agents in rounds 1 and 2 never used the built-in `urlDecode` and hand-wrote 340 to 410 lines of UTF-8 decoding. Two causes were found and fixed: the guide did not say `urlDecode` rejects invalid UTF-8, and its error message for `%C3%28` wrongly blamed the hex digits. After the fix both round-3 agents used `urlDecode`, wrote about 220 lines, and failed once each on the same spec edge cases (an empty port, a missing path) that the TypeScript agents also missed once per run. Fixes this round also added `json(v)`, `jsonDelete`, `chars`, and code-point ordering for strings, and reorganized the guide's builtin list into short headed sections.
+
+## Hard tasks re-run on the current language (2026-10-13)
+
+Same 4 hard tasks and rules as 2026-10-12 (code-running allowed, Claude Haiku 4.5), Vow only since TypeScript is unchanged: 2 runs, 12 judged submissions, 4 failed (2.0 per run, against 2.3 for Vow and 1.0 for TypeScript on 2026-10-12). calc-vars and dep-order passed first try in all 4 runs. All 4 failures were spec edge cases the agent never tested (an unclosed `{{#if`, a stray `{{/each}}`, the `[Bad]` section-name rule twice); none came from a Vow error the agent could not act on.
+
+## Hard tasks after adding built-in tests (2026-10-13)
+
+Same 4 hard tasks, same rules, 2 runs after `test` blocks and `vow test` shipped with a guide rule to write one test per spec example and error line: 10 judged submissions, 2 failed (1.0 per run, equal to TypeScript's 1.0 on 2026-10-12). But none of the 8 solutions contained a single test block: the agents ignored the new rule and checked by running the program by hand, so this round does not show that tests help, and with 2 runs the drop from 2.0 to 1.0 per run is within noise. The two failures were a dependency cycle case and, again, the `[Bad]` section-name rule.
+
+## Hard tasks with the "no tests yet" nudge (2026-10-13)
+
+`vow --check` (and the MCP `vow_check`) now print a one-line suggestion to write test blocks when a file has none. Same 4 hard tasks, 2 runs: one run wrote tests for every task (10 to 16 test blocks each), the other wrote none, so the nudge moved agents from 0 of 2 runs testing to 1 of 2. 11 judged submissions, 3 failed (1.5 per run). The run that tested passed 3 of its 4 tasks on the first submission; its one failure was the `[Bad]` section-name rule, which its own tests encoded the wrong way. That rule reads ambiguously ("Section and key names are lowercase letters, digits and underscores" can be read as a description rather than a check), and it has now tripped agents in both languages in most rounds; tests cannot catch a misread spec, because the agent writes the test from the same reading. Across the three hard rounds today (6 runs) Vow averaged 1.5 failed submissions per run, against 2.3 for Vow and 1.0 for TypeScript on 2026-10-12.
+
+## A larger model: Claude Sonnet (2026-10-13)
+
+Same 4 hard tasks and rules (code-running allowed), one run per language with Claude Sonnet 4.5 instead of Haiku: Vow 4 judged submissions, 0 failed; TypeScript 4 judged submissions, 0 failed. Both Vow agents wrote their own test blocks (8 to 17 per task) and passed every task on the first submission. One TypeScript solution passed the judge while `deno check` reported a type error in it, since Deno runs TypeScript without type-checking; Vow refuses to run a program that fails its checker. This backs the claim that larger models do at least as well as Haiku in Vow; with one run per language it shows parity, not an advantage.
+
+## Hard tasks after the checker fixes (2026-10-13)
+
+After fixing the checker bugs agents hit (a bare early `return` followed by a trailing call was wrongly rejected, `while true` loops that only exit by returning were rejected, nested fns calling a sibling closure broke, plus misleading nested-fn messages, missing `\r` escapes, and builtin-shadowing and list-or-str inference rough edges): same 4 hard tasks and rules, Claude Haiku 4.5, 2 runs, 10 judged submissions, 2 failed (1.0 per run, equal to TypeScript's 1.0). One failure was the ambiguous `[Bad]` section-name rule again; the other a dependency-order slip. One of the two runs wrote test blocks (10 and 14). Over the 8 Vow runs on 2026-10-13 the average was 1.4 failed submissions per run, down from 2.3 on 2026-10-12; TypeScript's 1.0 comes from 3 runs on 2026-10-12. With 2 runs per round these per-round numbers are noisy; the trend across rounds is the more reliable signal.

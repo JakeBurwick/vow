@@ -12,6 +12,8 @@ const here = dirname(fileURLToPath(import.meta.url));
 
 async function runCheckVow(src, chk) {
   const lines = [];
+  // scripted standard input (chk.stdin): readLine/readAll behave like the CLI's, over this text
+  let inBuf = chk.stdin ?? '';
   try {
     const ast = parse(src);
     check(src, ast);
@@ -29,6 +31,15 @@ async function runCheckVow(src, chk) {
           }
           return { tag: 'ok', val: true };
         },
+        readLine: () => {
+          if (inBuf === '') return { tag: 'err', val: 'end of input' };
+          const nl = inBuf.indexOf('\n');
+          let line = nl >= 0 ? inBuf.slice(0, nl) : inBuf;
+          inBuf = nl >= 0 ? inBuf.slice(nl + 1) : '';
+          if (line.endsWith('\r')) line = line.slice(0, -1);
+          return { tag: 'ok', val: line };
+        },
+        readAll: () => { const t = inBuf; inBuf = ''; return { tag: 'ok', val: t }; },
         env: ([name]) => (chk.env ?? {})[name] != null ? { tag: 'ok', val: chk.env[name] } : { tag: 'err', val: `environment variable "${name}" is not set` },
       },
     });
@@ -44,7 +55,7 @@ async function runCheckVow(src, chk) {
 function runCheckPy(file, chk) {
   // TypeScript runs under Deno with only the env access a check needs (the sandbox comparison)
   const [bin, pre] = file.endsWith('.ts') ? ['deno', ['run', '--no-prompt', '--allow-env', '-q']] : ['python3', []];
-  const r = spawnSync(bin, [...pre, file, ...(chk.args ?? [])], { encoding: 'utf8', timeout: 10000, env: { PATH: process.env.PATH, ...(chk.env ?? {}) } });
+  const r = spawnSync(bin, [...pre, file, ...(chk.args ?? [])], { encoding: 'utf8', timeout: 10000, ...(chk.stdin !== undefined ? { input: chk.stdin } : {}), env: { PATH: process.env.PATH, ...(chk.env ?? {}) } });
   if (r.error) return { got: '', diag: r.error.code === 'ETIMEDOUT' ? 'timed out after 10s' : String(r.error) };
   const got = (r.stdout ?? '').replace(/\n+$/, '');
   if (r.status !== 0) return { got, diag: (r.stderr || `exit code ${r.status}`).trim() };

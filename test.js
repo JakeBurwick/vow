@@ -2,6 +2,8 @@
 import { parse } from './lang/parser.js';
 import { check } from './lang/checker.js';
 import { createRun } from './lang/interp.js';
+import { createCompiledRun } from './lang/runtime.js';
+import { runTests, formatReport } from './lang/testing.js';
 import { formatDiag, VowError } from './lang/diagnostics.js';
 import { EXAMPLES } from './examples.js';
 import { loadProgram, nodeHost } from './lang/modules.js';
@@ -418,6 +420,12 @@ print(v)
 }
 print(total)
 `, true],
+  // built-in tests: test blocks parse and type-check, and a normal run never enters them
+  ['test blocks parse and are skipped by a normal run', 'fn sq(n) { return n * n }\nprint(sq(3))\ntest "sq" {\n  expectEq(sq(2), 4)\n  expect(false)\n}\ntest "cli" { expectEq(run(["x"], "in"), "9\\n") }\n', true],
+  ['expect outside a test block is rejected', 'expect(1 == 1)\n', false],
+  ['a test block inside a fn is rejected', 'fn f() {\n  test "inner" { expect(true) }\n  return 1\n}\nprint(f())\n', false],
+  ['a type error inside a test block is reported', 'fn sq(n) { return n * n }\ntest "t" {\n  let x = sq(2)\n  x = "four"\n}\n', false],
+  ['a test calling a fn with the wrong type is reported', 'fn sq(n) { return n * n }\ntest "t" { expectEq(sq("2"), 4) }\n', false],
 ];
 
 for (const [name, src, shouldPass] of extra) {
@@ -476,6 +484,17 @@ match f() { ok(v) => print(v) err(e) => print(e) }
   ["matches on a num says convert", "print(matches(5, `5`))\n", "matches(str(5), ...)"],
   ["ignored find Result", "find(\"a\", `a`)\n", "this Result is ignored"],
   ["words on a list", "print(words([\"a\"]))\n", "words() takes a str"],
+  ["chars on a num", "print(chars(5))\n", "chars() takes a str"],
+  ["chars on a list says it is already a list", "print(chars([\"a\"]))\n", "already a list"],
+  ["json() of a Result is rejected at check time", "print(json(num(\"1\")))\n", "json() can't convert a Result"],
+  ["json() of a function is rejected", "print(json(x => x))\n", "json() can't convert a function"],
+  ["json() of JSON-looking text points at parseJson", "print(json(`{\"a\": 1}`))\n", "use parseJson(`{\"a\": 1}`)"],
+  ["json() of a list of Results traps at runtime", "print(json([num(\"1\")]))\n", "json() can't serialize ok(1)"],
+  ["jsonDelete key must be a str", "let j = json({\"a\": 1})\nprint(jsonDelete(j, 0))\n", "json objects have string keys"],
+  ["jsonDelete on a json array traps with the kind found", "print(jsonDelete(json([1]), \"a\"))\n", "jsonDelete() needs a JSON object, but this JSON value is an array ([1])"],
+  ["jsonDelete on a non-json value", "print(jsonDelete({\"a\": 1}, \"a\"))\n", "jsonDelete()"],
+  ["discarded jsonDelete says use the value", "let j = json({\"a\": 1})\njsonDelete(j, \"a\")\n", "the result of jsonDelete(...) is thrown away"],
+  ["a json param with a map argument suggests json()", "fn f(j) { return jsonKeys(j) }\nprint(f({\"a\": 1}))\n", "convert: json({\"a\": 1})"],
   ["sig digits literal out of range", "print(sig(1.5, 0))\n", "from 1 to 21"],
   ["sig digits out of range at runtime", "let d = 22\nprint(sig(1.5, d))\n", "sig() digits must be a whole number from 1 to 21, got 22"],
   ["int of a num suggests isInt", "print(int(5))\n", "isInt(5)"],
@@ -547,6 +566,105 @@ match f() { ok(v) => print(v) err(e) => print(e) }
   ["prettyJson rejects a Result", "print(prettyJson(num(\"1\")))\n", "prettyJson() can't serialize a Result"],
   ["urlDecode Result must be handled", "let s = urlDecode(\"a%20b\")\nprint(s + \"!\")\n", "Result"],
   ["a pattern invalid with and without the u flag is still a compile error", "print(matches(\"a\", `(`))\n", "invalid regular expression in matches()"],
+  // built-in tests: every test-only mistake names the fix
+  ['diag: expect outside a test block says where tests live', 'expect(1 == 1)\n', 'only works inside a test block'],
+  ['diag: a test cannot see a top-level variable', 'let base = 10\nfn f(x) { return x + 1 }\ntest "t" { expectEq(f(base), 11) }\n', "is a top-level variable, which a test can't see"],
+  ['diag: ? inside a test suggests comparing the Result', 'fn f(s) { return num(s) }\ntest "t" {\n  let n = f("4")?\n  expectEq(n, 4)\n}\n', 'expectEq(f("4"), ok(...))'],
+  ['diag: a nested test block', 'fn f() {\n  test "inner" { expect(true) }\n  return 1\n}\nprint(f())\n', 'test blocks go at the top level'],
+  ['diag: duplicate test names', 'test "a" { expect(true) }\ntest "a" { expect(true) }\n', 'test "a" is declared twice'],
+  ['diag: expectEq of run() output against a num', 'test "t" { expectEq(run([], ""), 5) }\n', 'run(...) returns the printed output as a str'],
+  ['diag: expectEq of a Result against a plain value', 'fn f() { return ok(1) }\ntest "t" { expectEq(f(), 1) }\n', 'wrap the expected value: ok(1)'],
+  ['diag: run() with a str instead of an args list', 'test "t" { expectEq(run("a", ""), "x") }\n', 'put it in a list: run(["a"], "")'],
+  ['diag: expect() with a non-bool', 'fn f() { return ok(1) }\ntest "t" { expect(f()) }\n', 'expectErr(f())'],
+  ['diag: a type error inside a test block names the line', 'fn sq(n) { return n * n }\ntest "t" {\n  let x = sq(2)\n  x = "four"\n}\n', "'x' would change type from num to str"],
+  ['diag: a test name is required', 'test "" { expect(true) }\n', 'a test needs a name'],
+  ['diag: the brace goes on the test line', 'test "x"\n{ expect(true) }\n', "expected '{' after the test name"],
+  // nested fns with early returns: diagnostics name the fn the author wrote, never "this lambda"
+  ['diag: nested fn missing a return on one path is named, not called a lambda', `fn topo(graph) {
+  let state = {}
+  fn visit(n) {
+    if has(state, n) { return state[n] == "visiting" }
+    state[n] = "visiting"
+    for m in graph[n] {
+      if visit(m) { return true }
+    }
+    state[n] = "done"
+  }
+  for n in keys(graph) {
+    if visit(n) { return "cycle" }
+  }
+  return "ok"
+}
+print(topo({"a": ["b"], "b": []}))
+`, 'fn visit might finish without returning a value'],
+  ['diag: nested fn returning bool and ok(...) is named', `fn topo(graph) {
+  let state = {}
+  fn visit(n) {
+    if has(state, n) { return state[n] == "visiting" }
+    state[n] = "visiting"
+    for m in graph[n] {
+      if visit(m) { return true }
+    }
+    state[n] = "done"
+    return ok(false)
+  }
+  for n in keys(graph) {
+    if visit(n) { return "cycle" }
+  }
+  return "ok"
+}
+print(topo({"a": ["b"], "b": []}))
+`, 'fn visit returns two different types'],
+  ['diag: nested fn with a bare return and a later return c', `fn count(graph, start) {
+  let seen = {}
+  fn walk(n) {
+    if has(seen, n) { return }
+    seen[n] = true
+    let c = 1
+    for m in graph[n] { c = c + walk(m) }
+    return c
+  }
+  return walk(start)
+}
+print(count({"a": ["b"], "b": []}, "a"))
+`, 'An earlier return (line 4) made this function return unit, but this return gives back num'],
+  ['diag: nested closure called above its declaration says so and how to fix it', `fn topo(graph) {
+  let seen = {}
+  let order = []
+  for n in sort(keys(graph)) { visit(n) }
+  fn visit(n) {
+    if has(seen, n) { return }
+    seen[n] = true
+    for m in graph[n] { visit(m) }
+    push(order, n)
+  }
+  return order
+}
+print(topo({"a": ["b"], "b": []}))
+`, 'fn visit is declared below this call, at line 5'],
+  ['diag: two nested closures calling each other', `fn topo(graph) {
+  let seen = {}
+  let order = []
+  fn visit(n) {
+    if has(seen, n) { return }
+    seen[n] = true
+    visitAll(graph[n])
+    push(order, n)
+  }
+  fn visitAll(ns) {
+    for m in ns { visit(m) }
+  }
+  visitAll(sort(keys(graph)))
+  return order
+}
+print(topo({"a": ["b"], "b": []}))
+`, 'fn visitAll and fn visit call each other, so neither can come first; move both to the top level and pass seen, graph, order in as parameters'],
+  ['diag: while true with a break can still fall off the end', 'fn first(xs) {\n  let i = 0\n  while true {\n    if i >= len(xs) { break }\n    if xs[i] > 0 { return xs[i] }\n    i = i + 1\n  }\n}\nprint(first([0, 2]))\n', 'fn first might finish without returning a value'],
+  ['diag: unknown escape lists the supported ones', 'print("a\\qb")\n', 'Vow strings support \\n, \\t, \\r, \\0, \\", \\\\, \\$ and \\u{1F600} / \\u00E9'],
+  ['diag: short \\u escape says the two forms', 'print("\\u12")\n', '\\u{hex} with 1 to 6 hex digits, or \\u followed by exactly 4 hex digits'],
+  ['diag: \\u escape above U+10FFFF', 'print("\\u{110000}")\n', 'above the last code point U+10FFFF'],
+  ['diag: contains() on an unknown param stays list-or-str, so a num is rejected at the call', 'fn f(src) {\n  if contains(src, "x") { return 1 }\n  return 0\n}\nprint(f(5))\n', 'argument 1 of f should be (list or str), but this is a num'],
+  ['diag: a let named like a builtin hides the builtin in its scope', 'let lines = lines("a\\nb")\nprint(lines("c"))\n', "'lines' is also a builtin; rename your variable"],
 ];
 for (const [name, src, mustContain] of diagTests) {
   const res = runProgram(src);
@@ -585,13 +703,180 @@ const outputTests = [
   ["user fns and variables shadow the math/random/date builtins", "fn log(msg) { return \"[log] \" + msg }\nfn random(xs) { return xs[0] }\nlet pi = 3\nlet e = 2\nfn sqrt(a, b) { return a + b }\nprint(log(\"hi\"), random([7, 8]), pi, e, sqrt(1, 2))\nfn outer() {\n  let ceil = 10\n  let trunc = x => x * 2\n  return ceil + trunc(4) + floor(2.5)\n}\nprint(outer())\nlet dateParts = \"none\"\nprint(dateParts, exp(0))\n", "[log] hi 7 3 2 3\n20\nnone 1"],
   // stress-test round: new builtins and behaviors
   ["number literals with exponents", "print(1e9, 2.5e-3, 1E+2, 3e2 + 1, 1e21)\n", "1000000000 0.0025 100 301 1e+21"],
-  ["urlEncode / urlDecode / ord / chr", "print(urlEncode(\"a b&c=d/é\"), ord(\"A\"), ord(\"é\"), ord(\"😀\"), chr(65), chr(9731), chr(128512))\nmatch urlDecode(\"a%20b%26c\") { ok(s) => print(s)  err(e) => print(e) }\nmatch urlDecode(\"bad%zz\") { ok(s) => print(s)  err(e) => print(e) }\n", "a%20b%26c%3Dd%2F%C3%A9 65 233 128512 A ☃ 😀\na b&c\n\"bad%zz\" is not valid URL encoding (a % must be followed by two hex digits)"],
+  ["urlEncode / urlDecode / ord / chr", "print(urlEncode(\"a b&c=d/é\"), ord(\"A\"), ord(\"é\"), ord(\"😀\"), chr(65), chr(9731), chr(128512))\nmatch urlDecode(\"a%20b%26c\") { ok(s) => print(s)  err(e) => print(e) }\nmatch urlDecode(\"bad%zz\") { ok(s) => print(s)  err(e) => print(e) }\nmatch urlDecode(\"%C3%28\") { ok(s) => print(s)  err(e) => print(e) }\n", "a%20b%26c%3Dd%2F%C3%A9 65 233 128512 A ☃ 😀\na b&c\n\"bad%zz\" is not valid URL encoding (a % must be followed by two hex digits)\n\"%C3%28\" is not valid URL encoding (the %-escapes are not valid UTF-8)"],
   ["indexOf works on lists (== equality) and strs", "struct P { x }\nmatch indexOf([10, 20, 30], 20) { ok(i) => print(i)  err(e) => print(e) }\nmatch indexOf([\"a\", \"b\"], \"z\") { ok(i) => print(i)  err(e) => print(e) }\nmatch indexOf(\"hello\", \"ll\") { ok(i) => print(i)  err(e) => print(e) }\nmatch indexOf([P { x: 1 }, P { x: 3 }], P { x: 3 }) { ok(i) => print(i)  err(e) => print(e) }\nfn pos(xs, v) { return indexOf(xs, v) }\nmatch pos([[1], [2]], [2]) { ok(i) => print(i)  err(e) => print(e) }\n", "1\n\"z\" is not in the list\n2\n1\n1"],
   ["regex: u flag (\\p{L}, code points) with fallback for old-style escapes", "print(matches(\"héllo wörld\", `^\\p{L}+ \\p{L}+$`), findAll(\"ab-cd-ef\", `\\-`), matches(\"a{\", `a{`), len(findAll(\"😀😀\", `.`)), replaceAll(\"αβ 12\", `\\p{Script=Greek}+`, \"G\"))\n", "true [\"-\", \"-\"] true 2 G 12"],
   ["prettyJson indents with 2 spaces", "struct U { name, tags }\nprint(prettyJson(U { name: \"Ada\", tags: [\"x\"] }))\nprint(prettyJson(7), prettyJson(\"s\"), prettyJson({}))\n", "{\n  \"name\": \"Ada\",\n  \"tags\": [\n    \"x\"\n  ]\n}\n7 \"s\" {}"],
   ["jsonSet / jsonMerge build new json; == compares type and value", "match parseJson(`{\"user\": {\"name\": \"Ada\", \"age\": 36}, \"n\": 1}`) {\n  ok(j) => {\n    let u = field(j, \"user\")\n    let u2 = jsonSet(u, \"age\", 37)\n    print(u2, u, u2 == u, jsonSet(u, \"age\", 36) == u)\n    print(jsonSet(field(j, \"missing\"), \"k\", [1, 2]))\n    match parseJson(`{\"user\": {\"age\": 40, \"role\": \"admin\"}, \"n\": \"1\"}`) {\n      ok(o) => print(jsonMerge(j, o), jsonMerge(o, j), jsonMerge(j, field(o, \"n\")))\n      err(e) => print(e)\n    }\n    print(jsonSet(j, \"n\", {\"a\": 1}) != j, field(j, \"n\") == field(j, \"n\"))\n  }\n  err(e) => print(e)\n}\n", "{\"name\":\"Ada\",\"age\":37} {\"name\":\"Ada\",\"age\":36} false true\n{\"k\":[1,2]}\n{\"user\":{\"name\":\"Ada\",\"age\":40,\"role\":\"admin\"},\"n\":\"1\"} {\"user\":{\"age\":36,\"role\":\"admin\",\"name\":\"Ada\"},\"n\":1} 1\ntrue true"],
   ["jsonNum/jsonStr/jsonBool errs say what was found and where it came from", "match parseJson(`{\"user\": {\"name\": \"Ada\", \"age\": \"36\", \"tags\": [1, \"x\"], \"on\": null}}`) {\n  ok(j) => {\n    let u = field(j, \"user\")\n    match jsonNum(field(u, \"age\")) { ok(n) => print(n)  err(e) => print(e) }\n    match jsonStr(at(field(u, \"tags\"), 0)) { ok(n) => print(n)  err(e) => print(e) }\n    match jsonBool(j) { ok(n) => print(n)  err(e) => print(e) }\n    match jsonNum(field(u, \"missing\")) { ok(n) => print(n)  err(e) => print(e) }\n    match jsonBool(field(u, \"on\")) { ok(n) => print(n)  err(e) => print(e) }\n    for t in jsonList(field(u, \"tags\")) {\n      match jsonNum(t) { ok(n) => print(\"num\", n)  err(e) => print(e) }\n    }\n    match get(u, \"name\") {\n      ok(v) => match jsonNum(v) { ok(n) => print(n)  err(e) => print(e) }\n      err(e) => print(e)\n    }\n    match jsonStr(u[\"age\"]) { ok(n) => print(n)  err(e) => print(e) }\n    match jsonStr(u) { ok(n) => print(n)  err(e) => print(e) }\n  }\n  err(e) => print(e)\n}\n", "the JSON value at \"age\" is a string (\"36\"), not a number\nthe JSON value at index 0 is a number (1), not a string\nthis JSON value is an object ({\"user\":{\"name\":\"Ada\",\"age\":\"36\",\"tag...), not a bool\nthe JSON value at \"missing\" is null, not a number\nthe JSON value at \"on\" is null, not a bool\nnum 1\nthe JSON value at index 1 is a string (\"x\"), not a number\nthe JSON value at \"name\" is a string (\"Ada\"), not a number\n36\nthe JSON value at \"user\" is an object ({\"name\":\"Ada\",\"age\":\"36\",\"tags\":[1,\"x...), not a string"],
+  ["chars: one str per code point; <, sort and sortBy order strs by code point", "print(chars(\"h\u00e9llo\ud83d\ude00\"), len(chars(\"a\ud83d\ude00b\")), chars(\"\"), len(\"a\ud83d\ude00b\"))\nprint(sort([\"\ud83d\ude00\", \"\uff5a\", \"a\", \"Z\"]), \"\ud83d\ude00\" > \"\uff5a\", \"\uff5a\" < \"\ud83d\ude00\", \"a\" <= \"a\", \"b\" >= \"a\", \"ab\" < \"abc\", \"\" < \"a\")\nprint(sortBy([\"\ud83d\ude00x\", \"\uff5a\", \"a\"], w => w), sortBy([3, 1, 2], n => 0 - n), sortBy([\"bb\", \"a\", \"cc\", \"d\"], w => len(w)))\nfn lt(a, b) { return a < b }\nfn ge(a, b) { return a >= b }\nprint(lt(\"\ud83d\ude00\", \"\uff5a\"), lt(1, 2), lt(\"\uff5a\", \"\ud83d\ude00\"), ge(\"\uff5a\", \"\ud83d\ude00\"), ge(2, 2))\nlet n = 1\nlet t = \"\uff5a\"\nprint(n < 2, t < \"\ud83d\ude00\", t > \"\ud83d\ude00\", join(reverse(chars(\"ab\ud83d\ude00\")), \"\"))\n", "[\"h\", \"\u00e9\", \"l\", \"l\", \"o\", \"\ud83d\ude00\"] 3 [] 4\n[\"Z\", \"a\", \"\uff5a\", \"\ud83d\ude00\"] true true true true true true\n[\"a\", \"\uff5a\", \"\ud83d\ude00x\"] [3, 2, 1] [\"a\", \"d\", \"bb\", \"cc\"]\nfalse true true false true\ntrue true false \ud83d\ude00ba"],
+  ["json() converts directly; jsonDelete drops a key", "struct U { name, tags }\nlet j = json({\"a\": [1, 2], \"b\": []})\nprint(j, jsonType(j), json(U { name: \"Ada\", tags: [\"x\"] }), json([1, 2, 3]), json(7), json(\"s\"), json([]), json(true), jsonType(json({})))\nlet j2 = jsonSet(j, \"c\", 3)\nprint(jsonDelete(j2, \"a\"), jsonDelete(j2, \"zzz\"), j2, jsonDelete(json({}), \"a\"), json(j2) == j2)\nmatch parseJson(`{\"user\": {\"pw\": \"x\", \"name\": \"Ada\"}, \"n\": null}`) {\n  ok(d) => {\n    print(jsonDelete(field(d, \"user\"), \"pw\"), jsonDelete(field(d, \"n\"), \"k\"), jsonDelete(field(d, \"missing\"), \"k\"))\n    print(jsonKeys(jsonDelete(field(d, \"user\"), \"name\")), json(jsonList(json([1, 2]))), jsonSet(d, \"user\", jsonDelete(field(d, \"user\"), \"pw\")))\n  }\n  err(e) => print(e)\n}\nlet json = 5\nlet jsonDelete = (a, b) => a + b\nprint(json, jsonDelete(1, 2))\n", "{\"a\":[1,2],\"b\":[]} object {\"name\":\"Ada\",\"tags\":[\"x\"]} [1,2,3] 7 s [] true object\n{\"b\":[],\"c\":3} {\"a\":[1,2],\"b\":[],\"c\":3} {\"a\":[1,2],\"b\":[],\"c\":3} {} true\n{\"name\":\"Ada\"} {} {}\n[\"pw\"] [1,2] {\"user\":{\"name\":\"Ada\"},\"n\":null}\n5 3"],
   ["readLine / readAll / httpRequest fail softly outside the CLI", "match readLine() { ok(l) => print(l)  err(e) => print(e) }\nmatch readAll() { ok(l) => print(l)  err(e) => print(e) }\nfn f() uses net { return httpRequest(\"GET\", \"https://x\", {\"User-Agent\": \"vow\"}, \"\") }\nmatch f() { ok(r) => print(r.status)  err(e) => print(e) }\n", "readLine is only available in the Vow CLI; the browser playground has no standard input\nreadAll is only available in the Vow CLI; the browser playground has no standard input\nhttpRequest is only available in the Vow CLI; the browser playground cannot reach the network"],
+  // test blocks never run as part of the program (the playground runs programs this way too)
+  ["test blocks are skipped by a normal run, even when they would fail", "fn sq(n) { return n * n }\nprint(\"main\", sq(3))\ntest \"would fail\" { expect(false) }\ntest \"would trap\" { print([1][5]) }\nprint(\"end\")\n", "main 9\nend"],
+  // nested fns with early returns (topological sort / DFS shapes an agent writes)
+  ['nested fn: topo sort, bool cycle flag, early returns in branches and loops', `fn topo(graph) {
+  let state = {}
+  let order = []
+  fn visit(n) {
+    if has(state, n) {
+      if state[n] == "visiting" { return true }
+      return false
+    }
+    state[n] = "visiting"
+    for m in graph[n] {
+      if visit(m) { return true }
+    }
+    state[n] = "done"
+    push(order, n)
+    return false
+  }
+  for n in sort(keys(graph)) {
+    if visit(n) { return err("cycle detected at \${n}") }
+  }
+  return ok(order)
+}
+match topo({"a": ["b"], "b": ["c"], "c": []}) { ok(o) => print(o) err(e) => print(e) }
+match topo({"a": ["b"], "b": ["a"]}) { ok(o) => print(o) err(e) => print(e) }
+`, '["c", "b", "a"]\ncycle detected at a'],
+  ['nested fn: recursive Result closure with ? on itself and on get()', `fn topo(graph) {
+  let visiting = {}
+  let done = {}
+  let order = []
+  fn visit(n) {
+    if has(done, n) { return ok(true) }
+    if has(visiting, n) { return err("cycle through \${n}") }
+    visiting[n] = true
+    let deps = get(graph, n)?
+    for d in deps {
+      visit(d)?
+    }
+    done[n] = true
+    push(order, n)
+    return ok(true)
+  }
+  for n in sort(keys(graph)) { visit(n)? }
+  return ok(order)
+}
+match topo({"a": ["b"], "b": ["c"], "c": []}) { ok(o) => print(o) err(e) => print(e) }
+match topo({"a": ["b"], "b": ["a"]}) { ok(o) => print(o) err(e) => print(e) }
+match topo({"a": ["zz"]}) { ok(o) => print(o) err(e) => print(e) }
+`, '["c", "b", "a"]\ncycle through a\nkey "zz" not found'],
+  ['nested fn: bare early return, loop last', 'fn collect(graph, start) {\n  let seen = {}\n  let out = []\n  fn walk(n) {\n    if has(seen, n) { return }\n    seen[n] = true\n    push(out, n)\n    for m in graph[n] { walk(m) }\n  }\n  walk(start)\n  return out\n}\nprint(collect({"a": ["b", "c"], "b": ["c"], "c": ["a"]}, "a"))\n', '["a", "b", "c"]'],
+  ['nested fn: bare early return, push(...) as the last line is a statement, not the value', 'fn collect(graph, start) {\n  let seen = {}\n  let out = []\n  fn walk(n) {\n    if has(seen, n) { return }\n    seen[n] = true\n    for m in graph[n] { walk(m) }\n    push(out, n)\n  }\n  walk(start)\n  return out\n}\nprint(collect({"a": ["b", "c"], "b": ["c"], "c": ["a"]}, "a"))\n', '["c", "b", "a"]'],
+  ['top-level fn: bare early return, push(...) as the last line', 'let seen = {}\nlet out = []\nfn walk(graph, n) {\n  if has(seen, n) { return }\n  seen[n] = true\n  for m in graph[n] { walk(graph, m) }\n  push(out, n)\n}\nwalk({"a": ["b"], "b": []}, "a")\nprint(out)\n', '["b", "a"]'],
+  ['nested fn: while true that only leaves by return', `fn roots(parent, names) {
+  let hits = {}
+  fn find(a) {
+    let cur = a
+    while true {
+      let p = parent[cur]
+      if p == cur { return cur }
+      cur = p
+    }
+  }
+  let out = []
+  for n in names {
+    let r = find(n)
+    hits[r] = true
+    push(out, r)
+  }
+  print(len(keys(hits)))
+  return out
+}
+print(roots({"a": "a", "b": "a", "c": "b", "d": "d"}, ["c", "b", "d"]))
+`, '2\n["a", "a", "d"]'],
+  ['top-level fn: while true that only leaves by return', 'fn find(parent, a) {\n  let cur = a\n  while true {\n    let p = parent[cur]\n    if p == cur { return cur }\n    cur = p\n  }\n}\nprint(find({"a": "a", "b": "a"}, "b"))\n', 'a'],
+  ['nested fn: returns from match arms inside a loop, value match with a returning arm', `fn topo(graph) {
+  let visiting = {}
+  let done = {}
+  let order = []
+  fn visit(n) {
+    if has(done, n) { return ok(0) }
+    if has(visiting, n) { return err("cycle through \${n}") }
+    visiting[n] = true
+    let deps = match get(graph, n) {
+      ok(ds) => ds
+      err(e) => { return err("unknown node \${n}") }
+    }
+    for d in deps {
+      match visit(d) {
+        ok(v) => {}
+        err(e) => { return err(e) }
+      }
+    }
+    done[n] = true
+    push(order, n)
+    return ok(len(order))
+  }
+  for n in sort(keys(graph)) {
+    match visit(n) {
+      ok(v) => {}
+      err(e) => { return err(e) }
+    }
+  }
+  return ok(order)
+}
+match topo({"a": ["b"], "b": ["c"], "c": []}) { ok(o) => print(o) err(e) => print(e) }
+match topo({"a": ["b"], "b": ["a"]}) { ok(o) => print(o) err(e) => print(e) }
+match topo({"a": ["zz"]}) { ok(o) => print(o) err(e) => print(e) }
+`, '["c", "b", "a"]\ncycle through a\nunknown node zz'],
+  ['nested fn: memoized recursive depth with a returning err arm', `fn depths(deps) {
+  let cache = {}
+  fn depth(n) {
+    if has(cache, n) { return cache[n] }
+    let best = 0
+    match get(deps, n) {
+      ok(ds) => {
+        for d in ds {
+          let v = depth(d) + 1
+          if v > best { best = v }
+        }
+      }
+      err(e) => { return 0 }
+    }
+    cache[n] = best
+    return best
+  }
+  let out = {}
+  for n in sort(keys(deps)) { out[n] = depth(n) }
+  return out
+}
+print(depths({"a": ["b", "c"], "b": ["c"], "c": [], "d": ["x"]}))
+`, '{"a": 2, "b": 1, "c": 0, "d": 1}'],
+  ['nested fn: bare return arm inside a loop plus ? on the recursive call', `fn resolve(graph) {
+  let order = []
+  let seen = {}
+  fn visit(n) {
+    if has(seen, n) { return ok(true) }
+    seen[n] = true
+    for m in graph[n] {
+      match get(graph, m) {
+        ok(ds) => {}
+        err(e) => return err("unknown dep \${m} of \${n}")
+      }
+      visit(m)?
+    }
+    push(order, n)
+    return ok(true)
+  }
+  for n in sort(keys(graph)) { visit(n)? }
+  return ok(order)
+}
+match resolve({"a": ["b"], "b": []}) { ok(o) => print(o) err(e) => print(e) }
+match resolve({"a": ["q"]}) { ok(o) => print(o) err(e) => print(e) }
+`, '["b", "a"]\nunknown dep q of a'],
+  ['nested fn: first return is inside a loop, reads a parent param', 'fn reach(graph, start, target) {\n  let seen = {}\n  fn dfs(n) {\n    seen[n] = true\n    for m in graph[n] {\n      if m == target { return true }\n      if not has(seen, m) {\n        if dfs(m) { return true }\n      }\n    }\n    return false\n  }\n  return dfs(start)\n}\nprint(reach({"a": ["b"], "b": ["c"], "c": []}, "a", "c"))\nprint(reach({"a": ["b"], "b": ["c"], "c": []}, "c", "a"))\n', 'true\nfalse'],
+  // string escapes: \r \0 \u{...} \uXXXX in plain and interpolated strings; backtick strings stay raw
+  ['escapes: \\r \\0 \\u{} \\uXXXX, also inside ${} strings, raw in backticks', 'let s = "a\\r\\nb\\t\\0c\\\\\\"\\u{1F600}\\u00e9\\$x"\nprint(len(s))\nprint(s == "a" + chr(13) + chr(10) + "b" + chr(9) + chr(0) + "c\\\\\\"" + chr(128512) + chr(233) + "$x")\nprint("v=${"\\u{41}\\r" + "|"}" == "v=A" + chr(13) + "|")\nprint(`\\r\\u{41}`)\n', '14\ntrue\ntrue\n\\r\\u{41}'],
+  // builtin shadowing: a fn, let, param, loop variable or lambda named like a builtin wins in its
+  // scope (including the effectful ones: no spurious `uses` error), and the builtin is back outside it
+  ['shadowing: user names hide builtins only in their scope', 'fn env(k) { return k + "!" }\nfn greet(name) {\n  fn httpGet(u) { return "got " + u }\n  let readFile = x => x\n  let rest = slice(name, 1, len(name))\n  return env(name) + " " + httpGet("u") + " " + readFile("r") + " " + rest\n}\nfn count(len) { return len + 1 }\nfn g() {\n  let text = "t"\n  for sort in [1, 2] { text = text + str(sort) }\n  return text\n}\nprint(greet("ada"))\nprint(count(2), g(), len("abc"), sort([2, 1]), text("x"))\n', 'ada! got u r da\n3 t12 3 [1, 2] <response 200 text/plain; charset=utf-8>'],
+  // contains/indexOf on an unannotated param: list<item> or str, settled by other uses or per call
+  ['generic contains/indexOf: str and list callers of one fn', 'fn f(src) {\n  let i = match indexOf(src, "x") { ok(i) => i  err(e) => 0 - 1 }\n  if i < 0 { return src }\n  return slice(src, 0, i) + "y"\n}\nprint(f("abxc"))\nfn has2(xs, x) {\n  if contains(xs, x) { return len(xs) }\n  return 0\n}\nprint(has2("abx", "x"), has2(["a", "b"], "b"), has2([1, 2], 3))\nfn firstPos(xs, x) { return indexOf(xs, x) }\nmatch firstPos([5, 6], 6) { ok(i) => print(i)  err(e) => print(e) }\nmatch firstPos("hello", "l") { ok(i) => print(i)  err(e) => print(e) }\n', 'aby\n3 2 0\n1\n2'],
+  ['empty map filled later, at top level and in a fn', 'let m = {}\nm["a"] = 1\nm["b"] = m["a"] + 1\nfn tally(ws) {\n  let c = {}\n  for w in ws { c[w] = if has(c, w) { c[w] + 1 } else { 1 } }\n  return c\n}\nprint(m, tally(["a", "b", "a"]))\n', '{"a": 1, "b": 2} {"a": 2, "b": 1}'],
+  ['str(json null) is the text null; isNull gives empty output', 'match parseJson(`{"a": null}`) {\n  ok(j) => {\n    let v = field(j, "a")\n    print("[${str(v)}] [${if isNull(v) { "" } else { str(v) }}] [${str(field(j, "zz"))}]")\n  }\n  err(e) => print(e)\n}\n', '[null] [] [null]'],
+  ['checkLogin/askLogin: Basic auth helpers outside serve', 'print(checkLogin("Basic eDpwdw==", "pw"), checkLogin("Basic eDpwdw==", "no"), checkLogin("", "pw"), askLogin("admin"))\n', 'true false false <response 401 text/plain; charset=utf-8>'],
 ];
 for (const [name, src, want] of outputTests) {
   const res = runProgram(src);
@@ -611,6 +896,7 @@ const moduleOutputTests = [
   ['shadow', "[2, 4] 2 main's map 99 main helper module helper"],
   ['random', '[4, 4, 6, 4, 3] heads\n[1, 2, 3]'],
   ['caps', 'failed: httpGet is only available in the Vow CLI; the browser playground cannot reach the network\nenv is only available in the Vow CLI; the browser playground has no environment variables'],
+  ['tests', '12'], // the imported module's test blocks (one fails on purpose) are skipped
 ];
 for (const [dir, want] of moduleOutputTests) {
   const res = runProgram('', loadDir(modRoot, goodHost, dir));
@@ -699,10 +985,21 @@ for (const [dir, needles] of moduleDiagTests) {
   const { mkdtempSync, writeFileSync } = await import('node:fs');
   const tmpDir = mkdtempSync(join((await import('node:os')).tmpdir(), 'vow-test-'));
   const prog = (name, src) => { const f = join(tmpDir, name + '.vow'); writeFileSync(f, src); return f; };
+  const exampleFromMd = (id) => {
+    const md = readFileSync(join(here, 'bench', 'EXAMPLES.md'), 'utf8');
+    const section = md.slice(md.indexOf(`\n## ${id}\n`) + 1).split('\n## ')[0];
+    const blocks = [...section.matchAll(/\n```\n([\s\S]*?)\n```/g)]; // the program is the section's last code block
+    if (!blocks.length) throw new Error(`bench/EXAMPLES.md has no ## ${id} program`);
+    return blocks[blocks.length - 1][1] + '\n';
+  };
   const cli = (args, input) => spawnSync(process.execPath, [join(here, 'cli.js'), ...args], { cwd: here, encoding: 'utf8', input: input ?? '' });
   const guess = prog('guess', 'let secret = 42\nlet tries = 0\nprint("guess:")\nwhile true {\n  match readLine() {\n    err(e) => {\n      print("bye (${e})")\n      break\n    }\n    ok(line) => {\n      tries = tries + 1\n      match int(trim(line)) {\n        err(e) => print("not a number: ${line}")\n        ok(g) => {\n          if g < secret { print("higher") }\n          else if g > secret { print("lower") }\n          else {\n            print("got it in ${tries}")\n            break\n          }\n        }\n      }\n    }\n  }\n}\n');
   const all = prog('all', 'match readLine() { ok(l) => print("first: ${l}")  err(e) => print(e) }\nmatch readAll() { ok(t) => print("rest:", lines(t), len(t))  err(e) => print(e) }\nmatch readLine() { ok(l) => print(l)  err(e) => print("then: ${e}") }\n');
   const loop = prog('loop', 'let i = 0\nwhile true { i = i + 1 }\n');
+  // the form-signups program in bench/EXAMPLES.md (keep the two in sync) and its stated output
+  const urlq = prog('urlq', exampleFromMd('form-signups'));
+  const urlqIn = 'name=Zo%C3%AB+Li&city=S%C3%A3o+Paulo\ncity=Oslo\nname=Al&city=New+York\nname=x&city=bad%zz\n';
+  const urlqOut = 'Zo\u00eb Li from S\u00e3o Paulo, map: https://maps.example.com/?q=S%C3%A3o%20Paulo\nskipped: missing name\nAl from New York, map: https://maps.example.com/?q=New%20York\nskipped: "bad%zz" is not valid URL encoding (a % must be followed by two hex digits)\n2 signups\n';
   const heavy = prog('heavy', 'let n = 0\nfor i in range(0, 3000) { n = n + 1 }\nprint(n)\n');
   const order = prog('order', 'for i in range(0, 3000) { print("line ${i}") }\nlet xs = [1]\nprint(xs[5])\n');
   const net = prog('net', 'fn f() uses net { return httpRequest("GET", "https://api.github.com/x", {"User-Agent": "vow"}, "") }\nmatch f() { ok(r) => print(r.status)  err(e) => print(e) }\n');
@@ -713,8 +1010,11 @@ for (const [dir, needles] of moduleDiagTests) {
     ['readLine at end of input is an err', cli([guess], '1\n'), r => r.status === 0 && r.stdout === 'guess:\nhigher\nbye (end of input)\n'],
     ['readAll takes the rest after readLine, then readLine sees the end', cli([all], 'a\nb\nc\n'), r => r.status === 0 && r.stdout === 'first: a\nrest: ["b", "c"] 4\nthen: end of input\n'],
     ['readAll on empty input is ok("")', cli(['--interp', all], ''), r => r.status === 0 && r.stdout === 'end of input\nrest: [] 0\nthen: end of input\n'],
+    ['EXAMPLES.md form-signups: urlDecode/urlEncode/readLine (compiled)', cli([urlq], urlqIn), r => r.status === 0 && r.stdout === urlqOut && r.stderr === ''],
+    ['EXAMPLES.md form-signups on --interp', cli(['--interp', urlq], urlqIn), r => r.status === 0 && r.stdout === urlqOut],
     ['--max-steps N stops an infinite loop and names the flag', cli(['--max-steps', '1000', loop]), r => r.status === 1 && r.stderr.includes('ran over 1,000 steps') && r.stderr.includes('heavy legitimate work') && r.stderr.includes('--max-steps 10000')],
     ['--max-steps on --interp gives the same message', cli(['--interp', '--max-steps', '1000', loop]), r => r.status === 1 && r.stderr.includes('ran over 1,000 steps') && r.stderr.includes('--max-steps 10000')],
+    ['--check on a file without tests suggests writing them', cli(['--check', heavy]), r => r.status === 0 && r.stdout.includes('No tests yet') && r.stdout.includes('vow test')],
     ['--max-steps 0 means no limit', cli(['--max-steps', '0', heavy]), r => r.status === 0 && r.stdout === '3000\n'],
     ['--max-steps rejects a non-number', cli(['--max-steps', 'lots', heavy]), r => r.status === 2 && r.stderr.includes('--max-steps takes a whole number')],
     ['output printed before a trap stays before the error (same destination)', cli([order]), r => r.status === 1 && r.stdout.endsWith('line 2999\n') && r.stderr.includes('index 5 is out of range')],
@@ -728,6 +1028,76 @@ for (const [dir, needles] of moduleDiagTests) {
     const pass = ok(r);
     console.log(`\n=== cli: ${name} — ${pass ? 'PASS' : 'FAIL'} ===`);
     if (!pass) { console.log(`exit ${r.status}\n${r.stdout}\n${r.stderr}`); failures++; }
+  }
+}
+
+// ---------- built-in tests: test "name" { ... } blocks, `vow test`, run(args, stdin) on both backends ----------
+{
+  const { mkdtempSync, writeFileSync } = await import('node:fs');
+  const tmpDir = mkdtempSync(join((await import('node:os')).tmpdir(), 'vow-test-blocks-'));
+  const prog = (name, src) => { const f = join(tmpDir, name + '.vow'); writeFileSync(f, src); return f; };
+  const exampleFromMd = (id) => {
+    const md = readFileSync(join(here, 'bench', 'EXAMPLES.md'), 'utf8');
+    const section = md.slice(md.indexOf(`\n## ${id}`) + 1).split('\n## ')[0];
+    const blocks = [...section.matchAll(/\n```\n([\s\S]*?)\n```/g)];
+    if (!blocks.length) throw new Error(`bench/EXAMPLES.md has no ## ${id} program`);
+    return { program: blocks[blocks.length - 1][1] + '\n', report: blocks[0][1] + '\n' };
+  };
+  const cli = (args, input) => spawnSync(process.execPath, [join(here, 'cli.js'), ...args], { cwd: here, encoding: 'utf8', input: input ?? '' });
+
+  // in-process, both backends: the same report, with the failure messages an agent reads
+  const suite = 'fn sq(n) { return n * n }\nfn parse(s) { return num(s) }\nlet a = args()\nif len(a) == 0 { print("usage") } else {\n  match readLine() {\n    ok(l) => print("${a[0]}:${l}")\n    err(e) => print("${a[0]}:${e}")\n  }\n}\n'
+    + 'test "passes" {\n  expectEq(sq(3), 9)\n  expectErr(parse("x"))\n  expectEq(parse("4"), ok(4))\n  expect(sq(2) == 4)\n}\n'
+    + 'test "run captures args and stdin" {\n  expectEq(run([], ""), "usage\\n")\n  expectEq(run(["k"], "v1\\nv2"), "k:v1\\n")\n  expectEq(run(["k"], ""), "k:end of input\\n")\n}\n'
+    + 'test "expectEq failure" { expectEq(run(["k"], "v"), "usage\\nk:v\\n") }\n'
+    + 'test "expect failure" { expect(sq(2) == 5) }\n'
+    + 'test "expectErr failure" { expectErr(parse("7")) }\n'
+    + 'test "trap in the test" { print(sq([1][3])) }\n';
+  const report = async (make) => {
+    const lines = [];
+    const ast = parse(suite); check(suite, ast);
+    const tests = make(ast, lines);
+    const results = await runTests(tests, { src: suite });
+    return { ...formatReport(results, { total: tests.length }), printed: lines.join('\n') };
+  };
+  const interp = await report((ast, lines) => createRun(suite, ast, { out: (s) => lines.push(s) }).tests);
+  const compiled = await report((ast, lines) => createCompiledRun(suite, ast, { out: (s) => lines.push(s) }).tests);
+  const needles = ['✓ passes', '✓ run captures args and stdin', '✗ expectEq failure', 'expected: "usage\\nk:v\\n"', 'actual:   "k:v\\n"',
+    'first difference at line 1: expected "usage", actual "k:v"', '✗ expect failure', 'The condition sq(2) == 5 is false.', '✗ expectErr failure',
+    'expected an err, actual: ok(7)', '✗ trap in the test', 'index 3 is out of range', '6 tests, 2 passed, 4 failed'];
+  const checks = [
+    ['in-process: the interpreter report has every message and nothing printed outside run()', interp, r => r.code === 1 && r.printed === '' && needles.every(n => r.text.includes(n))],
+    ['in-process: the compiled backend prints the identical report', compiled, r => r.text === interp.text && r.code === interp.code && r.printed === ''],
+  ];
+
+  // the CLI: exit codes, one line per test, the summary, --filter, imports, the EXAMPLES.md program
+  const f = prog('suite', suite);
+  const temp = exampleFromMd('temperature-converter');
+  const tempF = prog('temp', temp.program);
+  const noTests = prog('notests', 'print(1)\n');
+  const modMain = join(here, 'compile-test', 'modules', 'tests', 'main.vow');
+  const modGeo = join(here, 'compile-test', 'modules', 'tests', 'geo.vow');
+  checks.push(
+    ['vow test: exit 1 with the report on stdout (compiled)', cli(['test', f]), r => r.status === 1 && r.stderr === '' && r.stdout === interp.text + '\n'],
+    ['vow test --interp prints the same report', cli(['--interp', 'test', f]), r => r.status === 1 && r.stdout === interp.text + '\n'],
+    ['vow test --filter runs only matching tests and exits 0 when they pass', cli(['test', f, '--filter', 'passes']), r => r.status === 0 && r.stdout === '✓ passes\n1 test, 1 passed\n'],
+    ['vow test --filter with no match exits 1', cli(['test', f, '--filter', 'zzz']), r => r.status === 1 && r.stdout.includes('no test name contains "zzz" (6 tests')],
+    ['vow test on a file without tests exits 1 and says how to write one', cli(['test', noTests]), r => r.status === 1 && r.stdout.includes('no tests in') && r.stdout.includes('test "name" { ... }')],
+    ['vow test rejects a stray argument', cli(['test', f, 'extra']), r => r.status === 2 && r.stderr.includes('vow test takes a file')],
+    ['a normal run never enters the test blocks', cli([f, 'k'], 'line\n'), r => r.status === 0 && r.stdout === 'k:line\n' && r.stderr === ''],
+    ['--check type-checks the test blocks too', cli(['--check', prog('badtest', 'fn sq(n) { return n * n }\ntest "t" { expectEq(sq("2"), 4) }\n')]), r => r.status === 1 && r.stderr.includes('argument 1 of sq should be num')],
+    ['imports: the module\'s tests are skipped, the main file\'s run', cli(['test', modMain]), r => r.status === 0 && r.stdout === '✓ main test calls the module\n✓ run from main\n2 tests, 2 passed\n'],
+    ['imports: running the module file itself runs its tests', cli(['test', modGeo]), r => r.status === 1 && r.stdout.startsWith('✓ area\n✗ area wrong on purpose\n') && r.stdout.includes('expected: 4') && r.stdout.endsWith('2 tests, 1 passed, 1 failed\n')],
+    ['--check on a file with tests does not nag', cli(['--check', tempF]), r => r.status === 0 && !r.stdout.includes('No tests yet')],
+    ['EXAMPLES.md temperature-converter: vow test prints its stated report (compiled)', cli(['test', tempF]), r => r.status === 0 && r.stderr === '' && r.stdout === temp.report],
+    ['EXAMPLES.md temperature-converter on --interp', cli(['--interp', 'test', tempF]), r => r.status === 0 && r.stdout === temp.report],
+    ['EXAMPLES.md temperature-converter: the stated normal run', cli([tempF, '100C', '50F', 'abcC', '7']), r => r.status === 0 && r.stdout === '100C = 212F\n50F = 10C\nerror: not a number: abcC\nerror: unknown unit: 7\n'],
+    ['EXAMPLES.md temperature-converter: stdin mode', cli([tempF], '10C\n\nbadF\n'), r => r.status === 0 && r.stdout === '10C = 50F\nerror: not a number: badF\n2 converted\n'],
+  );
+  for (const [name, r, ok] of checks) {
+    const pass = ok(r);
+    console.log(`\n=== test blocks: ${name} — ${pass ? 'PASS' : 'FAIL'} ===`);
+    if (!pass) { console.log(r.status !== undefined ? `exit ${r.status}\n${r.stdout}\n${r.stderr}` : `code ${r.code}\n${r.text}\nprinted: ${r.printed}`); failures++; }
   }
 }
 

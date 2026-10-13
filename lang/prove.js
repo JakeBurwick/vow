@@ -449,6 +449,8 @@ export function prove(src, ast) {
       for (const p of s.params) env.set(p.name, null);
       for (const cond of s.expects) refineByCond(env, cond, true);
       walkStmt(s.body, env, { fn: s });
+    } else if (s.t === 'Test') {
+      walkStmt(s.body, new Map(), { fn: null }); // a test starts from nothing: no top-level facts
     } else {
       walkStmt(s, topEnv, { fn: null });
     }

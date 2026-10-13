@@ -108,14 +108,15 @@ export function parse(src, opts = {}) {
       skipNewlines();
     }
     while (peek().type !== 'eof') {
-      stmts.push(parseStmt(true));
+      stmts.push(atTestBlock() ? parseTest() : parseStmt(true));
       endStatement();
       skipNewlines();
     }
     if (opts.module) {
       // A module provides fns and structs; it runs no code of its own, so a top-level
       // statement there would silently never run (or run at an unclear time). Refuse it.
-      const bad = stmts.find(st => st.t !== 'Fn' && st.t !== 'Struct');
+      // (Its test blocks are fine: `vow test module.vow` runs them; importers skip them.)
+      const bad = stmts.find(st => st.t !== 'Fn' && st.t !== 'Struct' && st.t !== 'Test');
       if (bad) {
         const what = { Let: 'let', ExprStmt: 'statement', Assign: 'assignment', If: 'if', For: 'for loop', While: 'while loop', MatchStmt: 'match', Return: 'return' }[bad.t] ?? 'statement';
         fail(bad.pos, 'modules may only contain fn, struct and import at the top level',
@@ -128,6 +129,24 @@ export function parse(src, opts = {}) {
     const program = { t: 'Program', stmts, imports };
     liftNestedFns(program);
     return program;
+  }
+
+  // test "name" { ... }: `test` is not a keyword (programs may name a variable or fn `test`);
+  // a test block is the word test followed by a string at the start of a statement, which
+  // can't be anything else in Vow.
+  const atTestBlock = () => peek().type === 'ident' && peek().value === 'test' && peek(1).type === 'str';
+
+  function parseTest() {
+    const kw = next();
+    const nameTok = next();
+    if (nameTok.value.trim() === '') fail(nameTok, 'a test needs a name',
+      'The name is what vow test prints for this test, so it should say what the test checks.',
+      'write: test "converts celsius to fahrenheit" { ... }');
+    if (!atPunct('{')) fail(peek(), `expected '{' after the test name, found ${describe(peek())}`,
+      'A test block is written: test "name" { ... }, with the { on the same line as the name.',
+      `write: test ${JSON.stringify(nameTok.value)} { ... }`);
+    const body = parseBlock(`the body of test ${JSON.stringify(nameTok.value)}`);
+    return { t: 'Test', name: nameTok.value, nameTok, body, pos: kw, start: kw.start, end: body.end };
   }
 
   // import "./geometry.vow" as geo
@@ -276,36 +295,54 @@ export function parse(src, opts = {}) {
 
     const processFn = (parent) => {
       const parentLocals = declaredIn(parent);
+      // every nested fn directly inside this parent (not inside another nested fn), with its block
+      const nested = [];
       walk(parent.body, (blk) => {
         if (blk.t === 'Fn') return false; // handled when its own block is reached
         if (!Array.isArray(blk.stmts)) return;
-        for (let i = 0; i < blk.stmts.length; i++) {
-          const fn = blk.stmts[i];
-          if (fn.t !== 'Fn') continue;
-          processFn(fn); // inner-most first
-          const own = declaredIn(fn);
-          const captures = [...usedIn(fn.body)].filter(n => parentLocals.has(n) && !own.has(n) && n !== fn.name);
-          if (captures.length === 0) {
-            let name = fn.name;
-            if (topNames.has(name)) { name = `${parent.name}_${fn.name}`; rename(parent.body, fn.name, name); rename(fn.body, fn.name, name); }
-            topNames.add(name);
-            fn.name = name;
-            fn.lifted = parent.name; // not exported from a module
-            lifted.push(fn);
-            blk.stmts.splice(i, 1); i--;
-          } else {
-            if (fn.expects.length || fn.ensures.length || fn.uses.length) fail(fn.nameTok,
-              `nested fn ${fn.name} uses ${captures.join(', ')} from fn ${parent.name}, so it can't have expects/ensures/uses`,
-              'A nested fn that reads its parent\'s variables becomes a closure, and closures have no contracts or capability clauses.',
-              `move fn ${fn.name} to the top level and pass ${captures.join(', ')} in as parameters.`);
-            // A closure that calls itself (a DFS helper over the parent's visited map) is a
-            // `let rec`: its own name is in scope inside its body.
-            const rec = usedIn(fn.body).has(fn.name);
-            const lambda = { t: 'Lambda', params: fn.params, body: fn.body, pos: fn.pos, start: fn.start, end: fn.end };
-            blk.stmts[i] = { t: 'Let', name: fn.name, nameTok: fn.nameTok, expr: lambda, rec, pos: fn.pos, start: fn.start, end: fn.end };
-          }
-        }
+        for (const fn of blk.stmts) if (fn.t === 'Fn') nested.push({ blk, fn });
       });
+      for (const { fn } of nested) processFn(fn); // inner-most first
+      const captured = new Map(); // fn -> the parent names it uses
+      for (const { fn } of nested) {
+        const own = declaredIn(fn);
+        captured.set(fn, [...usedIn(fn.body)].filter(n => parentLocals.has(n) && !own.has(n) && n !== fn.name));
+      }
+      // A nested fn that calls a sibling closure must stay a closure too (it needs the sibling,
+      // which only exists inside the parent), even when it reads no parent variable itself.
+      const closureNames = new Set(nested.filter(({ fn }) => captured.get(fn).length).map(({ fn }) => fn.name));
+      for (let changed = true; changed;) {
+        changed = false;
+        for (const { fn } of nested) {
+          if (closureNames.has(fn.name)) continue;
+          const sibling = [...usedIn(fn.body)].find(n => closureNames.has(n));
+          if (sibling) { captured.get(fn).push(sibling); closureNames.add(fn.name); changed = true; }
+        }
+      }
+      for (const { blk, fn } of nested) {
+        const captures = captured.get(fn);
+        const i = blk.stmts.indexOf(fn);
+        if (captures.length === 0) {
+          let name = fn.name;
+          if (topNames.has(name)) { name = `${parent.name}_${fn.name}`; rename(parent.body, fn.name, name); rename(fn.body, fn.name, name); }
+          topNames.add(name);
+          fn.name = name;
+          fn.lifted = parent.name; // not exported from a module
+          lifted.push(fn);
+          blk.stmts.splice(i, 1);
+        } else {
+          if (fn.expects.length || fn.ensures.length || fn.uses.length) fail(fn.nameTok,
+            `nested fn ${fn.name} uses ${captures.join(', ')} from fn ${parent.name}, so it can't have expects/ensures/uses`,
+            'A nested fn that reads its parent\'s variables becomes a closure, and closures have no contracts or capability clauses.',
+            `move fn ${fn.name} to the top level and pass ${captures.join(', ')} in as parameters.`);
+          // A closure that calls itself (a DFS helper over the parent's visited map) is a
+          // `let rec`: its own name is in scope inside its body.
+          const rec = usedIn(fn.body).has(fn.name);
+          // fnName/nameTok: the checker names it `fn visit` in diagnostics, not "this lambda"
+          const lambda = { t: 'Lambda', params: fn.params, body: fn.body, fnName: fn.name, nameTok: fn.nameTok, pos: fn.pos, start: fn.start, end: fn.end };
+          blk.stmts[i] = { t: 'Let', name: fn.name, nameTok: fn.nameTok, expr: lambda, rec, pos: fn.pos, start: fn.start, end: fn.end };
+        }
+      }
     };
     const top = { name: 'main', params: [], body: { t: 'Block', stmts: [] } };
     for (const s of program.stmts) {
@@ -317,6 +354,9 @@ export function parse(src, opts = {}) {
 
   function parseStmt(topLevel = false) {
     const tok = peek();
+    if (!topLevel && atTestBlock()) fail(tok, 'test blocks go at the top level of the file',
+      'A test is a whole-file check: it runs with vow test file.vow, never as part of a fn or another test.',
+      'move this test block to the top level, outside every fn, loop and test.');
     if (tok.type === 'kw') {
       switch (tok.value) {
         case 'let': return parseLet();

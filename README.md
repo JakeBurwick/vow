@@ -51,6 +51,7 @@ This installs two commands: `vow`, the compiler and runner, and `vow-mcp`, an MC
 |---|---|
 | `vow app.vow [args...]` | Run a program (compiled to JavaScript) |
 | `vow --check app.vow` | Type-check without running |
+| `vow test app.vow` | Run the file's `test "name" { ... }` blocks; exit 1 if any fails (`--filter word` narrows them) |
 | `vow --sandbox --allow fs=./data app.vow` | Only let the program touch `./data`, checked before it runs |
 | `vow --sandbox --allow net=api.example.com app.vow` | Only let it call one host |
 | `vow --seed 7 game.vow` | Make random numbers repeatable |
@@ -75,10 +76,10 @@ Vow is meant to be written by AI coding tools. Give your tool the guide once and
 1. **Install:** `npm install -g github:JakeBurwick/vow`
 2. **Tell your tool about Vow.** Paste this into Claude Code, Codex, Cursor or any coding agent:
 
-   > This project uses Vow, a programming language for AI agents. Before writing any Vow, read https://vow-lang.vercel.app/llms.txt and the guide it links to. Run programs with `vow file.vow`. After every edit run `vow --check file.vow` and fix each error using its "Likely fix" line. Vow has no null and no exceptions: handle every Result with match or ?.
+   > This project uses Vow, a programming language for AI agents. Before writing any Vow, read https://vow-lang.vercel.app/llms.txt and the guide it links to. Run programs with `vow file.vow`. After every edit run `vow --check file.vow` and fix each error using its "Likely fix" line. Before finishing, add test blocks for each example and error case and run `vow test file.vow`. Vow has no null and no exceptions: handle every Result with match or ?.
 
 3. **Add it to your project (optional).** Copy [`templates/AGENTS.md`](templates/AGENTS.md) into your project root as `AGENTS.md` so your agent picks it up automatically. It has the same instructions plus the five rules agents miss most.
-4. **Connect the Vow tools (optional).** In Claude Code, `claude mcp add vow -- vow-mcp` gives the agent `vow_guide`, `vow_check` and `vow_run` tools. Any other MCP client can launch the `vow-mcp` command over stdio.
+4. **Connect the Vow tools (optional).** In Claude Code, `claude mcp add vow -- vow-mcp` gives the agent `vow_guide`, `vow_check`, `vow_run` and `vow_test` tools. Any other MCP client can launch the `vow-mcp` command over stdio.
 
 Tested in October 2026 with Claude Haiku 4.5, Anthropic's smallest current model at the time. Larger models should do at least as well. Comparable small models from other labs should behave similarly, since everything Vow needs is in its guide, but they have not been measured. A very small local model (Llama 3.2 3B) could not solve these tasks in Vow or in TypeScript.
 
@@ -98,11 +99,11 @@ Measured October 2026 (dates per row). Numbers may be out of date; `RESULTS.md` 
 |---|---|---|---|
 | Recursive fib(32) | 0.09 s | Python 0.14 s | 2026-10-07 |
 | Agent code passing 150 fresh hidden tests per task | 99.5% | TypeScript 99.3% | 2026-10-08 |
-| Failed submissions, 4 hard unseen tasks, agents may run code first | 7 of 19 | TypeScript 3 of 15 | 2026-10-12 |
+| Failed submissions per run, 4 hard unseen tasks, agents may run code first | 1.0 (2.3 a day earlier) | TypeScript 1.0 | 2026-10-13 (TS 2026-10-12) |
 | Failed attempts, same tasks, no running allowed | 15 | TypeScript 7 | 2026-10-08 |
 | Attack programs blocked by the sandbox | 6 of 7 | Deno 7 of 7 | 2026-10-02 |
 
-On easy tasks agents write correct Vow about as reliably as TypeScript. On hard ones they still need about twice as many attempts, even when they can run their code before submitting; every run in both languages finished the task. The sandbox does not yet support a read-only file grant, which is the one attack Deno blocks and Vow does not.
+On easy tasks agents write correct Vow about as reliably as TypeScript. On hard ones they needed about twice as many attempts until the October 13 fixes (built-in tests, clearer docs, checker bug fixes); the latest round is even with TypeScript, from a small sample of 2 runs. With Claude Sonnet both languages had zero failed submissions. The sandbox does not yet support a read-only file grant, which is the one attack Deno blocks and Vow does not.
 
 ## Development
 

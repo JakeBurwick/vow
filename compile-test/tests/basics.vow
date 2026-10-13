@@ -1,0 +1,81 @@
+// test blocks on both backends: expect/expectEq/expectErr, run() with args and stdin,
+// traps inside a test and inside run(), lambdas inside tests, a bare return, seeded random
+struct P { x, y }
+fn add(a, b) { return a + b }
+fn parse(s) { return num(s) }
+fn third(xs) { return xs[2] }
+fn roll() { return randomInt(1, 6) }
+
+let xs = args()
+print("args:", xs)
+match readLine() {
+  ok(l) => print("first:", l)
+  err(e) => print("no input")
+}
+match readAll() {
+  ok(t) => print("rest:", lines(t))
+  err(e) => print(e)
+}
+if len(xs) > 0 and xs[0] == "boom" {
+  let ys = [1]
+  print(ys[9])
+}
+print("done")
+
+test "expectEq on every kind of value" {
+  expectEq(add(1, 2), 3)
+  expectEq(P { x: 1, y: 2 }, P { x: 1, y: 2 })
+  expectEq([[1], [2]], [[1], [2]])
+  expectEq({"a": 1}, {"a": 1})
+  expectEq(parse("4"), ok(4))
+  expectEq(parse("x"), err("\"x\" is not a number"))
+  expectErr(parse("x"))
+  expect(not (add(1, 1) == 3))
+}
+test "run: args, stdin lines, a partial last line, readAll" {
+  expectEq(run(["a", "b"], "one" + chr(13) + "\ntwo\nthree"), "args: [\"a\", \"b\"]\nfirst: one\nrest: [\"two\", \"three\"]\ndone\n")
+  expectEq(run([], ""), "args: []\nno input\nrest: []\ndone\n")
+}
+test "run twice in one test starts fresh each time" {
+  let a = run([], "x")
+  let b = run([], "x")
+  expectEq(a, b)
+}
+test "a failing expectEq shows both values and the first differing line" {
+  expectEq(run([], "l1\nl2"), "args: []\nfirst: l1\nrest: [\"l2\", \"extra\"]\ndone\n")
+}
+test "a failing expect names the condition" {
+  expect(add(2, 2) == 5)
+}
+test "a failing expectErr shows the ok value" {
+  expectErr(parse("12"))
+}
+test "a trap inside run fails the test with the program's diagnostic" {
+  expectEq(run(["boom"], ""), "never compared")
+}
+test "a trap inside a fn called from the test keeps the call stack" {
+  expectEq(third([1]), 1)
+}
+test "expect inside a lambda" {
+  let n = count([1, 2, 3], x => {
+    expect(x > 0)
+    x > 1
+  })
+  expectEq(n, 2)
+}
+test "a bare return ends the test early" {
+  if add(1, 1) == 2 { return }
+  expect(false)
+}
+test "seeded random: the sequence continues across the test run" {
+  let rolls = [roll(), roll(), roll()]
+  expect(all(rolls, r => r >= 1 and r <= 6))
+  expectEq(len(rolls), 3)
+}
+test "a return inside a value arm ends the test too" {
+  let v = match parse("x") {
+    ok(n) => n
+    err(e) => { return }
+  }
+  expect(false)
+}

@@ -1,11 +1,12 @@
 // Runs a Vow program through the JavaScript backend (lang/compile.js).
 // Same contract as createRun in lang/interp.js: same opts (out, maxSteps, maxDepth, builtins, seed),
-// output through opts.out, failures thrown as VowError with identical diagnostics.
+// output through opts.out, failures thrown as VowError with identical diagnostics, and the same
+// `tests` list ({ name, node, run }) for `vow test`.
 // The builtin table is the interpreter's own (createRun(...).builtins), so builtins behave
 // identically by construction.
 
 import { compile } from './compile.js';
-import { createRun, display, deepEq, isJson, UNIT, HIGHER_ORDER } from './interp.js';
+import { createRun, display, deepEq, isJson, compareText, compareKeys, UNIT, HIGHER_ORDER, testIO, runOutput, runTrap } from './interp.js';
 import { VowError, nodeLoc } from './diagnostics.js';
 
 const EMPTY = { t: 'Program', stmts: [] };
@@ -18,6 +19,6 @@ export function createCompiledRun(src, ast, opts = {}) {
   const { builtins } = createRun(src, EMPTY, { out: opts.out, builtins: opts.builtins, seed: opts.seed });
   const { code, nodes } = compile(src, ast, { maxSteps, maxDepth, builtinNames: [...Object.keys(builtins), 'sortBy', ...HIGHER_ORDER] });
   const factory = new Function('$rt', '$nodes', code);
-  const prog = factory({ $B: builtins, display, deepEq, isJson, UNIT, VowError, nodeLoc, src }, nodes);
-  return { run: () => prog.main(), code };
+  const prog = factory({ $B: builtins, display, deepEq, isJson, compareText, compareKeys, UNIT, VowError, nodeLoc, src, testIO, runOutput, runTrap }, nodes);
+  return { run: () => prog.main(), tests: prog.tests, code };
 }

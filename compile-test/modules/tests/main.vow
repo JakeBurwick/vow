@@ -1,0 +1,4 @@
+import "./geo.vow" as geo
+print(geo.area(2))
+test "main test calls the module" { expectEq(geo.area(3), 27) }
+test "run from main" { expectEq(run([], ""), "12\n") }

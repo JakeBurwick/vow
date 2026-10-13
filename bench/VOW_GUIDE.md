@@ -4,6 +4,8 @@ Vow is a small statically-typed language. All types are inferred — never write
 
 Run a program with `node cli.js main.vow [args]`. A run stops after 50,000,000 statements (`--max-steps N` raises it, `--max-steps 0` removes the cap). A program can span several files: `main.vow` imports the others (`import "./geometry.vow" as geo`) and the CLI loads them from disk, relative to each importing file. Run the main file; `--check main.vow` checks every file it imports. (The browser playground runs one file.)
 
+**Before you submit a program written from a spec:** add `test "name" { ... }` blocks to the file, one per example in the spec and one per error line in it (expecting the exact error string, newline included), run `node cli.js test main.vow`, and fix the program until every test passes. See "Testing" below.
+
 ## Variables & types
 ```
 let x = 5        // mutable, but its type is pinned for life
@@ -21,14 +23,15 @@ print("hi ${name}, next year: ${2026 + 1}")   // interpolation: any expression i
 print("{\"name\": \"${name}\"}")       // plain { and } are just text: {"name": "Ada"}
 let c = name[0]          // "A": indexing a str gives a one-character str (traps if out of range; get(s, i) is safe)
 ```
-`len(s)`, `s[i]` and `slice` count UTF-16 units, like JavaScript: `len("é")` is 1 but `len("😀")` is 2 and `"😀"[0]` is half a character. For code points use `ord("😀")` → 128512 (the first code point of a str; `ord("")` traps) and `chr(128512)` → "😀"; `split(s, "")` also splits into UTF-16 units. `urlEncode("a b&c")` → `"a%20b%26c"` (percent-encodes everything but letters, digits and `-_.!~*'()`); `urlDecode(t)` → Result<str, str> (err on a bad `%` sequence; it leaves `+` alone, so for form bodies use `param(body, "field")`).
-Only `${expr}` inserts a value. A plain `{` or `}` (and a `$` not followed by `{`) is ordinary text, so templates like `"{{name}}"` and JSON need no escaping. Escapes: `\n \t \" \\` and `\$` (`"\${x}"` prints the literal text `${x}`). `"hi {name}"` does NOT insert name: the checker reports it when `name` is a variable (write `${name}`, or `\{name}` if you really want the braces). A **raw string** in backticks: `` `C:\path "quoted" ${not interpolated}` `` takes every character literally (no escapes, no interpolation, may span multiple lines).
+`len(s)`, `s[i]`, `slice` and `split(s, "")` count UTF-16 units, like JavaScript (`len("😀")` is 2). For whole characters use `chars(s)`; for percent-encoding use `urlEncode`/`urlDecode`: see "Text and Unicode" and "URLs" under Builtins.
+Only `${expr}` inserts a value. A plain `{` or `}` (and a `$` not followed by `{`) is ordinary text, so templates like `"{{name}}"` and JSON need no escaping. Escapes: `\n \t \r \0 \" \\ \$` and `\u{1F600}` / `é` (any code point; `"\${x}"` prints the literal text `${x}`); the same list works inside `${…}` strings, and backtick strings have none. `"hi {name}"` does NOT insert name: the checker reports it when `name` is a variable (write `${name}`, or `\{name}` if you really want the braces). A **raw string** in backticks: `` `C:\path "quoted" ${not interpolated}` `` takes every character literally (no escapes, no interpolation, may span multiple lines).
 
 ## Collections
 ```
 let xs = [1, 2, 3]          // list — one element type only
 let m = {"a": 1, "b": 2}    // map — string keys, one value type
-let fresh = {}              // empty map — value type pinned by first insert
+let fresh = {}              // empty map, filled later; its value type is pinned by the first insert
+fresh["x"] = 1              // now a map<str, num> (no sentinel key needed)
 m["c"] = 3                  // insert or update a key
 xs[0]    m["a"]             // indexing TRAPS on out-of-bounds / missing key
 get(xs, 9)  get(m, "z")     // safe access → Result
@@ -48,7 +51,17 @@ while cond { ...  break  continue }
 ```
 fn add(a, b) { return a + b }
 ```
-Params and return types are inferred. A fn that never says `return` returns the value of its last line (a bare expression, a `match`, or an `if/else`), like a block. If a function returns a value on one path, **every** path must return. Functions are generic automatically (a `fn first(xs) { return xs[0] }` works on any list type), but each individual call must be type-consistent. Lambdas: `x => x * 2`, `(a, b) => a + b`, `() => "hi"`, or a block body whose last line is the value (or that uses `return`); block lambdas may span lines even inside a call: `sortBy(xs, x => {` newline `let k = x.price` newline `k` newline `})`. Only named `fn`s and lambda-typed variables are callable.
+Params and return types are inferred. A fn that never says `return` returns the value of its last line (a bare expression, a `match`, or an `if/else`), like a block. If a function returns a value on one path, **every** path must return. Functions are generic automatically (a `fn first(xs) { return xs[0] }` works on any list type), but each individual call must be type-consistent. A param used only with `len`, `slice`, `contains`, `indexOf` or `p[i]` stays "list or str" until another use (`p + "x"`, `split(p, ",")`) or a call site settles it, so `fn f(src) { ... indexOf(src, "x") ... }` works on a str without `str(src)`. Lambdas: `x => x * 2`, `(a, b) => a + b`, `() => "hi"`, or a block body whose last line is the value (or that uses `return`); block lambdas may span lines even inside a call: `sortBy(xs, x => {` newline `let k = x.price` newline `k` newline `})`. Only named `fn`s and lambda-typed variables are callable.
+
+**Fns can be nested.** A fn declared inside another fn reads and updates the parent's variables and params, and may call itself (it can't have expects/ensures/uses, and a module doesn't export it). Declare it below the variables it uses and above its first call: unlike a top-level fn it is visible only from its declaration down, and two nested fns can't call each other (move both to the top level and pass the shared variables in). An early bare `return` (`if has(seen, n) { return }`) makes it a fn that returns nothing, and `while true { ... return ... }` with no `break` counts as always returning:
+```
+fn tally(words) {
+  let counts = {}
+  fn bump(w) { counts[w] = if has(counts, w) { counts[w] + 1 } else { 1 } }   // updates the parent's map
+  for w in words { bump(w) }
+  return counts
+}
+```
 
 ## Results — the core of the language
 ```
@@ -77,7 +90,7 @@ let v = match num(s) {
   err(e) => 0 - 1
 }
 ```
-In a statement match (one whose value isn't used), an arm that only prints is just `err(e) => print("bad: " + e)` (or a block `err(e) => { print(e) }`); it needs no value. In a value-producing match every arm must end in a value, so an arm that prints and still has to yield one ends with the value on its own line: `err(e) => { print(e)` newline `0 }`. Arms may `return`, `break`, or `continue` freely in a statement match, e.g. `err(e) => continue` or `ok(v) => return ok(v)`. Inside a fn, a value-producing arm (or if/else branch) may also `return` from the function: `err(e) => { return -1 }` (an arm that always returns needs no value). `break`/`continue` may not escape a value-producing arm. `if/else` also works as a value: `let size = if x > 5 { "big" } else { "small" }` (an else is required; each branch's last line is its value; `else if` chains work).
+In a statement match (value unused) an arm that only prints needs no value: `err(e) => print("bad: " + e)`. In a value-producing match every arm ends in a value; an arm that also prints puts the value on its own last line: `err(e) => { print(e)` newline `0 }`. Arms may `return`, `break` or `continue` in a statement match (`err(e) => continue`); inside a fn a value-producing arm or if/else branch may `return` from the function (`err(e) => { return -1 }`, which then needs no value), but `break`/`continue` can't escape a value-producing arm. `if/else` is a value too: `let size = if x > 5 { "big" } else { "small" }` (else required; each branch's last line is its value; `else if` chains work).
 - `?` unwraps ok or propagates the err to the caller — **only inside a function** (whose returns are `ok(...)`/`err(...)`), never at top level:
 ```
 fn area(w, h) {
@@ -97,7 +110,17 @@ print(p == Point { x: 10, y: 4 })  // value equality
 ```
 
 ## JSON
-`parseJson(text)` → `Result<json, str>`. A `json` value is any JSON value (object, array, string, number, bool, null); it is read-only.
+A `json` value is any JSON value (object, array, string, number, bool, null). It is read-only, so every "change" builds a new one. There is no `null` keyword, and json is not a map: use `field`/`has`/`jsonKeys` on it.
+- Parse: `parseJson(text)` → Result<json, str>: `match parseJson(body) { ok(j) => ...  err(e) => ... }`
+- Convert: `json(value)` → json, directly from a num/str/bool/list/map/struct, no Result (it can't fail): `json(["a", "b"])`, `json(User { name: "Ada", tags: [] })`, `json(scores)`. Do not write `parseJson(toJson(x))`
+- Serialize: `toJson(value)` → compact str on one line (same inputs as `json`, plus json) · `prettyJson(value)` → str indented with 2 spaces
+- Read: `field(j, "key")` / `at(j, i)` → json, a **json null** when the key/index is missing or `j` is the wrong kind · `get(j, key)` → Result, for when missing is an error · `has(j, "key")` → bool · `j["key"]` / `j[0]` trap on a miss
+- Test: `isNull(j)` · `truthy(j)` (false for null, false, 0, "", `[]` and `{}`; empty containers are falsy, unlike JavaScript) · `jsonType(j)` → "object"/"array"/"string"/"number"/"bool"/"null"
+- Text: `str(j)` (and `print(j)`, `"${j}"`): strings as-is, numbers like `str(num)`, true/false, arrays/objects as compact JSON, and a json null as the text `"null"` (never an empty string). For empty output on a missing value write `if isNull(j) { "" } else { str(j) }`
+- Walk: `jsonList(j)` → list<json> · `jsonKeys(j)` → list<str>; both plain lists, `[]` for the other kinds
+- Typed values: `jsonNum(j)`, `jsonStr(j)`, `jsonBool(j)` → Results (the err says what was found and where: `the JSON value at "age" is a string ("36"), not a number`)
+- Edit (each returns a NEW json object, `j` is unchanged): `jsonSet(j, "key", value)` → with that key set (`value` is anything `json` accepts) · `jsonDelete(j, "key")` → without that key (no error if absent) · `jsonMerge(a, b)` → deep merge: objects merge key by key, recursively, otherwise `b` wins. A json null counts as `{}` for jsonSet/jsonDelete; any other non-object traps
+- Compare json with `==`/`!=`: same kind and same value (`field(a, "n") == field(b, "n")`)
 ```
 match parseJson(`{"user": {"name": "Ada", "age": 36, "tags": [], "pet": null}}`) {
   ok(data) => {
@@ -111,19 +134,14 @@ match parseJson(`{"user": {"name": "Ada", "age": 36, "tags": [], "pet": null}}`)
   err(e) => print("bad data: ${e}")
 }
 ```
-- Read: `field(j, "key")` and `at(j, i)` → json, a **json null** when the key/index is missing or `j` is the wrong kind. `has(j, "key")` → bool. `get(j, key)` → Result, for when missing is an error.
-- Test: `isNull(j)`, `truthy(j)` (false for null, false, 0, "", `[]` and `{}`; empty array/object are falsy, unlike JavaScript), `jsonType(j)` → "object"/"array"/"string"/"number"/"bool"/"null".
-- Text: `str(j)` (and `print(j)`, `"${j}"`): strings as-is, numbers like `str(num)` (3, 3.5), true/false, null as "null", arrays/objects as compact JSON.
-- Walk: `jsonList(j)` → list of json elements, `jsonKeys(j)` → list of keys; both plain lists, `[]` for the other kinds.
-- Typed values: `jsonNum`, `jsonStr`, `jsonBool` → Results (err if it is another kind; the err says what was found and where it came from: `the JSON value at "age" is a string ("36"), not a number`). `toJson(value)` serializes nums/strs/bools/lists/maps/structs/json on one line; `prettyJson(value)` indents with 2 spaces.
-- Build: `jsonSet(j, "key", value)` → a NEW json object with that key set (`j` is unchanged; `value` is anything `toJson` accepts; a json null counts as `{}`, any other non-object traps). `jsonMerge(a, b)` → deep merge: objects merge key by key, recursively; for anything else `b` wins. Compare json with `==`/`!=`: same kind and same value (`field(a, "n") == field(b, "n")`).
 ```
 let user = field(data, "user")
-let updated = jsonSet(jsonSet(user, "age", 37), "tags", ["x", "y"])
-let config = jsonMerge(defaults, overrides)        // overrides win, nested objects merge
-print(prettyJson(updated))
+let updated = jsonDelete(jsonSet(user, "age", 37), "password")   // set one key, drop another
+let doc = jsonSet(data, "tags", ["x", "y"])                       // a Vow list is converted for you
+let config = jsonMerge(defaults, overrides)                       // overrides win, nested objects merge
+print(prettyJson(updated), toJson(doc), json(keys(scores)))
 ```
-- There is no `null` keyword and json is not a map: use `field`/`has`/`jsonKeys` on it. A fn whose params are only used with these works on json directly. `j["key"]` / `j[0]` trap on a miss.
+A fn whose params are only used with `field`/`has`/`jsonKeys`/... works on json directly.
 
 ## Contracts (optional)
 ```
@@ -135,20 +153,30 @@ fn withdraw(bal, amt)
 Contracts are checked at runtime with blame (caller vs callee). If the checker can *prove* a call always breaks an `expects` (e.g. constant arguments), it refuses to compile with a `ContractError` — fix the call site or the contract.
 
 ## Builtins
-`print str num len range push pop get keys has join split abs floor round fixed min max sort sortBy reverse sum contains slice trim upper lower ok err` (plus math, random and dates: see below)
+Use these instead of hand-rolled loops, decoders and parsers; every family below has its own heading. Your own `fn map(...)`, `let count = ...`, `fn log(...)`, `let json = ...` still work: a fn, `let`, param, loop variable or lambda you define with a builtin's name shadows the builtin within its scope (and only there: a `let text = ...` inside one fn leaves `text(...)` usable everywhere else). Every builtin is listed in the sections below; there are no hidden ones.
 
-Text: `replace(t, old, new)` (every occurrence, literal), `startsWith(t, p)`, `endsWith(t, s)`, `indexOf(t, piece)` → Result<num, str> (also `indexOf(xs, item)` on a list: first position by `==`, err when absent), `repeat(t, n)`, `padLeft(t, width, fill)`, `padRight(t, width, fill)`, `lines(t)` (splits on newlines, drops a trailing one), `contains(t, piece)`, `split(t, sep)`, `slice(t, from, to)`, `t[i]`, `ord(t)`/`chr(n)`, `urlEncode(t)`/`urlDecode(t)`. — plus CLI I/O: `args()` → list<str>, `readFile/writeFile/httpGet/httpRequest/env/readLine/readAll` → Results (see below).
+### Core
+`print str num len range push pop get keys has join split abs floor round fixed min max sort sortBy reverse sum contains slice trim upper lower ok err`. `round(x, 2)` rounds half-up to 2 decimals (15.625 → 15.63), `fixed(x, 2)` gives text with exactly 2 decimals ("212.30") and `str()` prints numbers without trailing zeros (12.5, 3). `sort(xs)` orders nums or strs; `sortBy(xs, x => x.price)` orders any list by a num/str key (stable: ties keep their order). Both return a NEW list: write `xs = sort(xs)`. `and`/`or` short-circuit, so `i < len(xs) and xs[i] > 0` is safe.
 
-`round(x, 2)` rounds half-up to 2 decimals (15.625 → 15.63), `fixed(x, 2)` gives text with exactly 2 decimals ("212.30") and `str()` prints numbers without trailing zeros (12.5, 3). `sort(xs)` orders nums or strs. `sortBy(xs, x => x.price)` orders any list by a num/str key (stable: ties keep their order). Both return a NEW list: write `xs = sort(xs)`. `and`/`or` short-circuit, so `i < len(xs) and xs[i] > 0` is safe. `args()` holds only the user's arguments, never the program name.
-
-### Standard library: use these instead of hand-rolled loops
-Lists (the fn is a lambda or a named fn, like sortBy; all return NEW values):
+### Lists (the fn is a lambda or a named fn; all return NEW values)
 - `map(xs, x => x * 2)` → new list · `filter(xs, x => x > 0)` → kept items · `count(xs, x => x > 0)` → num
 - `any(xs, x => x < 0)` / `all(xs, x => x > 0)` → bool (stop early; `all([], f)` is true)
 - `fold(xs, 0, (acc, x) => acc + x)` → the accumulator (same type as the start value)
 - `uniq(xs)` → first occurrence of each value, order kept (`==` equality, works on structs) · `values(m)` → map values in `keys(m)` order
+- `indexOf(xs, item)` → Result<num, str>: first position by `==`, err when absent · `contains(xs, item)` → bool · `reverse(xs)`, `slice(xs, from, to)`, `sum(xs)`
 
-Text (patterns are JavaScript regular expressions; write them as backtick raw strings so `\d` stays `\d`):
+### Text and Unicode
+- `replace(t, old, new)` → every occurrence, literal text: `replace("a-b-c", "-", "+")` → "a+b+c"
+- `startsWith(t, p)`, `endsWith(t, s)`, `contains(t, piece)` → bool · `indexOf(t, piece)` → Result<num, str> (err when absent)
+- `split(t, sep)` → list · `join(xs, sep)` → str · `lines(t)` → list (splits on newlines, drops a trailing one) · `words(t)` → split on any whitespace, no empty strings
+- `trim(t)`, `upper(t)`, `lower(t)`, `slice(t, from, to)` · `t[i]` → one-unit str (traps out of range; `get(t, i)` → Result)
+- `repeat(t, n)` · `padLeft("7", 3, "0")` → "007" · `padRight(t, width, fill)`
+- `len(t)`, `t[i]`, `slice` and `split(t, "")` count UTF-16 units like JavaScript: `len("é")` is 1 but `len("😀")` is 2 and `"😀"[0]` is half a character. For whole characters:
+  - `chars(t)` → list of one-character strs, one per code point: `chars("a😀")` → `["a", "😀"]`; `len(chars(t))` counts characters, `join(reverse(chars(t)), "")` reverses safely
+  - `ord(t)` → code point of the first character: `ord("😀")` → 128512 (`ord("")` traps) · `chr(n)` → the character: `chr(128512)` → "😀"
+  - `<`, `sort(xs)` and `sortBy` order strs by code point (`"😀" > "ｚ"`, as `ord` says), never by UTF-16 unit
+
+### Regular expressions (patterns are JavaScript regular expressions; write them as backtick raw strings so `\d` stays `\d`)
 - ``matches(s, `^\d+$`)`` → bool; searches anywhere unless you anchor with `^...$`
 - ``find(s, `(\w+)=(\d+)`)`` → Result: `ok([whole, group1, group2])` (an unmatched group is `""`), `err("no match")`
 - ``findAll(s, `\d+`)`` → list of every match · ``replaceAll(s, `(\w+)@`, "$1 at ")`` → str (`$1` = group 1)
@@ -156,24 +184,34 @@ Text (patterns are JavaScript regular expressions; write them as backtick raw st
 - `replace(t, old, new)` stays literal text; a bad pattern literal is a compile error
 - Patterns are compiled with the `u` flag: ``\p{L}`` (any letter), ``\p{Script=Greek}`` work and `.` matches a whole emoji. A pattern that is only valid without `u` (an identity escape like ``\-`` outside brackets, a lone `{`) still works as before
 
-Numbers: `int("42")` → Result, strict (optional `-` then digits; `"4.2"`, `" 5"`, `"+3"` are errs) · `isInt(x)` → bool · `sig(1234.5, 2)` → 1200 (significant digits, 1 to 21)
+### URLs
+- `urlEncode(t)` → str: `urlEncode("a b&c")` → "a%20b%26c" (percent-encodes everything but letters, digits and `-_.!~*'()`, as UTF-8: `urlEncode("é")` → "%C3%A9")
+- `urlDecode(t)` → Result<str, str>: `urlDecode("caf%C3%A9")` → ok("café"), err on a bad `%` sequence or on escapes that are not valid UTF-8 (`%C3%28`, `%FF`), so it is a strict decoder: use it instead of decoding bytes by hand. It leaves `+` alone: for form data do `replace(t, "+", "%20")` first
+- `param(query, "name")` → Result<str, str>: one field of a query string or form body, decoded (`+` is a space): `param("a=1&b=x+y", "b")` → ok("x y"), err when missing
+- Build a query: `join(map(sort(keys(m)), k => urlEncode(k) + "=" + urlEncode(m[k])), "&")`
 
-Your own `fn map(...)`, `let count = ...`, `fn log(...)`, `let pi = ...`, etc. still work: a fn or variable you define with a builtin's name takes precedence.
+### Numbers
+`int("42")` → Result, strict (optional `-` then digits; `"4.2"`, `" 5"`, `"+3"` are errs) · `isInt(x)` → bool · `sig(1234.5, 2)` → 1200 (significant digits, 1 to 21) · `abs floor ceil trunc round fixed min max` · math, random and dates: see below
 
 **Capabilities:** a fn that does I/O must declare it in its signature — `fn fetch(url) uses net { return httpGet(url) }`. Capabilities: `net` (httpGet, httpRequest, serve), `fs` (readFile/writeFile), `env` (env). Reading standard input (`readLine`, `readAll`) needs none. Callers of an effectful fn must declare it too; top-level code needs no declaration; declaring a capability you don't use is also an error.
 
-## CLI I/O: stdin and HTTP
+## Files, stdin and HTTP
+- `args()` → list<str>: only the user's arguments, never the program name
+- `readLine()` → Result<str, str>: the next stdin line without its newline, err("end of input") at EOF · `readAll()` → Result<str, str>: everything left on stdin (ok("") when empty). No capability needed
+- `readFile(path)` → Result<str, str> · `writeFile(path, text)` → Result<bool, str> (`uses fs`)
+- `env("HOME")` → Result<str, str> (`uses env`)
+- `httpGet(url)` → Result<str, str>: ok(body) for 2xx · `httpRequest(method, url, headers, body)` → Result<HttpResponse, str> (`uses net`; both below)
 ```
 print("name?")                              // output is written before readLine blocks
-match readLine() {                          // Result<str, str>: the next line of stdin
-  ok(line) => print("hi ${trim(line)}")     // without its newline (\r\n handled); works with a terminal and with `echo x | vow prog.vow`
-  err(e) => print("no input: ${e}")         // err("end of input") at EOF (Ctrl+D, or the pipe is drained)
+match readLine() {
+  ok(line) => print("hi ${trim(line)}")     // \r\n handled; works with a terminal and with `echo x | vow prog.vow`
+  err(e) => print("no input: ${e}")         // "end of input" at EOF (Ctrl+D, or the pipe is drained)
 }
 let rest = match readAll() { ok(t) => t  err(e) => "" }   // everything left on stdin; ok("") when it is empty
 ```
 Loop `while true { match readLine() { err(e) => break  ok(line) => ... } }` to process input line by line. In the browser playground both return an err.
 
-`httpRequest(method, url, headers, body)` → `Result<HttpResponse, str>` with `HttpResponse { status, headers, body }`: `status` a num, `headers` a map<str, str> with lower-case names, `body` a str. Any status is an `ok` (check `r.status` yourself); only not getting a response (DNS, refused, timeout after 15 s) is an err. `headers` is a map<str, str> (`{}` for none), `body` a str (`""` for none; it is ignored for GET/HEAD). `httpGet(url)` stays the short form: ok(body) for 2xx, otherwise err("GET url failed: HTTP 404 ...") with the start of the response body.
+`httpRequest(method, url, headers, body)` → `Result<HttpResponse, str>`, `HttpResponse { status, headers, body }`: `status` a num, `headers` a map<str, str> with lower-case names, `body` a str. Any status is an `ok` (check `r.status` yourself); only not getting a response (DNS, refused, 15 s timeout) is an err. Pass `{}` for no headers and `""` for no body (ignored for GET/HEAD). `httpGet(url)` is the short form: ok(body) for 2xx, otherwise err("GET url failed: HTTP 404 ...") with the start of the response body.
 ```
 fn repos(user) uses net {
   let r = httpRequest("GET", "https://api.github.com/users/${user}/repos", {"User-Agent": "vow", "Accept": "application/vnd.github+json"}, "")?
@@ -200,12 +238,12 @@ import "./geometry.vow" as geo
 let p = geo.Point { x: 3, y: 4 }
 print(geo.norm(p))                  // 5
 ```
-- `import "<path>" as <name>` goes at the top of a file, before any other code. The path is a string literal starting with `./` or `../`, relative to the importing file, naming a `.vow` file. `as name` is required; the name can't be a builtin, or anything else declared in that file.
-- Use a module's fns and structs only through its name: `geo.norm(p)`, `geo.Point { x: 1, y: 2 }`, `let f = geo.norm`. Names from different files never collide.
-- A module exports its top-level `fn`s and `struct`s, except names starting with `_` (private to the module) and nested fns. A module may contain only `fn`, `struct` and `import` at the top level: no `let`, `print` or other code (it runs nothing by itself). Only the file you run has top-level code.
+- `import "./x.vow" as name` lines come first in a file. The path is a literal starting with `./` or `../`, relative to the importing file; `as name` is required and the name can't clash with a builtin or anything declared in that file.
+- Use a module's fns and structs through its name: `geo.norm(p)`, `geo.Point { x: 1, y: 2 }`, `let f = geo.norm`; names from different files never collide.
+- A module exports its top-level `fn`s and `struct`s except `_private` names and nested fns, and may contain only `fn`, `struct` and `import` at the top level (no `let`, `print` or other code; only the file you run has top-level code).
 - A module sees its own names, the modules it imports, and builtins; never the main file's names. Each file is loaded once however often it is imported; import cycles are an error.
 - Generics, contracts and capabilities work across files as in one file: a caller of `geo.fetch` declares `uses net` if `fetch` does, and `--sandbox` sees every capability in every imported file before anything runs.
-- Errors name the file: `→ geometry.vow, line 2, col 5`; runtime call stacks show `at fn geometry.norm (geometry.vow, line 2)`. Inside a program a module's fn is called `<file stem>.<name>` (`geometry.norm`), and its structs print by their own name (`Point { x: 3, y: 4 }`).
+- Errors name the file (`→ geometry.vow, line 2, col 5`; call stacks show `at fn geometry.norm (geometry.vow, line 2)`); structs print by their own name (`Point { x: 3, y: 4 }`).
 
 ## Math, random, dates
 - `sqrt(x)`, `pow(x, y)`, `exp(x)`, `ln(x)` (natural log; `log(x)` is the same), `sin cos tan(x)` (radians), `atan2(y, x)`, `ceil(x)`, `trunc(x)` (toward 0), `pi()` → num. There is no `e()` (`e` is the usual err name): use `exp(1)`. A result with no real value traps like division by zero: `sqrt(-1)`, `ln(0)`, `pow(-8, 0.5)`, `pow(0, -1)`, `exp(1000)`. Guard the input first.
@@ -213,11 +251,30 @@ print(geo.norm(p))                  // 5
 - Times are nums: milliseconds since 1970-01-01T00:00:00Z, **always UTC**. `now()` → current time. `dateParts(ms)` → `DateParts { year, month (1-12), day, hour, minute, second, weekday (0=Sunday..6) }`. `isoDate(ms)` → `"2026-10-08T14:03:00Z"`. `parseDate(s)` → Result<num, str>: accepts `2026-10-08`, `2026-10-08T14:03`, `2026-10-08T14:03:00`, optional `.sss`, and `Z` or `+02:00`; no zone means UTC; impossible dates (`2026-02-30`) are errs. `daysBetween(a, b)` → UTC calendar days from a to b (negative if b is earlier; time of day ignored). One day later: `ms + 86400000`.
 
 ## Program structure
-A Vow file runs its top-level statements from top to bottom; there is no implicit `main`. `fn`s are hoisted (a call may come before the declaration), but top-level `let`s are not: a fn may only use a top-level variable declared ABOVE it, so put shared state (`let cache = {}`, `let config = ...`) at the top of the file, before the fns that use it (the checker says `'x' doesn't exist yet` otherwise). Write the program at the top level (helper `fn`s can be declared anywhere, including inside another fn: a nested fn may read and update its parent's variables and call itself, e.g. a `fn dfs(n)` that fills the parent's `seen` map; such a fn can't have expects/ensures/uses). A bare `return` at the top level ends the program early (no value allowed there).
+A Vow file runs its top-level statements from top to bottom; there is no implicit `main`. `fn`s are hoisted (a call may come before the declaration), but top-level `let`s are not: a fn may only use a top-level variable declared ABOVE it, so put shared state (`let cache = {}`, `let config = ...`) at the top of the file, before the fns that use it (the checker says `'x' doesn't exist yet` otherwise). Write the program at the top level; helper `fn`s can be declared anywhere, including inside another fn (see Functions). A bare `return` at the top level ends the program early (no value allowed there).
+
+## Testing
+A file carries its own tests: top-level `test "name" { ... }` blocks. They never run with `node cli.js main.vow`, are type-checked with the rest of the file, are skipped by files that import this one, and run with `node cli.js test main.vow`: one line per test, a summary, exit code 1 if any fails (`--filter word` runs only the tests whose name contains `word`).
+```
+fn toF(c) { return c * 9 / 5 + 32 }
+for a in args() {
+  match num(a) {
+    ok(c) => print("${c}C = ${toF(c)}F")
+    err(e) => print("error: not a number: ${a}")
+  }
+}
+
+test "toF" { expectEq(toF(100), 212) }
+test "cli: converts each argument" { expectEq(run(["100", "0"], ""), "100C = 212F\n0C = 32F\n") }
+test "cli: bad number prints the spec's error line" { expectEq(run(["abc"], ""), "error: not a number: abc\n") }
+```
+- `expect(cond)` · `expectEq(actual, expected)` (any type, `==` equality; a failure prints both values and, for text, the first line that differs) · `expectErr(result)` (passes when the Result is an err; `expectEq(r, ok(3))` / `expectEq(r, err("msg"))` check the exact value).
+- `run(args, stdin)` → str: runs this file's top-level code from scratch, with `args()` returning that list and `readLine()`/`readAll()` reading that text, and returns everything it printed, one `\n` after each printed line. That is the way to test a whole CLI program against a spec.
+- A test sees the file's fns and structs, never its top-level variables (only `run` executes the top-level code). `?` is not allowed in a test: compare the Result. A trap in a test, or inside `run`, fails that test with the trap's message. Each test starts from a fresh state.
 
 ## Web servers
 ```
-fn handle(req) {                      // req: map<str, str> with "method", "path", "query", "body"
+fn handle(req) {                      // req: map<str, str> with "method", "path", "query", "body", "authorization"
   if req["path"] == "/" { return html(`<h1>Hello</h1>`) }
   if req["path"] == "/hi" {
     let name = match param(req["query"], "name") {   // /hi?name=Ada
@@ -233,7 +290,7 @@ match serve(8080, handle) {           // runs until stopped; err if the port is 
   err(e) => print(e)
 }
 ```
-Responses: `html(body)`, `text(body)`, `respond(status, contentType, body)`, `redirect("/path")` (same-site paths only). Form posts arrive url-encoded in `req["body"]`: read fields with `param(req["body"], "field")`. `serve` needs `uses net` when called inside a fn; a handler that calls httpGet needs `uses net` too. Top-level variables persist between requests (in memory). Server binds 127.0.0.1; set VOW_HOST=0.0.0.0 to expose it.
+Responses: `html(body)`, `text(body)`, `respond(status, contentType, body)`, `redirect("/path")` (same-site paths only). Form posts arrive url-encoded in `req["body"]`: read fields with `param(req["body"], "field")`. Password protection (HTTP Basic auth): `checkLogin(req["authorization"], password)` → bool, true when the browser sent that password (any username; constant-time compare); `askLogin("realm")` → a 401 response that makes the browser show its login box: `if not checkLogin(req["authorization"], pw) { return askLogin("admin") }`. `serve` needs `uses net` when called inside a fn; a handler that calls httpGet needs `uses net` too. Top-level variables persist between requests (in memory). Server binds 127.0.0.1; set VOW_HOST=0.0.0.0 to expose it.
 
 ## Common mistakes
 - Putting different value types in one map (`{"name": "x", "qty": 3}`): a map holds ONE value type. Use a struct for records.
@@ -245,7 +302,8 @@ Responses: `html(body)`, `text(body)`, `respond(status, contentType, body)`, `re
 - Writing `"{x}"` to insert x: interpolation is `"${x}"`; plain braces are literal text.
 - Indexing (`xs[i]`, `m[k]`, `j[k]`) when the key might be missing — use `get(...)`, or `field(j, k)` for json.
 - Writing your own truthiness / value-to-text helpers for json: use `truthy(j)` and `str(j)`.
+- Hand-writing percent-decoding, UTF-8 handling, JSON building or code-point sorting: `urlDecode`/`urlEncode`, `chars`/`ord`/`chr`, `json`/`jsonSet`/`jsonDelete`, and `sort` (by code point) already do it.
 - Declaring a top-level `let` below a fn that uses it: move the let above the fn.
 - Two statements on one line inside a block (`{ print(e)  break }`): each statement goes on its own line.
 
-Run a program: `node cli.js program.vow [args]` (from the vow-lang directory; imported files load automatically). Type-check only: `node cli.js --check program.vow`. Heavy but legitimate work that trips the step cap: `node cli.js --max-steps 500000000 program.vow` (`0` = no limit). Every error message tells you what's wrong, shows the line, and suggests the likely fix — read it and apply the fix.
+Type-check only: `node cli.js --check program.vow`. Heavy but legitimate work that trips the step cap: `--max-steps 500000000` (`0` = no limit). Every error message tells you what's wrong, shows the line, and suggests the likely fix — read it and apply the fix.

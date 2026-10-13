@@ -6,6 +6,7 @@
 //                                         the compiled JS backend (lang/compile.js)
 //   node cli.js --seed 42 program.vow     reproducible random() / randomInt() (also VOW_SEED=42)
 //   node cli.js --max-steps N program.vow stop after N statements (default 50,000,000; 0 = no limit)
+//   node cli.js test program.vow [--filter word]   run the program's test blocks (exit 1 if any fails)
 
 import { readFile as fsRead, writeFile as fsWrite } from 'node:fs/promises';
 import { readSync, writeSync } from 'node:fs';
@@ -16,8 +17,12 @@ import { createRun } from './lang/interp.js';
 import { createCompiledRun } from './lang/runtime.js';
 import { VowError, formatDiag, nodeLoc } from './lang/diagnostics.js';
 import { loadProgram, nodeHost } from './lang/modules.js';
+import { runTests, formatResult, summary } from './lang/testing.js';
 
 const argv = process.argv.slice(2);
+// `vow test file.vow`: run the file's test blocks instead of the program (flags may come first)
+let testMode = false;
+if (argv[0] === 'test') { testMode = true; argv.shift(); }
 // Sandbox policy. Any --allow (or --sandbox) turns it on; then the program may only reach
 // what is listed. `--allow net` = any host, `--allow net=host:port`, `--allow fs=./dir`,
 // `--allow env=NAME`. Repeat the flag for more. `--sandbox` alone = pure computation only.
@@ -49,14 +54,27 @@ while (argv[0]?.startsWith('--')) {
     }
   } else { console.error(`✗ unknown flag ${flag}`); process.exit(2); }
 }
+if (argv[0] === 'test' && !testMode) { testMode = true; argv.shift(); }
 const file = argv[0];
+// vow test file.vow --filter word: only the tests whose name contains the word
+let testFilter = null;
+if (testMode) {
+  const rest = argv.slice(1);
+  while (rest.length) {
+    const a = rest.shift();
+    if (a === '--filter') {
+      testFilter = rest.shift();
+      if (testFilter == null || testFilter === '') { console.error('✗ --filter takes a word: vow test file.vow --filter word'); process.exit(2); }
+    } else { console.error(`✗ vow test takes a file and an optional --filter word, got "${a}"`); process.exit(2); }
+  }
+}
 if (seed != null && seed !== '') {
   if (!/^-?\d+$/.test(String(seed).trim())) { console.error(`✗ --seed / VOW_SEED must be a whole number, got "${seed}"`); process.exit(2); }
   seed = Number(seed);
 } else seed = undefined;
 
 if (!file) {
-  console.error('usage: vow <file.vow> [args...]\n       vow --check <file.vow>\n       vow --interp <file.vow> [args...]   (interpreter instead of the compiler)\n       vow --max-steps N <file.vow>       (stop after N statements; 0 = no limit)');
+  console.error('usage: vow <file.vow> [args...]\n       vow --check <file.vow>\n       vow test <file.vow> [--filter word]  (run the file\'s test blocks)\n       vow --interp <file.vow> [args...]   (interpreter instead of the compiler)\n       vow --max-steps N <file.vow>       (stop after N statements; 0 = no limit)');
   process.exit(2);
 }
 
@@ -275,6 +293,10 @@ try {
   if (checkOnly) {
     const nmod = ast.modules ? ast.modules.length - 1 : 0;
     console.log(`✓ ${file}${nmod ? ` and ${nmod} imported module${nmod === 1 ? '' : 's'}` : ''} type-check${nmod ? '' : 's'}${proved > 0 ? ` (${proved} contract obligation${proved === 1 ? '' : 's'} proven safe statically)` : ''}`);
+    // Nudge toward tests: agents read tool output far more reliably than the guide.
+    if (!ast.stmts.some(st => st.t === 'Test')) {
+      console.log(`  No tests yet: add a \`test "name" { expectEq(run(["arg"], ""), "expected output\\n") }\` block for each example and each error line in your spec, then run: vow test ${file}`);
+    }
     process.exit(0);
   }
   const runOpts = {
@@ -291,6 +313,14 @@ try {
   if (!forceInterp) {
     try { compiled = createCompiledRun(src, ast, runOpts); }
     catch (e) { if (process.env.VOW_DEBUG) errLine(`(compiler fallback: ${e.message})`); }
+  }
+  if (testMode) {
+    // every test block, one line each as it finishes, then a summary; exit 1 unless all passed
+    const tests = compiled ? compiled.tests : createRun(src, ast, runOpts).tests;
+    const results = await runTests(tests, { src, filter: testFilter, onResult: (r) => printLine(formatResult(r)) });
+    const s = summary(results, { total: tests.length, filter: testFilter, file });
+    printLine(s.line);
+    process.exit(s.code);
   }
   if (compiled) await compiled.run();
   else {

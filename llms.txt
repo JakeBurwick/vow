@@ -12,8 +12,8 @@ Before writing Vow, read the language guide below in full. Install with `npm ins
 
 ## Install and CLI
 
-- [Install and command-line flags](https://github.com/JakeBurwick/vow#install): `vow app.vow`, `vow --check app.vow`, `vow --sandbox --allow fs=./data app.vow`, `vow --seed 7 app.vow`
-- [MCP server](https://github.com/JakeBurwick/vow/tree/main/mcp): `vow-mcp` gives an agent vow_guide, vow_check and vow_run tools; in Claude Code run `claude mcp add vow -- vow-mcp`
+- [Install and command-line flags](https://github.com/JakeBurwick/vow#install): `vow app.vow`, `vow --check app.vow`, `vow test app.vow`, `vow --sandbox --allow fs=./data app.vow`, `vow --seed 7 app.vow`
+- [MCP server](https://github.com/JakeBurwick/vow/tree/main/mcp): `vow-mcp` gives an agent vow_guide, vow_check, vow_run and vow_test tools; in Claude Code run `claude mcp add vow -- vow-mcp`
 
 ## Optional
 

@@ -1,0 +1,5 @@
+fn greet(name) { return "hi ${name}" }
+for a in args() { print(greet(a)) }
+test "greet" { expectEq(greet("Ada"), "hi Ada") }
+test "cli" { expectEq(run(["x", "y"], ""), "hi x\nhi y\n") }
+test "no args prints nothing" { expectEq(run([], ""), "") }

@@ -9,6 +9,11 @@ export const KEYWORDS = new Set([
   'expects', 'ensures', 'uses', 'and', 'or', 'not', 'true', 'false', 'break', 'continue', 'import',
 ]);
 
+// Escapes in "..." strings (backtick strings have none). \{ and \} are kept for old programs:
+// a plain { is literal already. \u{...} and \uXXXX are handled in scanString.
+const SIMPLE_ESCAPES = { n: '\n', t: '\t', r: '\r', '0': '\0', '"': '"', '\\': '\\', '$': '$', '{': '{', '}': '}' };
+const ESCAPE_LIST = 'Vow strings support \\n, \\t, \\r, \\0, \\", \\\\, \\$ and \\u{1F600} / \\u00E9';
+
 const PUNCT2 = ['==', '!=', '<=', '>=', '=>'];
 const PUNCT1 = '+-*/%<>=(){}[],:?.';
 
@@ -61,19 +66,21 @@ export function lex(src) {
       }
       if (src[i] === '\\') {
         const esc = src[i + 1];
-        if (esc === 'n') out += '\n';
-        else if (esc === 't') out += '\t';
-        else if (esc === '"') out += '"';
-        else if (esc === '\\') out += '\\';
-        else if (esc === '$') out += '$';
-        else if (esc === '{') out += '{'; // not needed any more (a plain { is literal) but still accepted
-        else if (esc === '}') out += '}';
-        else err(`unknown escape \\${esc}`, 'Vow strings support \\n, \\t, \\", \\\\ and \\$ (\\${ gives a literal "${"). Braces need no escape.',
+        const simple = SIMPLE_ESCAPES[esc];
+        if (simple !== undefined) { out += simple; i += 2; col += 2; continue; }
+        if (esc === 'u') { // \u{1F600} (1 to 6 hex digits) or \uXXXX (exactly 4)
+          const m = /^\\u\{([0-9A-Fa-f]{1,6})\}/.exec(src.slice(i, i + 10)) ?? /^\\u([0-9A-Fa-f]{4})/.exec(src.slice(i, i + 6));
+          const cp = m ? parseInt(m[1], 16) : -1;
+          if (!m || cp > 0x10FFFF) err(`bad escape ${m ? m[0] : '\\u' + src.slice(i + 2, i + 6).replace(/["\\\n].*$/, '')}`,
+            m ? `\\u{${m[1]}} is above the last code point U+10FFFF.` : 'A \\u escape is \\u{hex} with 1 to 6 hex digits, or \\u followed by exactly 4 hex digits.',
+            'write the character itself (Vow source is UTF-8), or \\u{1F600} / \\u00E9.', m ? m[0].length : 2);
+          out += String.fromCodePoint(cp); i += m[0].length; col += m[0].length;
+          continue;
+        }
+        err(`unknown escape \\${esc}`, ESCAPE_LIST + ' (\\${ gives a literal "${"). Braces need no escape.',
           /[dDwWsSbB.()[\]^*+?|/]/.test(esc ?? '')
             ? `if this is a regex pattern (matches/find/findAll/replaceAll/splitOn), write it as a backtick raw string, where backslashes are kept as-is: \`\\${esc}\`.`
             : `remove the backslash or use a supported escape.`, 2);
-        i += 2; col += 2;
-        continue;
       }
       if (src[i] === '$' && src[i + 1] === '{') {
         const braceLine = line, braceCol = col;

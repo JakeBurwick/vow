@@ -184,6 +184,32 @@ async function main() {
     else { mismatches.push({ name: c.name, a, b }); console.log(`DIFF ${c.name}`); }
   }
 
+  // ---------- test blocks: `vow test` on both backends must print the same report ----------
+  // (compile-test/tests/*.vow: passing and failing tests, run() with args and stdin, traps)
+  const { runTests, formatReport } = await import('./lang/testing.js');
+  const testDir = join(edgeDir, 'tests');
+  const testFiles = readdirSync(testDir).filter(f => f.endsWith('.vow')).sort();
+  let testSame = 0;
+  for (const f of testFiles) {
+    const src = readFileSync(join(testDir, f), 'utf8');
+    const name = `compile-test/tests/${f}`;
+    const report = async (make) => {
+      const lines = [];
+      const { ast } = prepare(src); check(src, ast);
+      try {
+        const tests = make(ast, lines);
+        const results = await runTests(tests, { src });
+        const r = formatReport(results, { total: tests.length });
+        return { out: lines.join('\n'), err: r.text, code: r.code };
+      } catch (e) { return finish(src, lines, e); }
+    };
+    const a = await report((ast, lines) => createRun(src, ast, { ...LIMITS, out: (s) => lines.push(s), builtins: host({ src }, lines) }).tests);
+    const b = await report((ast, lines) => createCompiledRun(src, ast, { ...LIMITS, out: (s) => lines.push(s), builtins: host({ src }, lines) }).tests);
+    const same = a.out === b.out && a.err === b.err && a.code === b.code;
+    if (same) { testSame++; if (verbose) console.log(`ok   ${name}`); }
+    else { mismatches.push({ name, a, b }); console.log(`DIFF ${name}`); }
+  }
+
   // ---------- CLI end-to-end: default (compiled) vs --interp, real process, stdout+stderr+exit ----------
   const cliCases = [
     ['fib', 'fn fib(n) {\n  if n < 2 { return n }\n  return fib(n - 1) + fib(n - 2)\n}\nprint(fib(20))\n', []],
@@ -191,22 +217,24 @@ async function main() {
     ['deep recursion limit', 'fn f(n) { return f(n + 1) }\nprint(f(0))\n', []],
     ['args + ? + contracts', 'fn half(n)\n  expects n >= 0\n  ensures result <= n\n{ return n / 2 }\nfn parse(s) {\n  let n = num(s)?\n  return ok(half(n))\n}\nfor a in args() {\n  match parse(a) {\n    ok(v) => print(v)\n    err(e) => print("bad " + e)\n  }\n}\nprint(half(0 - 4))\n', ['8', 'x', '3']],
     ['readFile missing', 'match readFile("/nonexistent/x.txt") {\n  ok(t) => print(t)\n  err(e) => print(e)\n}\n', []],
+    // `vow test` (the file comes after the subcommand; both backends print the same report)
+    ['vow test', 'fn sq(n) { return n * n }\nfor a in args() { print(sq(len(a))) }\ntest "sq" { expectEq(sq(3), 9) }\ntest "cli" { expectEq(run(["ab"], ""), "4\\n") }\ntest "wrong on purpose" { expectEq(run([], ""), "x") }\n', [], 'test'],
   ];
   const { mkdtempSync, writeFileSync } = await import('node:fs');
   const tmpDir = mkdtempSync(join((await import('node:os')).tmpdir(), 'vow-ct-'));
   let cliSame = 0;
-  for (const [name, src, args] of cliCases) {
+  for (const [name, src, args, sub] of cliCases) {
     const f = join(tmpDir, name.replace(/\W+/g, '_') + '.vow');
     writeFileSync(f, src);
-    const run = (flags) => spawnSync(process.execPath, [join(here, 'cli.js'), ...flags, f, ...args], { encoding: 'utf8' });
+    const run = (flags) => spawnSync(process.execPath, [join(here, 'cli.js'), ...flags, ...(sub ? [sub] : []), f, ...args], { encoding: 'utf8' });
     const a = run(['--interp']), b = run([]);
     if (a.stdout === b.stdout && a.stderr === b.stderr && a.status === b.status) cliSame++;
     else mismatches.push({ name: `cli: ${name}`, a: { out: a.stdout, err: a.stderr, code: a.status }, b: { out: b.stdout, err: b.stderr, code: b.status } });
   }
 
   // ---------- report ----------
-  console.log(`\n${cases.length} cases (${rejected} rejected by the checker, not run), ${cliCases.length} CLI cases`);
-  console.log(`${identical} identical, ${fallbacks.length} fallback program(s), ${mismatches.length} mismatch(es); CLI ${cliSame}/${cliCases.length} identical`);
+  console.log(`\n${cases.length} cases (${rejected} rejected by the checker, not run), ${testFiles.length} test-block files, ${cliCases.length} CLI cases`);
+  console.log(`${identical} identical, ${fallbacks.length} fallback program(s), ${mismatches.length} mismatch(es); test blocks ${testSame}/${testFiles.length} identical; CLI ${cliSame}/${cliCases.length} identical`);
   for (const f of fallbacks) console.log(`  fallback: ${f.name}: ${f.why}`);
   for (const m of mismatches) {
     console.log(`\n--- MISMATCH ${m.name}`);
