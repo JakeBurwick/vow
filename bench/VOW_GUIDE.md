@@ -12,9 +12,9 @@ let x = 5        // mutable, but its type is pinned for life
 x = 6            // ok
 x = "six"        // type error — a variable never changes type
 ```
-Primitives: `num`, `str`, `bool` (`true`/`false`). Boolean operators are `and`, `or`, `not` — there is no `&&`, `||`, `!`. Comparison: `==`, `!=`, `<`, `<=`, `>`, `>=`. Division by zero is a runtime trap.
+Primitives: `num`, `str`, `bool` (`true`/`false`). Boolean operators are `and`, `or`, `not` — there is no `&&`, `||`, `!`. Comparison: `==`, `!=`, `<`, `<=`, `>`, `>=`. `not` binds tighter than comparisons: `not f(x)` is fine, but write `a != b` or `not (a == b)`, never `not a == b`. Division by zero is a runtime trap.
 
-Numbers are 64-bit floats (one `num` type, no separate int). Literals: `42`, `3.5`, `1e9`, `2.5e-3`; a negative literal is `0 - 5` or `-x`. Printing: whole numbers print without a decimal point (`3`, not `3.0`), others print with up to 10 decimals and float noise removed (`0.1 + 0.2` prints `0.3`, `2 / 3` prints `0.6666666667`); `round(x, 2)`/`fixed(x, 2)` control it, `str(1e21)` is `1e+21`. `/` is real division (`7 / 2` is `3.5`; use `floor(7 / 2)` for 3). `%` is the JavaScript remainder: the result has the sign of the LEFT side (`-7 % 3` is `-1`, `7 % -3` is `1`) and works on decimals (`5.5 % 2` is `1.5`); for a non-negative modulo write `((a % n) + n) % n`.
+Numbers are 64-bit floats (one `num` type, no separate int). Literals: `42`, `3.5`, `1e9`, `2.5e-3`; negative numbers are written `-5` or `-x`. Printing: whole numbers print without a decimal point (`3`, not `3.0`), others print with up to 10 decimals and float noise removed (`0.1 + 0.2` prints `0.3`, `2 / 3` prints `0.6666666667`); `round(x, 2)`/`fixed(x, 2)` control it, `str(1e21)` is `1e+21`. Ten decimals drop digits from very small numbers (`str(0.0000123456789)` is `0.0000123457`); for N significant digits print `toJson(sig(x, N))` (`0.0000123456789`, and `0.3` for `0.1 + 0.2`). `/` is real division (`7 / 2` is `3.5`; use `floor(7 / 2)` for 3). `%` is the JavaScript remainder: the result has the sign of the LEFT side (`-7 % 3` is `-1`, `7 % -3` is `1`) and works on decimals (`5.5 % 2` is `1.5`); for a non-negative modulo write `((a % n) + n) % n`.
 
 ## Strings
 ```
@@ -33,6 +33,7 @@ let m = {"a": 1, "b": 2}    // map — string keys, one value type
 let fresh = {}              // empty map, filled later; its value type is pinned by the first insert
 fresh["x"] = 1              // now a map<str, num> (no sentinel key needed)
 m["c"] = 3                  // insert or update a key
+cache[k] = ok(v)            // map values can be any type, Results and structs included
 xs[0]    m["a"]             // indexing TRAPS on out-of-bounds / missing key
 get(xs, 9)  get(m, "z")     // safe access → Result
 has(m, "a")                 // key check → bool
@@ -110,13 +111,14 @@ p.x = 10                        // fields are type-pinned too
 print(p == Point { x: 10, y: 4 })  // value equality
 ```
 A field may hold a list of its own struct type (`struct Node { name, kids }` with `kids: [Node { name: "b", kids: [] }]` works for trees and ASTs), and an empty `[]` or `{}` in a field takes its element type from other uses.
+Two structs may share a field name (`struct Node { k, kids }` and `struct Val { k, n }`): in `fn isSym(n) { return n.k == "sym" }` the calls decide which struct `n` is, so such a fn takes one struct type, and calling it with both is an error.
 
 ## JSON
 A `json` value is any JSON value (object, array, string, number, bool, null). It is read-only, so every "change" builds a new one. There is no `null` keyword, and json is not a map: use `field`/`has`/`jsonKeys` on it.
 - Parse: `parseJson(text)` → Result<json, str>: `match parseJson(body) { ok(j) => ...  err(e) => ... }`
 - Convert: `json(value)` → json, directly from a num/str/bool/list/map/struct, no Result (it can't fail): `json(["a", "b"])`, `json(User { name: "Ada", tags: [] })`, `json(scores)`. Do not write `parseJson(toJson(x))`
 - Serialize: `toJson(value)` → compact str on one line (same inputs as `json`, plus json) · `prettyJson(value)` → str indented with 2 spaces
-- Read: `field(j, "key")` / `at(j, i)` → json, a **json null** when the key/index is missing or `j` is the wrong kind · `get(j, key)` → Result, for when missing is an error · `has(j, "key")` → bool · `j["key"]` / `j[0]` trap on a miss
+- Read: `field(j, "key")` / `at(j, i)` → json, a **json null** when the key/index is missing or `j` is the wrong kind · `get(j, key)` → Result, for when missing is an error · `has(j, "key")` → bool (false for a json null or any non-object, never traps) · `==` compares json by value, objects in any key order · `j["key"]` / `j[0]` trap on a miss
 - Test: `isNull(j)` · `truthy(j)` (false for null, false, 0, "", `[]` and `{}`; empty containers are falsy, unlike JavaScript) · `jsonType(j)` → "object"/"array"/"string"/"number"/"bool"/"null"
 - Text: `str(j)` (and `print(j)`, `"${j}"`): strings as-is, numbers like `str(num)`, true/false, arrays/objects as compact JSON, and a json null as the text `"null"` (never an empty string). For empty output on a missing value write `if isNull(j) { "" } else { str(j) }`
 - Walk: `jsonList(j)` → list<json> · `jsonKeys(j)` → list<str>; both plain lists, `[]` for the other kinds; object keys keep the order the document wrote them in (`"10"` stays after `"b"`), and so do `toJson`/`prettyJson` and maps passed to `json`
@@ -164,7 +166,7 @@ Use these instead of hand-rolled loops, decoders and parsers; every family below
 - `map(xs, x => x * 2)` → new list · `filter(xs, x => x > 0)` → kept items · `count(xs, x => x > 0)` → num
 - `any(xs, x => x < 0)` / `all(xs, x => x > 0)` → bool (stop early; `all([], f)` is true)
 - `fold(xs, 0, (acc, x) => acc + x)` → the accumulator (same type as the start value)
-- `uniq(xs)` → first occurrence of each value, order kept (`==` equality, works on structs) · `values(m)` → map values in `keys(m)` order
+- `uniq(xs)` → first occurrence of each value, order kept (`==` equality, works on structs) · `values(m)` → map values in `keys(m)` order · there is no map delete: rebuild without the key (`let m2 = {}` then copy the other keys) or store a flag value
 - `indexOf(xs, item)` → Result<num, str>: first position by `==`, err when absent · `contains(xs, item)` → bool · `reverse(xs)`, `slice(xs, from, to)`, `sum(xs)`
 
 ### Text and Unicode
@@ -172,7 +174,7 @@ Use these instead of hand-rolled loops, decoders and parsers; every family below
 - `startsWith(t, p)`, `endsWith(t, s)`, `contains(t, piece)` → bool · `indexOf(t, piece)` → Result<num, str> (err when absent)
 - `split(t, sep)` → list · `join(xs, sep)` → str · `lines(t)` → list (splits on newlines, drops a trailing one; `lines("")` is `[]`) · `words(t)` → split on any whitespace, no empty strings
 - `trim(t)`, `upper(t)`, `lower(t)`, `slice(t, from, to)` · `t[i]` → one-unit str (traps out of range; `get(t, i)` → Result)
-- `repeat(t, n)` · `padLeft("7", 3, "0")` → "007" · `padRight(t, width, fill)`
+- `repeat(t, n)` (`repeat(t, 0)` is `""`) · `padLeft("7", 3, "0")` → "007" · `padRight(t, width, fill)`
 - `len(t)`, `t[i]`, `slice`, `split(t, "")`, `padLeft` and `padRight` count UTF-16 units like JavaScript: `len("é")` is 1 but `len("😀")` is 2 and `"😀"[0]` is half a character. For whole characters:
   - `chars(t)` → list of one-character strs, one per code point: `chars("a😀")` → `["a", "😀"]`; `len(chars(t))` counts characters, `join(reverse(chars(t)), "")` reverses safely
   - `ord(t)` → code point of the first character: `ord("😀")` → 128512 (`ord("")` traps) · `chr(n)` → the character: `chr(128512)` → "😀"
@@ -253,7 +255,7 @@ print(geo.norm(p))                  // 5
 - Times are nums: milliseconds since 1970-01-01T00:00:00Z, **always UTC**. `now()` → current time. `dateParts(ms)` → `DateParts { year, month (1-12), day, hour, minute, second, weekday (0=Sunday..6) }`. `isoDate(ms)` → `"2026-10-08T14:03:00Z"`. `parseDate(s)` → Result<num, str>: accepts `2026-10-08`, `2026-10-08T14:03`, `2026-10-08T14:03:00`, optional `.sss`, and `Z` or `+02:00`; no zone means UTC; impossible dates (`2026-02-30`) are errs. `daysBetween(a, b)` → UTC calendar days from a to b (negative if b is earlier; time of day ignored). One day later: `ms + 86400000`.
 
 ## Program structure
-A Vow file runs its top-level statements from top to bottom; there is no implicit `main`. `fn`s are hoisted (a call may come before the declaration), but top-level `let`s are not: a fn may only use a top-level variable declared ABOVE it, so put shared state (`let cache = {}`, `let config = ...`) at the top of the file, before the fns that use it (the checker says `'x' doesn't exist yet` otherwise). Write the program at the top level; helper `fn`s can be declared anywhere, including inside another fn (see Functions). A bare `return` at the top level ends the program early (no value allowed there).
+A Vow file runs its top-level statements from top to bottom; there is no implicit `main`. `fn`s are hoisted (a call may come before the declaration), but top-level `let`s are not: a fn may only use a top-level variable declared ABOVE it, so put shared state (`let cache = {}`, `let pos = 0`, `let config = ...`) at the top of the file, before the fns that use it (a fn can read and reassign it: `pos = pos + 1`) (the checker says `'x' doesn't exist yet` otherwise). Write the program at the top level; helper `fn`s can be declared anywhere, including inside another fn (see Functions). A bare `return` at the top level ends the program early (no value allowed there).
 
 ## Testing
 A file carries its own tests: top-level `test "name" { ... }` blocks. They never run with `node cli.js main.vow`, are type-checked with the rest of the file, are skipped by files that import this one, and run with `node cli.js test main.vow`: one line per test, a summary, exit code 1 if any fails (`--filter word` runs only the tests whose name contains `word`).
@@ -297,7 +299,7 @@ Responses: `html(body)`, `text(body)`, `respond(status, contentType, body)`, `re
 ## Common mistakes
 - Putting different value types in one map (`{"name": "x", "qty": 3}`): a map holds ONE value type. Use a struct for records.
 - Using `?` at top level (only valid inside a fn) — use `match` instead.
-- `return` inside a value-producing match arm block — the block's last line IS the arm's value; drop the `return`.
+- `return` inside a value-producing match arm block to give the ARM its value: the block's last line is the arm's value. A `return` there returns from the whole fn (useful for `err(e) => { return err(...) }`).
 - Using `if` as a value without an `else` (there would be no value when the condition is false).
 - Forgetting an `err` arm, or ignoring a Result entirely.
 - `&&`/`||`/`!` instead of `and`/`or`/`not`; semicolons (just use newlines).

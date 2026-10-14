@@ -118,7 +118,9 @@ match find(users, "grace") { ok(u) => print(u.age) err(e) => print(e) }
   ['struct unknown field rejected', 'struct Point { x, y }\nlet p = Point { x: 1, y: 2 }\nprint(p.z)\n', false],
   ['struct field type pinned', 'struct Point { x, y }\nlet a = Point { x: 1, y: 2 }\nlet b = Point { x: "one", y: 2 }\n', false],
   ['field on non-struct rejected', 'struct Point { x, y }\nlet m = {"x": 1}\nprint(m.x)\n', false],
-  ['ambiguous field rejected', 'struct A { x }\nstruct B { x }\nfn f(v) { return v.x }\nprint(f(A { x: 1 }))\n', false],
+  ['shared field settled by the call site', 'struct A { x }\nstruct B { x }\nfn f(v) { return v.x }\nprint(f(A { x: 1 }))\n', true],
+  ['shared field nobody settles is ambiguous', 'struct A { x }\nstruct B { x }\nfn f(v) { return v.x }\nprint("hi")\n', false],
+  ['shared-field fn called with two structs rejected', 'struct A { x }\nstruct B { x }\nfn f(v) { return v.x }\nprint(f(A { x: 1 }))\nprint(f(B { x: 2 }))\n', false],
   ['generic fn at two types', `fn id(x) { return x }
 fn first(xs) { return xs[0] }
 print(id(5) + 1)

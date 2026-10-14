@@ -325,7 +325,10 @@ export function check(src, ast) {
   let loopDepth = 0;
   let inTest = false; // inside a test block: expect/expectEq/expectErr/run exist, top-level lets don't
   let fieldPending = [];
-  function resolveFieldPending() {
+  // accesses no fn body could settle: the fn stays tied to one struct type (not generic) and
+  // its callers pick which one, e.g. isSym(Node { ... }); reported only if nothing ever does
+  let fieldDeferred = [];
+  function resolveFieldPending(final) {
     let progress = true;
     while (progress && fieldPending.length) {
       progress = false;
@@ -341,16 +344,19 @@ export function check(src, ast) {
         if (!unify(ft, pt.fields.get(e.name))) diag(e, `field ${pt.name}.${e.name} holds ${tn(pt.fields.get(e.name))}, but it is used as a ${tn(ft)}`, '', 'convert the value or use a different field.');
       }
     }
+    if (!final) { fieldDeferred.push(...fieldPending); fieldPending = []; return; }
     for (const { e, owners } of fieldPending) {
       diag(e.nameTok, `'.${e.name}' is ambiguous here`,
-        `'${snippet(e.target)}' could be any of: ${owners.map(o => o.name).join(', ')}; they all have a field '${e.name}', and nothing in this function pins down which struct it is.`,
-        `use another (unique) field of the intended struct, or build/compare it with a struct literal so the type is known.`);
+        `'${snippet(e.target)}' could be any of: ${owners.map(o => o.name).join(', ')}; they all have a field '${e.name}', and nothing in the program (this function's body or any call to it) pins down which struct it is.`,
+        `use another (unique) field of the intended struct, call the fn with a struct value somewhere, or build/compare it with a struct literal so the type is known.`);
     }
     fieldPending = [];
   }
-  // Struct fields shared by several structs are settled once the body has been checked.
-  function resolvePending() {
-    resolveFieldPending();
+  // Struct fields shared by several structs are settled once the body has been checked;
+  // whatever is still open waits for the whole program (final = true reports it).
+  function resolvePending(final = false) {
+    if (final) { fieldPending.push(...fieldDeferred); fieldDeferred = []; }
+    resolveFieldPending(final);
   }
 
   function diag(node, title, detail, fix, kind = 'TypeError') {
@@ -442,6 +448,8 @@ export function check(src, ast) {
     try { checkStmt(s.body, new Scope(testScope)); } finally { inTest = false; }
     resolvePending();
   }
+
+  resolvePending(true);
 
   // Pass 3: capability effects — a fn can't touch net/fs/env unless its signature says so.
   const effects = checkEffects();
@@ -785,6 +793,7 @@ export function check(src, ast) {
     const envVars = new Set();
     for (const [name, g] of globals.vars) if (name !== s.name) ftv(g.type, envVars);
     for (const st of structs.values()) for (const t of st.fields.values()) ftv(t, envVars);
+    for (const d of fieldDeferred) { ftv(d.targetT, envVars); ftv(d.ft, envVars); }
     entry.scheme = { vars: [...ftv(entry.type)].filter(id => !envVars.has(id)), type: entry.type };
   }
 
