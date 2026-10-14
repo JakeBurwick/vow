@@ -1,0 +1,2 @@
+struct Cat { name, terms }
+fn mk() { return Cat { name: "a", terms: ["x"] } }

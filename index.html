@@ -655,6 +655,18 @@ let m = {"n": "x", "q": 3}  // ✗ one value type per map;
       </div>
 
       <div class="bench-item">
+        <h3 class="result-h">Multi-file programs</h3>
+        <p class="result-note">2 tasks that must be split into a main file plus at least 2 imported modules: a library front desk and a monthly budget report (190 to 390 lines). Claude Haiku, 6 runs per language: 4 where agents could run their code, 2 where the judge was their only output. Fewer is better.</p>
+        <div class="result-wrap"><table class="result">
+          <thead><tr><th scope="col">language</th><th scope="col">failed submissions</th><th scope="col">measured</th></tr></thead>
+          <tbody>
+            <tr><td>TypeScript</td><td class="best">0</td><td>Oct 14, 6 runs</td></tr>
+            <tr><td>Vow</td><td class="best">0</td><td>Oct 14, 6 runs</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+
+      <div class="bench-item">
         <h3 class="result-h">Older hard tasks, agents may run their code</h3>
         <p class="result-note">4 hard tasks, Claude Haiku. Agents could check, run and test their program before each judged submission, as real coding agents do. Every run solved its task. Failed submissions per run, fewer is better.</p>
         <div class="result-wrap"><table class="result">

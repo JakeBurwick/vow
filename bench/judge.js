@@ -3,9 +3,9 @@ import { parse } from '../lang/parser.js';
 import { check } from '../lang/checker.js';
 import { createRun } from '../lang/interp.js';
 import { formatDiag, VowError } from '../lang/diagnostics.js';
-import { readFileSync, appendFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, appendFileSync, mkdirSync, statSync, readdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
-import { dirname, join } from 'node:path';
+import { dirname, join, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -62,17 +62,42 @@ function runCheckPy(file, chk) {
   return { got };
 }
 
+// A multi-file submission is a folder holding main.vow or main.ts plus the modules it imports.
+export const isDir = (p) => { try { return statSync(p).isDirectory(); } catch { return false; } };
+function dirMain(dir) {
+  const files = readdirSync(dir);
+  const main = files.includes('main.vow') ? 'main.vow' : files.includes('main.ts') ? 'main.ts' : null;
+  const ext = main === 'main.vow' ? '.vow' : '.ts';
+  return { main: main && join(dir, main), count: main ? files.filter(f => f.endsWith(ext)).length : 0 };
+}
 export function langOf(file) {
+  if (isDir(file)) { const { main } = dirMain(file); return main ? langOf(main) : 'vow'; }
   return file.endsWith('.py') ? 'python' : file.endsWith('.ts') ? 'ts' : 'vow';
+}
+// the real CLI, so imports resolve exactly as they do for a user
+function runCheckVowCli(file, chk) {
+  const r = spawnSync('node', [join(here, '..', 'cli.js'), file, ...(chk.args ?? [])], { encoding: 'utf8', timeout: 20000, input: chk.stdin ?? '', env: { PATH: process.env.PATH, ...(chk.env ?? {}) } });
+  if (r.error) return { got: '', diag: r.error.code === 'ETIMEDOUT' ? 'timed out after 20s' : String(r.error) };
+  const got = (r.stdout ?? '').replace(/\n+$/, '');
+  if (r.status !== 0) return { got, diag: (r.stderr || `exit code ${r.status}`).trim() };
+  return { got };
 }
 
 export async function judgeFile(task, file) {
+  if (task.minFiles) {
+    if (!isDir(file)) return [{ args: [], kind: 'diagnostic', detail: `task ${task.id} takes a folder (main.vow or main.ts plus at least ${task.minFiles - 1} modules it imports), not a single file` }];
+    const { main, count } = dirMain(file);
+    if (!main) return [{ args: [], kind: 'diagnostic', detail: `no main.vow or main.ts in ${basename(file)}` }];
+    if (count < task.minFiles) return [{ args: [], kind: 'diagnostic', detail: `the program must be split into at least ${task.minFiles} source files; ${basename(file)} has ${count}` }];
+    file = main;
+  }
+  const multi = !!task.minFiles;
   const isPy = langOf(file) !== 'vow'; // python and ts both run as external processes
   const src = isPy ? null : readFileSync(file, 'utf8');
   if (isPy && task.vowOnly) throw new Error(`task ${task.id} is Vow-only (it tests serve())`);
   const fails = [];
   for (const chk of task.checks) {
-    const res = isPy ? runCheckPy(file, chk) : await runCheckVow(src, chk);
+    const res = isPy ? runCheckPy(file, chk) : multi ? runCheckVowCli(file, chk) : await runCheckVow(src, chk);
     const args = chk.args ?? chk.requests;
     if (res.diag) { fails.push({ args, kind: 'diagnostic', detail: res.diag }); continue; }
     if (chk.expect !== undefined && res.got !== chk.expect) fails.push({ args, kind: 'wrong-output', got: res.got, want: chk.expect });

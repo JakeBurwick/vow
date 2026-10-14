@@ -11,7 +11,10 @@
 
 import { TASKS } from './tasks.js';
 import { judgeFile, logAttempt, reportFails, langOf, firstError } from './judge.js';
-import { mkdirSync, copyFileSync } from 'node:fs';
+import { mkdirSync, copyFileSync, cpSync } from 'node:fs';
+import { isDir } from './judge.js';
+// a folder submission (multi-file task) is copied whole
+const save = (from, to) => isDir(from) ? cpSync(from, to.replace(/\.(vow|ts|py)$/, ''), { recursive: true }) : copyFileSync(from, to);
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -39,14 +42,14 @@ if (fails.length) {
   const fdir = join(here, 'log', 'failed', task.id);
   mkdirSync(fdir, { recursive: true });
   failedCopy = join('failed', task.id, `${Date.now()}${lang === 'python' ? '.py' : lang === 'ts' ? '.ts' : '.vow'}`);
-  copyFileSync(arg2, join(here, 'log', failedCopy));
+  save(arg2, join(here, 'log', failedCopy));
 }
 logAttempt({ mode: 'scratch', task: task.id, lang, ok: fails.length === 0, failKinds: fails.map((f) => f.kind), firstError: firstError(fails), ...(failedCopy ? { failedCopy } : {}) });
 
 if (fails.length === 0) {
   const dest = join(here, 'corpus', task.id);
   mkdirSync(dest, { recursive: true });
-  copyFileSync(arg2, join(dest, `${Date.now()}${lang === 'python' ? '.py' : lang === 'ts' ? '.ts' : '.vow'}`));
+  save(arg2, join(dest, `${Date.now()}${lang === 'python' ? '.py' : lang === 'ts' ? '.ts' : '.vow'}`));
   console.log(`PASS — all ${task.checks.length} checks. Solution saved to corpus/${task.id}/`);
   process.exit(0);
 }

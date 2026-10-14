@@ -246,3 +246,14 @@ Fixed the same night: JSON objects now keep the document's key order for integer
 ## Same hard tasks after the night's fixes (2026-10-14)
 
 After the JSON key-order fix, call-site resolution of shared struct field names and the guide additions, the three hard tasks were re-run for Vow only (TypeScript was unchanged): 3 fresh Haiku agents, 2 allowed to run code and 1 type-check only, 9 runs. All 9 passed on the first submission (0 failed, against 1 failed in 9 runs before the fixes; TypeScript 0 in 9). Agents wrote 12 to 18 test blocks per task in the runs that could run code, and one used the newly documented `toJson(sig(x, 10))` for spreadsheet number output. Guide lines corrected afterwards: `-5` is a valid literal, `return` inside a match arm returns from the fn, fns can reassign top-level variables, and maps have no delete.
+
+## Multi-file programs (2026-10-14)
+
+Two larger tasks whose submissions must be a folder with a main file plus at least 2 imported modules (the judge enforces 3+ source files and runs Vow through the real CLI, so imports resolve as they do for a user): library-desk (a stdin-driven library desk with loans, waitlists that skip members at their limit, capped late fees, payments and status, 12 checks) and budget-report (quoted CSV plus JSON rules into a monthly budget report with calendar-date validation, refunds and overspend flags, 18 checks). Both were solved first in TypeScript by the task author and in Vow by an independent agent (4 files and about 190 lines each, first submission passed); four spec lines it flagged were reworded. Claude Haiku 4.5, one agent per language per round doing both tasks.
+
+| | rounds 1-2 (may run code) | round 3 (type-check only) |
+|---|---|---|
+| Vow + guide + examples | 4 of 4 passed first submission (3 to 6 files, 196 to 386 lines) | 2 of 2 passed first submission (336 and 350 lines) |
+| TypeScript | 4 of 4 passed first submission (4 to 5 files, 228 to 268 lines) | 2 of 2 passed first submission |
+
+Zero failed submissions in either language. Rounds 1-2 accidentally gave both languages the same scratch folders; the log shows every submission was judged in its own language, and all 8 solutions were re-judged in per-language folders afterwards and still pass. The one Vow problem all three Vow agents met: a file that reads fields of a struct declared in another module must import that module, and the error said "no struct has a field" or "no structs are declared" with a misleading fix. The agents found the fix themselves, so it cost no submissions. Fixed afterwards: the error now names the struct and its file and gives the exact import line, and the guide states the rule.

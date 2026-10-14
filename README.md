@@ -101,6 +101,7 @@ Measured October 2026 (dates per row). Numbers may be out of date; `RESULTS.md` 
 | Agent code passing 150 fresh hidden tests per task | 99.5% | TypeScript 99.3% | 2026-10-08 |
 | Failed submissions, 3 new hard tasks (Lisp interpreter, JSON schema validator, spreadsheet), 9 runs | 1 | TypeScript 0 | 2026-10-13 |
 | Same 3 hard tasks after that night's fixes, 9 runs | 0 | TypeScript 0 (unchanged, Oct 13) | 2026-10-14 |
+| Failed submissions, 2 multi-file programs (3+ files, 190 to 390 lines), 6 runs | 0 | TypeScript 0 | 2026-10-14 |
 | Failed submissions, 4 new moderately hard tasks, 12 runs | 0 | TypeScript 0 | 2026-10-13 |
 | Failed submissions per run, older hard set, agents may run code first | 1.0 (2.3 a day earlier) | TypeScript 1.0 | 2026-10-13 (TS 2026-10-12) |
 | Failed attempts, same tasks, no running allowed | 15 | TypeScript 7 | 2026-10-08 |

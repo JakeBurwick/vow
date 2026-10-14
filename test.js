@@ -920,6 +920,7 @@ for (const [dir, out, needles] of moduleTrapTests) {
   if (!pass) { console.log(res.output); console.log(res.error); failures++; }
 }
 const moduleDiagTests = [
+  ['field-needs-import', ["'.terms' is a field of struct Cat in rules.vow, which this file does not import", 'import "./rules.vow" as rules']],
   ['missing', ['ImportError: can\'t find the module "./geom.vow"', '→ missing/main.vow, line 1', 'missing/geom.vow (', 'did you mean "./geo.vow"?']],
   ['cycle', ['import cycle: cycle/a.vow -> cycle/b.vow -> cycle/a.vow', '→ cycle/b.vow, line 1']],
   ['unknown-name', ["module geo has no fn or struct named 'aera'", 'did you mean geo.area?']],

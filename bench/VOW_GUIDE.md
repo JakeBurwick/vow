@@ -242,6 +242,7 @@ import "./geometry.vow" as geo
 let p = geo.Point { x: 3, y: 4 }
 print(geo.norm(p))                  // 5
 ```
+- A file can only read the fields of structs it declares or that a module it imports declares: a report.vow that reads `c.terms` from a struct declared in rules.vow must `import "./rules.vow" as rules`, even if it calls none of its fns.
 - `import "./x.vow" as name` lines come first in a file. The path is a literal starting with `./` or `../`, relative to the importing file; `as name` is required and the name can't clash with a builtin or anything declared in that file.
 - Use a module's fns and structs through its name: `geo.norm(p)`, `geo.Point { x: 1, y: 2 }`, `let f = geo.norm`; names from different files never collide.
 - A module exports its top-level `fn`s and `struct`s except `_private` names and nested fns, and may contain only `fn`, `struct` and `import` at the top level (no `let`, `print` or other code; only the file you run has top-level code).

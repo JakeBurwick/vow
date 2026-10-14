@@ -1,0 +1,3 @@
+import "./rules.vow" as rules
+import "./report.vow" as report
+print(report.count(rules.mk()))

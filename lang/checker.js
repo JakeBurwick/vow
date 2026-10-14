@@ -1098,6 +1098,16 @@ export function check(src, ast) {
         fieldPending.push({ targetT, ft, e, owners });
         return ft;
       }
+      // the field exists on a struct this file can't see: a module only sees its own structs and its imports'
+      const hidden = [...structs.values()].filter(st => st.fields.has(e.name) && !visibleStructs().includes(st));
+      if (hidden.length) {
+        const file = (h) => h.mod ? h.mod.label.split('/').pop() : 'the main file';
+        const sname = (h) => dname(h).split('.').pop();
+        const st = hidden[0], where = file(st);
+        diag(e.nameTok, `'.${e.name}' is a field of struct ${sname(st)} in ${where}, which this file does not import`,
+          `A file only knows the structs it declares and the ones in modules it imports, so it can't read their fields otherwise${hidden.length > 1 ? ` (also declared by: ${hidden.slice(1).map(h => `${sname(h)} in ${file(h)}`).join(', ')})` : ''}.`,
+          st.mod ? `add  import "./${where}" as ${where.replace(/\.vow$/, '')}  at the top of this file (path relative to this file); it is needed even if you call none of its fns.` : `a module can't see the main file's structs: move struct ${sname(st)} into a module that both files import.`);
+      }
       if (visibleStructs().length === 0) {
         diag(e.nameTok, `'.${e.name}' reads a struct field, but no structs are declared`,
           'The dot operator only works on struct values.',
