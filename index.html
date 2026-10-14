@@ -184,7 +184,7 @@ abc: "abc" is not a number
       </div>
     </div>
 
-    <p class="honest">Built and measured by Jake Burwick. On new problems, AI agents write correct Vow about as reliably as TypeScript on easy tasks and after the October 13 fixes need about as many attempts on hard ones too (1.0 failed submission per run in both languages, a small sample); the code they finish is as correct as TypeScript on fresh hidden tests (99.5% vs 99.3%). Measured October 2026; numbers may have changed since. <a href="#benchmarks" data-go="benchmarks">See the benchmarks</a>.</p>
+    <p class="honest">Built and measured by Jake Burwick. On three brand-new hard tasks, Vow had one failed submission in nine runs and TypeScript had zero with every run solved, showing the two perform evenly on a small sample, and code that agents finish passes fresh hidden tests at about the same rate with 99.5% for Vow and 99.3% for TypeScript. Measured October 2026; numbers may have changed since. <a href="#benchmarks" data-go="benchmarks">See the benchmarks</a>.</p>
 
     <section id="install" class="install" aria-labelledby="install-h">
       <h2 id="install-h">Install</h2>
@@ -641,7 +641,20 @@ let m = {"n": "x", "q": 3}  // ✗ one value type per map;
       </div>
 
       <div class="bench-item">
-        <h3 class="result-h">Hard unseen tasks, agents may run their code</h3>
+        <h3 class="result-h">New hard tasks</h3>
+        <p class="result-note">3 tasks written Oct 13 and never tuned on: a Lisp interpreter, a JSON schema validator and a spreadsheet evaluator (80 to 230 lines each). Claude Haiku, 9 runs per language: 6 where agents could run their code, 3 where the judge was their only output. Every run solved its task. Fewer is better.</p>
+        <div class="result-wrap"><table class="result">
+          <thead><tr><th scope="col">language</th><th scope="col">failed submissions</th><th scope="col">measured</th></tr></thead>
+          <tbody>
+            <tr><td>TypeScript</td><td class="best">0</td><td>Oct 13, 9 runs</td></tr>
+            <tr><td>Vow</td><td>1</td><td>Oct 13, 9 runs</td></tr>
+          </tbody>
+        </table></div>
+        <p class="result-note">The one Vow failure was a misread spec rule. On 4 more new tasks (glob matching, CSV tables, line diff, expense splitting) both languages had 0 failed submissions in 12 runs each.</p>
+      </div>
+
+      <div class="bench-item">
+        <h3 class="result-h">Older hard tasks, agents may run their code</h3>
         <p class="result-note">4 hard tasks, Claude Haiku. Agents could check, run and test their program before each judged submission, as real coding agents do. Every run solved its task. Failed submissions per run, fewer is better.</p>
         <div class="result-wrap"><table class="result">
           <thead><tr><th scope="col">language</th><th scope="col">failed per run</th><th scope="col">measured</th></tr></thead>

@@ -216,3 +216,29 @@ Same 4 hard tasks and rules (code-running allowed), one run per language with Cl
 ## Hard tasks after the checker fixes (2026-10-13)
 
 After fixing the checker bugs agents hit (a bare early `return` followed by a trailing call was wrongly rejected, `while true` loops that only exit by returning were rejected, nested fns calling a sibling closure broke, plus misleading nested-fn messages, missing `\r` escapes, and builtin-shadowing and list-or-str inference rough edges): same 4 hard tasks and rules, Claude Haiku 4.5, 2 runs, 10 judged submissions, 2 failed (1.0 per run, equal to TypeScript's 1.0). One failure was the ambiguous `[Bad]` section-name rule again; the other a dependency-order slip. One of the two runs wrote test blocks (10 and 14). Over the 8 Vow runs on 2026-10-13 the average was 1.4 failed submissions per run, down from 2.3 on 2026-10-12; TypeScript's 1.0 comes from 3 runs on 2026-10-12. With 2 runs per round these per-round numbers are noisy; the trend across rounds is the more reliable signal.
+
+## Fresh held-out tasks, 3 rounds (2026-10-13)
+
+Four new tasks written after all of the day's fixes and never used for tuning: glob-match (`*`, `?`, `**`, character classes, escapes), csv-table (quoted CSV to an aligned table with numeric columns right-aligned), line-diff (LCS diff with a fixed tie rule and a whitespace-insensitive mode) and settle-debts (JSON expenses split to the cent, then a greedy settle-up). Before any agent saw them, the task author solved all four in TypeScript and an independent agent solved all four in Vow (each first submission passed); three ambiguous spec lines it found were reworded. Claude Haiku 4.5, fresh context, 2 agents per language per round, 2 tasks each.
+
+| | rounds 1-2 (may run code) | round 3 (type-check only, judge is the only output) |
+|---|---|---|
+| Vow + guide + examples | 8 of 8 tasks passed first submission | 4 of 4 passed first submission |
+| TypeScript | 8 of 8 passed first submission | 4 of 4 passed first submission |
+
+Zero failed submissions in 24 runs. Vow agents wrote 9 to 20 test blocks per task in rounds 1-2. On these tasks the two languages are tied, including under the judge-only rule where Vow lost 2-3x on the earlier hard set. The tasks did not separate the languages at all, so this shows parity on new, moderately hard problems, not an advantage. The only Vow friction reported was missing guide detail (list element assignment, `lines("")`, and `padLeft`/`padRight` counting UTF-16 units); those three lines were added to the guide afterwards.
+
+## Fresh hard tasks, 3 rounds (2026-10-13)
+
+Three larger tasks written after everything above and never tuned on, the size where Vow lost about 2x on 2026-10-07 and 2026-10-12: mini-lisp (an interpreter with closures, let, lists and six error kinds, 20 checks), json-schema (a validator that reports every error in a fixed order with paths, 19 checks) and spreadsheet (formulas, SUM/MIN/MAX over ranges, #CYCLE and #DIV0 propagation, 17 checks). Before any measured agent saw them, the task author solved all three in TypeScript and an independent agent solved all three in Vow (81 to 228 lines, each first submission passed); three spec lines it flagged were reworded. Claude Haiku 4.5, fresh context, one agent per language per round doing all three tasks.
+
+| | rounds 1-2 (may run code) | round 3 (type-check only) | total |
+|---|---|---|---|
+| Vow + guide + examples | 6 runs, 7 submissions, 1 failed | 3 runs, 3 submissions, 0 failed | 1 failed in 9 runs |
+| TypeScript | 6 runs, 6 submissions, 0 failed | 3 runs, 3 submissions, 0 failed | 0 failed in 9 runs |
+
+Every run in both languages solved its task. The single Vow failure was a spec misreading (accepting `SUM (A2)` with a space, which the spec forbids), not a Vow error. Vow agents in rounds 1-2 wrote 9 to 20 test blocks per task. On the earlier hard set the gap was about 2x (Vow 2.3 failed submissions per run against TypeScript's 1.0 on 2026-10-12); on these fresh hard tasks it is 0.11 against 0, which is within noise for 9 runs. This is the first hard, unseen task set where Vow and TypeScript performed the same.
+
+Found along the way: `jsonKeys` returns integer-like keys first (`{"b":1,"10":2}` gives `["10", "b"]`) because it inherits JavaScript object order. Plain TypeScript has the same behavior, and two TypeScript agents wrote their own order-preserving JSON parser to get around it, which a Vow program cannot easily do with the built-in `parseJson`. No check depends on it. Guide notes added afterwards: recursive struct fields and empty literals in fields, and that `min`/`max` take two numbers.
+
+Fixed the same night: JSON objects now keep the document's key order for integer-like keys too (`parseJson`, `jsonKeys`, `toJson`, `prettyJson`, `str(j)`, `jsonSet`/`jsonDelete`/`jsonMerge`, and maps or structs passed to `json`), on both backends. Plain TypeScript (`JSON.parse` plus `Object.keys`) still reorders them. Verified: test suite, compiled-vs-interpreted parity (2875 identical, 0 mismatches), and all 323 passing corpus solutions still pass.

@@ -37,6 +37,7 @@ xs[0]    m["a"]             // indexing TRAPS on out-of-bounds / missing key
 get(xs, 9)  get(m, "z")     // safe access → Result
 has(m, "a")                 // key check → bool
 push(xs, 4)  pop(xs)        // pop returns a Result
+xs[0] = 7   g[i][j] = 0     // replace an existing element (traps out of range; use push to grow)
 ```
 
 ## Control flow
@@ -108,6 +109,7 @@ let p = Point { x: 3, y: 4 }   // ALL fields required, every time
 p.x = 10                        // fields are type-pinned too
 print(p == Point { x: 10, y: 4 })  // value equality
 ```
+A field may hold a list of its own struct type (`struct Node { name, kids }` with `kids: [Node { name: "b", kids: [] }]` works for trees and ASTs), and an empty `[]` or `{}` in a field takes its element type from other uses.
 
 ## JSON
 A `json` value is any JSON value (object, array, string, number, bool, null). It is read-only, so every "change" builds a new one. There is no `null` keyword, and json is not a map: use `field`/`has`/`jsonKeys` on it.
@@ -117,7 +119,7 @@ A `json` value is any JSON value (object, array, string, number, bool, null). It
 - Read: `field(j, "key")` / `at(j, i)` → json, a **json null** when the key/index is missing or `j` is the wrong kind · `get(j, key)` → Result, for when missing is an error · `has(j, "key")` → bool · `j["key"]` / `j[0]` trap on a miss
 - Test: `isNull(j)` · `truthy(j)` (false for null, false, 0, "", `[]` and `{}`; empty containers are falsy, unlike JavaScript) · `jsonType(j)` → "object"/"array"/"string"/"number"/"bool"/"null"
 - Text: `str(j)` (and `print(j)`, `"${j}"`): strings as-is, numbers like `str(num)`, true/false, arrays/objects as compact JSON, and a json null as the text `"null"` (never an empty string). For empty output on a missing value write `if isNull(j) { "" } else { str(j) }`
-- Walk: `jsonList(j)` → list<json> · `jsonKeys(j)` → list<str>; both plain lists, `[]` for the other kinds
+- Walk: `jsonList(j)` → list<json> · `jsonKeys(j)` → list<str>; both plain lists, `[]` for the other kinds; object keys keep the order the document wrote them in (`"10"` stays after `"b"`), and so do `toJson`/`prettyJson` and maps passed to `json`
 - Typed values: `jsonNum(j)`, `jsonStr(j)`, `jsonBool(j)` → Results (the err says what was found and where: `the JSON value at "age" is a string ("36"), not a number`)
 - Edit (each returns a NEW json object, `j` is unchanged): `jsonSet(j, "key", value)` → with that key set (`value` is anything `json` accepts) · `jsonDelete(j, "key")` → without that key (no error if absent) · `jsonMerge(a, b)` → deep merge: objects merge key by key, recursively, otherwise `b` wins. A json null counts as `{}` for jsonSet/jsonDelete; any other non-object traps
 - Compare json with `==`/`!=`: same kind and same value (`field(a, "n") == field(b, "n")`)
@@ -168,10 +170,10 @@ Use these instead of hand-rolled loops, decoders and parsers; every family below
 ### Text and Unicode
 - `replace(t, old, new)` → every occurrence, literal text: `replace("a-b-c", "-", "+")` → "a+b+c"
 - `startsWith(t, p)`, `endsWith(t, s)`, `contains(t, piece)` → bool · `indexOf(t, piece)` → Result<num, str> (err when absent)
-- `split(t, sep)` → list · `join(xs, sep)` → str · `lines(t)` → list (splits on newlines, drops a trailing one) · `words(t)` → split on any whitespace, no empty strings
+- `split(t, sep)` → list · `join(xs, sep)` → str · `lines(t)` → list (splits on newlines, drops a trailing one; `lines("")` is `[]`) · `words(t)` → split on any whitespace, no empty strings
 - `trim(t)`, `upper(t)`, `lower(t)`, `slice(t, from, to)` · `t[i]` → one-unit str (traps out of range; `get(t, i)` → Result)
 - `repeat(t, n)` · `padLeft("7", 3, "0")` → "007" · `padRight(t, width, fill)`
-- `len(t)`, `t[i]`, `slice` and `split(t, "")` count UTF-16 units like JavaScript: `len("é")` is 1 but `len("😀")` is 2 and `"😀"[0]` is half a character. For whole characters:
+- `len(t)`, `t[i]`, `slice`, `split(t, "")`, `padLeft` and `padRight` count UTF-16 units like JavaScript: `len("é")` is 1 but `len("😀")` is 2 and `"😀"[0]` is half a character. For whole characters:
   - `chars(t)` → list of one-character strs, one per code point: `chars("a😀")` → `["a", "😀"]`; `len(chars(t))` counts characters, `join(reverse(chars(t)), "")` reverses safely
   - `ord(t)` → code point of the first character: `ord("😀")` → 128512 (`ord("")` traps) · `chr(n)` → the character: `chr(128512)` → "😀"
   - `<`, `sort(xs)` and `sortBy` order strs by code point (`"😀" > "ｚ"`, as `ord` says), never by UTF-16 unit
@@ -191,7 +193,7 @@ Use these instead of hand-rolled loops, decoders and parsers; every family below
 - Build a query: `join(map(sort(keys(m)), k => urlEncode(k) + "=" + urlEncode(m[k])), "&")`
 
 ### Numbers
-`int("42")` → Result, strict (optional `-` then digits; `"4.2"`, `" 5"`, `"+3"` are errs) · `isInt(x)` → bool · `sig(1234.5, 2)` → 1200 (significant digits, 1 to 21) · `abs floor ceil trunc round fixed min max` · math, random and dates: see below
+`int("42")` → Result, strict (optional `-` then digits; `"4.2"`, `" 5"`, `"+3"` are errs) · `isInt(x)` → bool · `sig(1234.5, 2)` → 1200 (significant digits, 1 to 21) · `abs floor ceil trunc round fixed` · `min(a, b)` / `max(a, b)` take exactly 2 numbers (for a list fold it, or `sort` and take the ends) · math, random and dates: see below
 
 **Capabilities:** a fn that does I/O must declare it in its signature — `fn fetch(url) uses net { return httpGet(url) }`. Capabilities: `net` (httpGet, httpRequest, serve), `fs` (readFile/writeFile), `env` (env). Reading standard input (`readLine`, `readAll`) needs none. Callers of an effectful fn must declare it too; top-level code needs no declaration; declaring a capability you don't use is also an error.
 

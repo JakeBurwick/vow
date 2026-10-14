@@ -675,6 +675,7 @@ for (const [name, src, mustContain] of diagTests) {
 
 // programs whose exact output is checked: ${} interpolation, literal braces, escapes, recursive closures
 const outputTests = [
+  ['json keeps document key order, integer-like keys included', 'match parseJson(`{"b":1,"10":2,"2":{"z":0,"1":3}}`) {\n  ok(j) => {\n    print(jsonKeys(j))\n    print(toJson(jsonDelete(jsonSet(j, "0", json(true)), "10")))\n    print(toJson(json({"z": 1, "3": 2})))\n  }\n  err(e) => print(e)\n}\n', '["b", "10", "2"]\n{"b":1,"2":{"z":0,"1":3},"0":true}\n{"z":1,"3":2}'],
   ['${} interpolates, plain braces are text', 'let name = "Ada"\nlet n = 2\nprint("hi ${name}, ${n + 1} {x} {} {")\nprint("{\\"k\\": ${n}}")\n', 'hi Ada, 3 {x} {} {\n{"k": 2}'],
   ['template text {{name}} is not flagged', 'let name = "Ada"\nlet t = "Hello {{name}}!"\nprint(replace(t, "{{name}}", name))\n', 'Hello Ada!'],
   ['\\{name} silences the {ident} guard', 'let name = "Ada"\nprint("\\{name} is ${name}")\n', '{name} is Ada'],

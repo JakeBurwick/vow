@@ -175,7 +175,7 @@ function PRELUDE() {
       }
       if (raw !== null && typeof raw === 'object') {
         if (!Object.hasOwn(raw, key)) {
-          const ks = Object.keys(raw).slice(0, 8).map(k => `"${k}"`).join(', ');
+          const ks = okeys(raw).slice(0, 8).map(k => `"${k}"`).join(', ');
           $trap(e, 'RuntimeError', `key "${key}" not found in this JSON object`,
             `Its keys are: ${ks || '(none; the object is empty)'}.`,
             `use get(j, "${key}") which returns a Result you can match on.`);
@@ -782,7 +782,7 @@ export function compile(src, ast, opts = {}) {
 
   const code = [
     '"use strict";',
-    'const { $B, display, deepEq, isJson, compareText, compareKeys, UNIT: $U, VowError, nodeLoc, src: $src, testIO, runOutput, runTrap } = $rt;',
+    'const { $B, display, deepEq, isJson, okeys, compareText, compareKeys, UNIT: $U, VowError, nodeLoc, src: $src, testIO, runOutput, runTrap } = $rt;',
     `const $MAXS = ${MAXS}, $MAXD = ${MAXD};`,
     'let $D = 0, $S = 0, $ln = 1;',
     "const $L = [0], $N = ['(top level)'], $F = [];",

@@ -99,11 +99,13 @@ Measured October 2026 (dates per row). Numbers may be out of date; `RESULTS.md` 
 |---|---|---|---|
 | Recursive fib(32) | 0.09 s | Python 0.14 s | 2026-10-07 |
 | Agent code passing 150 fresh hidden tests per task | 99.5% | TypeScript 99.3% | 2026-10-08 |
-| Failed submissions per run, 4 hard unseen tasks, agents may run code first | 1.0 (2.3 a day earlier) | TypeScript 1.0 | 2026-10-13 (TS 2026-10-12) |
+| Failed submissions, 3 new hard tasks (Lisp interpreter, JSON schema validator, spreadsheet), 9 runs | 1 | TypeScript 0 | 2026-10-13 |
+| Failed submissions, 4 new moderately hard tasks, 12 runs | 0 | TypeScript 0 | 2026-10-13 |
+| Failed submissions per run, older hard set, agents may run code first | 1.0 (2.3 a day earlier) | TypeScript 1.0 | 2026-10-13 (TS 2026-10-12) |
 | Failed attempts, same tasks, no running allowed | 15 | TypeScript 7 | 2026-10-08 |
 | Attack programs blocked by the sandbox | 6 of 7 | Deno 7 of 7 | 2026-10-02 |
 
-On easy tasks agents write correct Vow about as reliably as TypeScript. On hard ones they needed about twice as many attempts until the October 13 fixes (built-in tests, clearer docs, checker bug fixes); the latest round is even with TypeScript, from a small sample of 2 runs. With Claude Sonnet both languages had zero failed submissions. The sandbox does not yet support a read-only file grant, which is the one attack Deno blocks and Vow does not.
+On October 13, after fixes for built-in tests, clearer documentation, and checker bugs, testing on three new hard tasks produced one failed submission for Vow and zero for TypeScript across nine runs, with every run solved. The single Vow failure occurred when the agent misread the specification. Tests from October 7 to 12 on an older task set recorded about twice as many attempts in Vow as in TypeScript, while tests with Claude Sonnet produced zero failed submissions in both languages. The Vow sandbox does not yet support a read-only file grant, which is the one attack Deno blocks and Vow does not.
 
 ## Development
 

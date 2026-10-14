@@ -77,6 +77,64 @@ export const compareKeys = (a, b) => typeof a === 'string' ? compareText(a, b) :
 // __key: where the value came from (an object key or an array index), so jsonNum("36") can
 // say `the JSON value at "age"`; absent for the root of parseJson and for built values
 const J = (raw, key) => key === undefined ? { __json: raw } : { __json: raw, __key: key };
+// JSON object key order. A JS object lists integer-like keys ("2", "10") first, in numeric order,
+// but a JSON document (and a Vow map) keeps the order it was written in. An object holding such a
+// key carries its real order under ORD (non-enumerable, so spread and JSON.stringify skip it), and
+// every json read, rebuild and print goes through okeys().
+const ORD = Symbol('jsonKeyOrder');
+const INT_KEY = /^(0|[1-9][0-9]*)$/;
+export const okeys = (o) => o[ORD] ?? Object.keys(o);
+// [key, value] pairs in order -> object; a repeated key keeps its first position and last value
+function mkObj(pairs) {
+  const o = {}, order = [];
+  for (const [k, v] of pairs) {
+    if (!Object.hasOwn(o, k)) order.push(k);
+    Object.defineProperty(o, k, { value: v, enumerable: true, writable: true, configurable: true });
+  }
+  if (order.some(k => INT_KEY.test(k))) Object.defineProperty(o, ORD, { value: order });
+  return o;
+}
+function needsOrder(raw) {
+  if (Array.isArray(raw)) return raw.some(needsOrder);
+  if (raw === null || typeof raw !== 'object') return false;
+  return Object.keys(raw).some(k => INT_KEY.test(k) || needsOrder(raw[k]));
+}
+// re-reads text that JSON.parse already accepted, building objects in document key order
+function parseOrdered(s) {
+  let i = 0;
+  const atom = /true|false|null|-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/y;
+  const ws = () => { while (s[i] === ' ' || s[i] === '\t' || s[i] === '\n' || s[i] === '\r') i++; };
+  const str = () => { const a = i++; while (s[i] !== '"') i += s[i] === '\\' ? 2 : 1; i++; return JSON.parse(s.slice(a, i)); };
+  const val = () => {
+    ws();
+    if (s[i] === '{') {
+      i++; ws();
+      const pairs = [];
+      if (s[i] === '}') { i++; return mkObj(pairs); }
+      for (;;) { ws(); const k = str(); ws(); i++; pairs.push([k, val()]); ws(); if (s[i++] === '}') return mkObj(pairs); }
+    }
+    if (s[i] === '[') {
+      i++; ws();
+      const out = [];
+      if (s[i] === ']') { i++; return out; }
+      for (;;) { out.push(val()); ws(); if (s[i++] === ']') return out; }
+    }
+    if (s[i] === '"') return str();
+    atom.lastIndex = i;
+    const m = atom.exec(s);
+    i += m[0].length;
+    return JSON.parse(m[0]);
+  };
+  return val();
+}
+// JSON.stringify that honors ORD; step '' is compact, '  ' matches JSON.stringify(v, null, 2)
+export function jsonStringify(raw, step = '', indent = '') {
+  if (raw === null || typeof raw !== 'object') return JSON.stringify(raw);
+  const inner = indent + step, nl = step ? '\n' + inner : '', end = step ? '\n' + indent : '';
+  if (Array.isArray(raw)) return raw.length === 0 ? '[]' : '[' + raw.map(x => nl + jsonStringify(x, step, inner)).join(',') + end + ']';
+  const ks = okeys(raw);
+  return ks.length === 0 ? '{}' : '{' + ks.map(k => nl + JSON.stringify(k) + (step ? ': ' : ':') + jsonStringify(raw[k], step, inner)).join(',') + end + '}';
+}
 // "the JSON value at "age" is a string ("36")": what was found, and where, for jsonNum/jsonStr/jsonBool
 function jsonFound(j) {
   const raw = j.__json;
@@ -84,7 +142,7 @@ function jsonFound(j) {
     : typeof j.__key === 'number' ? `the JSON value at index ${j.__key}` : `the JSON value at "${j.__key}"`;
   let shown = '';
   if (raw !== null) {
-    const s = JSON.stringify(raw);
+    const s = jsonStringify(raw);
     shown = ` (${s.length > 40 ? s.slice(0, 37) + '...' : s})`;
   }
   const kind = jsonTypeOf(raw);
@@ -93,9 +151,8 @@ function jsonFound(j) {
 // jsonMerge(a, b): objects merge key by key (recursively), anything else is replaced by b
 function rawJsonMerge(a, b) {
   if (!isJsonObject(a) || !isJsonObject(b)) return b;
-  const out = { ...a };
-  for (const k of Object.keys(b)) out[k] = Object.hasOwn(a, k) ? rawJsonMerge(a[k], b[k]) : b[k];
-  return out;
+  return mkObj([...okeys(a).map(k => [k, Object.hasOwn(b, k) ? rawJsonMerge(a[k], b[k]) : a[k]]),
+    ...okeys(b).filter(k => !Object.hasOwn(a, k)).map(k => [k, b[k]])]);
 }
 const jsonTypeOf = (raw) =>
   raw === null ? 'null'
@@ -109,7 +166,7 @@ const jsonTypeOf = (raw) =>
 function jsonText(raw) {
   if (typeof raw === 'string') return raw;
   if (typeof raw === 'number') return display(raw);
-  return JSON.stringify(raw);
+  return jsonStringify(raw);
 }
 // truthy(j): false for null, false, 0, "", [] and {} (empty containers are falsy, unlike JavaScript)
 function jsonTruthy(raw) {
@@ -149,7 +206,7 @@ export function display(v, depth = 0) {
     if (depth > 3) return name + ' {…}';
     return name + ' { ' + [...v.fields.entries()].map(([k, x]) => k + ': ' + display(x, depth + 1)).join(', ') + ' }';
   }
-  if (isJson(v)) return depth === 0 ? jsonText(v.__json) : JSON.stringify(v.__json);
+  if (isJson(v)) return depth === 0 ? jsonText(v.__json) : jsonStringify(v.__json);
   if (v && v.__response) return `<response ${v.status} ${v.type}>`;
   if (v && v.tag) return `${v.tag}(${display(v.val, depth + 1)})`;
   if (v && v.fn) return `<fn ${v.fn.name}>`;
@@ -324,16 +381,8 @@ export function createRun(src, ast, opts = {}) {
   function vowToRaw(v, node, who = 'toJson') {
     if (typeof v === 'number' || typeof v === 'string' || typeof v === 'boolean') return v;
     if (Array.isArray(v)) return v.map(x => vowToRaw(x, node, who));
-    if (v instanceof Map) {
-      const o = {};
-      for (const [k, x] of v) o[k] = vowToRaw(x, node, who);
-      return o;
-    }
-    if (v && v.__struct) {
-      const o = {};
-      for (const [k, x] of v.fields) o[k] = vowToRaw(x, node, who);
-      return o;
-    }
+    if (v instanceof Map) return mkObj([...v].map(([k, x]) => [k, vowToRaw(x, node, who)]));
+    if (v && v.__struct) return mkObj([...v.fields].map(([k, x]) => [k, vowToRaw(x, node, who)]));
     if (isJson(v)) return v.__json;
     trap(node, 'RuntimeError', `${who}() can't serialize ${display(v, 1)}`,
       'Only nums, strs, bools, lists, maps, structs and json values have a JSON form.',
@@ -431,7 +480,7 @@ export function createRun(src, ast, opts = {}) {
         if (raw !== null && typeof raw === 'object') {
           if (typeof k !== 'string') return err(`this JSON value is an object; access it with a string key, not ${display(k)}`);
           if (!Object.hasOwn(raw, k)) {
-            const ks = Object.keys(raw).slice(0, 8).map(x => `"${x}"`).join(', ');
+            const ks = okeys(raw).slice(0, 8).map(x => `"${x}"`).join(', ');
             return err(`key "${k}" not found in this JSON object (its keys: ${ks || 'none; the object is empty'})`);
           }
           return ok(J(raw[k], k));
@@ -473,27 +522,27 @@ export function createRun(src, ast, opts = {}) {
     lower: ([s]) => s.toLowerCase(),
     sum: ([l]) => l.reduce((a, b) => a + b, 0),
     parseJson: ([s]) => {
-      try { return ok(J(JSON.parse(s))); }
+      try { const raw = JSON.parse(s); return ok(J(needsOrder(raw) ? parseOrdered(s) : raw)); }
       catch (e) { return err(`invalid JSON: ${e.message}`); }
     },
-    toJson: ([v], node) => JSON.stringify(vowToRaw(v, node)),
-    prettyJson: ([v], node) => JSON.stringify(vowToRaw(v, node), null, 2),
+    toJson: ([v], node) => jsonStringify(vowToRaw(v, node)),
+    prettyJson: ([v], node) => jsonStringify(vowToRaw(v, node), '  '),
     // json values are read-only, so "modifying" one builds a new one (children are shared)
     jsonSet: ([j, k, v], node) => {
       const raw = j.__json;
       if (raw !== null && !isJsonObject(raw)) trap(node, 'RuntimeError', `jsonSet() needs a JSON object, but ${jsonFound(j)}`,
         'jsonSet(j, key, value) returns a copy of the object j with that key set (a json null counts as an empty object).',
         'check the kind first: if jsonType(j) == "object" { ... }; to build a list, use a Vow list and toJson(...) instead.');
-      return J({ ...(raw ?? {}), [k]: vowToRaw(v, node) });
+      const o = raw ?? {}, nv = vowToRaw(v, node);
+      return J(mkObj([...okeys(o).map(x => [x, o[x]]), [k, nv]]));
     },
     jsonDelete: ([j, k], node) => {
       const raw = j.__json;
       if (raw !== null && !isJsonObject(raw)) trap(node, 'RuntimeError', `jsonDelete() needs a JSON object, but ${jsonFound(j)}`,
         'jsonDelete(j, key) returns a copy of the object j without that key (a json null counts as an empty object).',
         'check the kind first: if jsonType(j) == "object" { ... }; to drop items from an array, filter jsonList(j) and rebuild it with json(...).');
-      const out = { ...(raw ?? {}) };
-      delete out[k];
-      return J(out);
+      const o = raw ?? {};
+      return J(mkObj(okeys(o).filter(x => x !== k).map(x => [x, o[x]])));
     },
     // json(v): a Vow value as a json value, directly (no Result: it can't fail for the types the checker lets through)
     json: ([v], node) => J(vowToRaw(v, node, 'json')),
@@ -502,7 +551,7 @@ export function createRun(src, ast, opts = {}) {
     jsonStr: ([j]) => typeof j.__json === 'string' ? ok(j.__json) : err(`${jsonFound(j)}, not a string`),
     jsonBool: ([j]) => typeof j.__json === 'boolean' ? ok(j.__json) : err(`${jsonFound(j)}, not a bool`),
     jsonList: ([j]) => Array.isArray(j.__json) ? j.__json.map((x, i) => J(x, i)) : [],
-    jsonKeys: ([j]) => jsonTypeOf(j.__json) === 'object' ? Object.keys(j.__json) : [],
+    jsonKeys: ([j]) => jsonTypeOf(j.__json) === 'object' ? okeys(j.__json) : [],
     jsonType: ([j]) => jsonTypeOf(j.__json),
     // missing is a normal case: a json null instead of a Result (get() stays the strict version)
     field: ([j, k]) => isJsonObject(j.__json) && Object.hasOwn(j.__json, k) ? J(j.__json[k], k) : J(null, k),
@@ -865,7 +914,7 @@ export function createRun(src, ast, opts = {}) {
           }
           if (raw !== null && typeof raw === 'object') {
             if (!Object.hasOwn(raw, key)) {
-              const ks = Object.keys(raw).slice(0, 8).map(k => `"${k}"`).join(', ');
+              const ks = okeys(raw).slice(0, 8).map(k => `"${k}"`).join(', ');
               trap(e, 'RuntimeError', `key "${key}" not found in this JSON object`,
                 `Its keys are: ${ks || '(none; the object is empty)'}.`,
                 `use get(j, "${key}") which returns a Result you can match on.`);

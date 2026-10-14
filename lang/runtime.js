@@ -6,7 +6,7 @@
 // identically by construction.
 
 import { compile } from './compile.js';
-import { createRun, display, deepEq, isJson, compareText, compareKeys, UNIT, HIGHER_ORDER, testIO, runOutput, runTrap } from './interp.js';
+import { createRun, display, deepEq, isJson, okeys, compareText, compareKeys, UNIT, HIGHER_ORDER, testIO, runOutput, runTrap } from './interp.js';
 import { VowError, nodeLoc } from './diagnostics.js';
 
 const EMPTY = { t: 'Program', stmts: [] };
@@ -19,6 +19,6 @@ export function createCompiledRun(src, ast, opts = {}) {
   const { builtins } = createRun(src, EMPTY, { out: opts.out, builtins: opts.builtins, seed: opts.seed });
   const { code, nodes } = compile(src, ast, { maxSteps, maxDepth, builtinNames: [...Object.keys(builtins), 'sortBy', ...HIGHER_ORDER] });
   const factory = new Function('$rt', '$nodes', code);
-  const prog = factory({ $B: builtins, display, deepEq, isJson, compareText, compareKeys, UNIT, VowError, nodeLoc, src, testIO, runOutput, runTrap }, nodes);
+  const prog = factory({ $B: builtins, display, deepEq, isJson, okeys, compareText, compareKeys, UNIT, VowError, nodeLoc, src, testIO, runOutput, runTrap }, nodes);
   return { run: () => prog.main(), tests: prog.tests, code };
 }
