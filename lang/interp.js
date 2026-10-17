@@ -4,6 +4,7 @@
 
 import { VowError, nodeLoc } from './diagnostics.js';
 import { compileRegex } from './checker.js';
+import { casefold } from './casefold.js';
 
 export const UNIT = Object.freeze({ __unit: true });
 
@@ -11,7 +12,7 @@ const NORMAL = { sig: 'normal', val: UNIT };
 
 // builtins that call back into Vow code (sortBy is handled separately); they are not in the
 // builtin table because they run lambdas, which must go through the generator machinery
-export const HIGHER_ORDER = new Set(['map', 'filter', 'any', 'all', 'count', 'fold']);
+export const HIGHER_ORDER = new Set(['map', 'filter', 'any', 'all', 'count', 'fold', 'sortWith']);
 
 // Internal early-return signal: '?' and a return inside a match used as a value both
 // unwind to the enclosing Vow function, which returns the carried value. At the top
@@ -84,6 +85,23 @@ const J = (raw, key) => key === undefined ? { __json: raw } : { __json: raw, __k
 const ORD = Symbol('jsonKeyOrder');
 const INT_KEY = /^(0|[1-9][0-9]*)$/;
 export const okeys = (o) => o[ORD] ?? Object.keys(o);
+// A JSON number with more significant digits than a 64-bit float keeps exactly (more than 15, e.g. the
+// id 9219976635399687875 or 0.30000000000000004) is kept as its source text, so str(j), toJson and ==
+// never silently change it. jsonNum gives its float, or an err when it is an integer past 2^53.
+export class JNum { constructor(text) { this.text = text; } }
+const isJNum = (raw) => raw instanceof JNum;
+// value = (neg ? -1 : 1) * d * 10^e with d free of leading and trailing zeros ("0" for zero)
+function canonNum(text) {
+  const m = /^(-?)(\d*)(?:\.(\d*))?(?:[eE]([+-]?\d+))?$/.exec(text);
+  let d = (m[2] || '') + (m[3] || ''), e = Number(m[4] || 0) - (m[3] || '').length;
+  d = d.replace(/^0+/, '');
+  if (d === '') return '0';
+  const t = d.length - d.replace(/0+$/, '').length;
+  return `${m[1]}${d.slice(0, d.length - t)}e${e + t}`;
+}
+const numKey = (raw) => canonNum(isJNum(raw) ? raw.text : String(raw));
+const sigDigits = (text) => { const c = canonNum(text); return c === '0' ? 1 : c.replace(/^-/, '').split('e')[0].length; };
+const SIG_SAFE = 15;
 // [key, value] pairs in order -> object; a repeated key keeps its first position and last value
 function mkObj(pairs) {
   const o = {}, order = [];
@@ -123,6 +141,7 @@ function parseOrdered(s) {
     atom.lastIndex = i;
     const m = atom.exec(s);
     i += m[0].length;
+    if (m[0][0] !== 't' && m[0][0] !== 'f' && m[0][0] !== 'n' && sigDigits(m[0]) > SIG_SAFE) return new JNum(m[0]);
     return JSON.parse(m[0]);
   };
   return val();
@@ -130,6 +149,7 @@ function parseOrdered(s) {
 // JSON.stringify that honors ORD; step '' is compact, '  ' matches JSON.stringify(v, null, 2)
 export function jsonStringify(raw, step = '', indent = '') {
   if (raw === null || typeof raw !== 'object') return JSON.stringify(raw);
+  if (isJNum(raw)) return raw.text;
   const inner = indent + step, nl = step ? '\n' + inner : '', end = step ? '\n' + indent : '';
   if (Array.isArray(raw)) return raw.length === 0 ? '[]' : '[' + raw.map(x => nl + jsonStringify(x, step, inner)).join(',') + end + ']';
   const ks = okeys(raw);
@@ -157,6 +177,7 @@ function rawJsonMerge(a, b) {
 const jsonTypeOf = (raw) =>
   raw === null ? 'null'
     : Array.isArray(raw) ? 'array'
+      : isJNum(raw) ? 'number'
       : typeof raw === 'object' ? 'object'
         : typeof raw === 'boolean' ? 'bool'
           : typeof raw; // 'number' | 'string'
@@ -166,19 +187,22 @@ const jsonTypeOf = (raw) =>
 function jsonText(raw) {
   if (typeof raw === 'string') return raw;
   if (typeof raw === 'number') return display(raw);
+  if (isJNum(raw)) return raw.text;
   return jsonStringify(raw);
 }
 // truthy(j): false for null, false, 0, "", [] and {} (empty containers are falsy, unlike JavaScript)
 function jsonTruthy(raw) {
   if (raw === null) return false;
   if (Array.isArray(raw)) return raw.length > 0;
+  if (isJNum(raw)) return true; // never zero: it has more than 15 significant digits
   if (typeof raw === 'object') return Object.keys(raw).length > 0;
   return raw !== false && raw !== 0 && raw !== '';
 }
-const isJsonObject = (raw) => raw !== null && typeof raw === 'object' && !Array.isArray(raw);
+const isJsonObject = (raw) => raw !== null && typeof raw === 'object' && !Array.isArray(raw) && !isJNum(raw);
 
 function rawJsonEq(x, y) {
   if (x === y) return true;
+  if (isJNum(x) || isJNum(y)) return (typeof x === 'number' || isJNum(x)) && (typeof y === 'number' || isJNum(y)) && numKey(x) === numKey(y);
   if (Array.isArray(x) && Array.isArray(y)) return x.length === y.length && x.every((v, i) => rawJsonEq(v, y[i]));
   if (x && y && typeof x === 'object' && typeof y === 'object' && !Array.isArray(x) && !Array.isArray(y)) {
     const kx = Object.keys(x), ky = Object.keys(y);
@@ -456,8 +480,12 @@ export function createRun(src, ast, opts = {}) {
     print: (args) => { st.out(args.map(a => display(a)).join(' ')); return UNIT; },
     str: ([v]) => display(v),
     num: ([s]) => {
+      // decimal only: no hex/binary/octal, no Infinity/NaN, no "" (JavaScript's Number() accepts all of these)
       const t = s.trim();
-      if (t === '' || isNaN(Number(t))) return err(`"${s}" is not a number`);
+      if (!/^[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?$/.test(t) || !Number.isFinite(Number(t))) return err(`"${s}" is not a number`);
+      // a whole number past 2^53 can't be held exactly: say so instead of silently rounding it
+      if (Number.isInteger(Number(t)) && !Number.isSafeInteger(Number(t)) && /^[-+]?\d+$/.test(t))
+        return err(`"${s}" is a whole number too large for a num to hold exactly (nums are exact up to 9007199254740991); keep it as text, and compare such numbers with cmpNum(a, b)`);
       return ok(Number(t));
     },
     len: ([v]) => v.length,
@@ -477,7 +505,7 @@ export function createRun(src, ast, opts = {}) {
           if (!Number.isInteger(k) || k < 0 || k >= raw.length) return err(`index ${display(k)} is out of range (the JSON array has ${raw.length} item${raw.length === 1 ? '' : 's'})`);
           return ok(J(raw[k], k));
         }
-        if (raw !== null && typeof raw === 'object') {
+        if (isJsonObject(raw)) {
           if (typeof k !== 'string') return err(`this JSON value is an object; access it with a string key, not ${display(k)}`);
           if (!Object.hasOwn(raw, k)) {
             const ks = okeys(raw).slice(0, 8).map(x => `"${x}"`).join(', ');
@@ -522,7 +550,7 @@ export function createRun(src, ast, opts = {}) {
     lower: ([s]) => s.toLowerCase(),
     sum: ([l]) => l.reduce((a, b) => a + b, 0),
     parseJson: ([s]) => {
-      try { const raw = JSON.parse(s); return ok(J(needsOrder(raw) ? parseOrdered(s) : raw)); }
+      try { const raw = JSON.parse(s); return ok(J(needsOrder(raw) || /[0-9.]{16}/.test(s) ? parseOrdered(s) : raw)); }
       catch (e) { return err(`invalid JSON: ${e.message}`); }
     },
     toJson: ([v], node) => jsonStringify(vowToRaw(v, node)),
@@ -547,7 +575,15 @@ export function createRun(src, ast, opts = {}) {
     // json(v): a Vow value as a json value, directly (no Result: it can't fail for the types the checker lets through)
     json: ([v], node) => J(vowToRaw(v, node, 'json')),
     jsonMerge: ([a, b]) => J(rawJsonMerge(a.__json, b.__json)),
-    jsonNum: ([j]) => typeof j.__json === 'number' ? ok(j.__json) : err(`${jsonFound(j)}, not a number`),
+    jsonNum: ([j]) => {
+      const raw = j.__json;
+      if (typeof raw === 'number') return ok(raw);
+      if (!isJNum(raw)) return err(`${jsonFound(j)}, not a number`);
+      const n = Number(raw.text);
+      if (Number.isInteger(n) && !Number.isSafeInteger(n) && !canonNum(raw.text).includes('e-'))
+        return err(`${jsonFound(j)}, a whole number too large for a num to hold exactly (nums are exact up to 9007199254740991); use str(j) for its exact digits, e.g. as an id`);
+      return ok(n);
+    },
     jsonStr: ([j]) => typeof j.__json === 'string' ? ok(j.__json) : err(`${jsonFound(j)}, not a string`),
     jsonBool: ([j]) => typeof j.__json === 'boolean' ? ok(j.__json) : err(`${jsonFound(j)}, not a bool`),
     jsonList: ([j]) => Array.isArray(j.__json) ? j.__json.map((x, i) => J(x, i)) : [],
@@ -650,6 +686,48 @@ export function createRun(src, ast, opts = {}) {
         return err(`"${shown}" is not valid URL encoding (${why})`);
       }
     },
+    casefold: ([t]) => casefold(t), // full Unicode case folding, as Python's str.casefold(): "Straße" -> "strasse"
+    normalize: ([t, form], node) => {
+      const f = form ?? 'NFC';
+      if (!['NFC', 'NFD', 'NFKC', 'NFKD'].includes(f)) trap(node, 'RuntimeError', `"${f}" is not a normalization form`, 'normalize(text, form) takes "NFC", "NFD", "NFKC" or "NFKD".', 'write normalize(text) for NFC.');
+      return t.normalize(f);
+    },
+    // RFC 4180 CSV: a leading BOM is dropped, LF or CRLF ends a record, quoted fields may hold commas,
+    // newlines and "" (one quote), completely empty lines are skipped. Errors name the line.
+    parseCsv: ([t]) => {
+      const s = t.charCodeAt(0) === 0xFEFF ? t.slice(1) : t;
+      const rows = []; let row = [], i = 0, line = 1;
+      const eol = (k) => s[k] === '\n' || (s[k] === '\r' && s[k + 1] === '\n');
+      if (s === '') return ok(rows);
+      while (true) {
+        if (row.length === 0 && (i >= s.length || eol(i))) { // completely empty line (or end): no record
+          if (i >= s.length) break;
+          i += s[i] === '\r' ? 2 : 1; line++; continue;
+        }
+        let v = '';
+        if (s[i] === '"') {
+          const startLine = line; i++;
+          while (true) {
+            if (i >= s.length) return err(`line ${startLine}: a quoted field is never closed (missing ")`);
+            if (s[i] === '"') { if (s[i + 1] === '"') { v += '"'; i += 2; continue; } i++; break; }
+            if (s[i] === '\n') line++;
+            v += s[i++];
+          }
+          if (!(i >= s.length || s[i] === ',' || eol(i))) return err(`line ${line}: text after a closing quote (a quoted field must end right before a comma or the line end)`);
+        } else {
+          while (i < s.length && s[i] !== ',' && !eol(i)) {
+            if (s[i] === '"') return err(`line ${line}: a " inside an unquoted field (quote the whole field and write "" for each ")`);
+            v += s[i++];
+          }
+        }
+        row.push(v);
+        if (s[i] === ',') { i++; continue; }
+        rows.push(row); row = [];
+        if (i >= s.length) break;
+        i += s[i] === '\r' ? 2 : 1; line++;
+      }
+      return ok(rows);
+    },
     chars: ([t]) => [...t], // one str per code point: chars("a😀") is ["a", "😀"]
     ord: ([t], node) => {
       if (t === '') trap(node, 'RuntimeError', 'ord() of an empty string', 'ord(text) gives the code point of the first character, and "" has none.', 'check first: if s != "" { ord(s) }');
@@ -706,6 +784,21 @@ export function createRun(src, ast, opts = {}) {
       return out;
     },
     values: ([m]) => [...m.values()],
+    remove: ([m, k]) => m.delete(k), // true when the key was there
+    // exact order of two decimal texts of any size: -1, 0 or 1 ("9007199254740993" > "9007199254740992")
+    cmpNum: ([a, b], node) => {
+      const re = /^\s*([-+]?)(\d+)(?:\.(\d+))?\s*$/;
+      const pa = re.exec(a), pb = re.exec(b);
+      if (!pa || !pb) trap(node, 'RuntimeError', `cmpNum() needs two decimal texts, got ${display(pa ? b : a, 1)}`,
+        'cmpNum(a, b) compares plain decimal numbers written as text, like "-12.5" or "9007199254740993".', 'check the text first, e.g. with matches(s, `^-?\\d+(\\.\\d+)?$`).');
+      const parts = (m) => { const i = m[2].replace(/^0+(?=\d)/, ''), f = (m[3] ?? '').replace(/0+$/, ''); const zero = /^0*$/.test(i + f); return { neg: m[1] === '-' && !zero, i, f }; };
+      const x = parts(pa), y = parts(pb);
+      const mag = (p, q) => p.i.length !== q.i.length ? (p.i.length < q.i.length ? -1 : 1)
+        : p.i !== q.i ? (p.i < q.i ? -1 : 1) : p.f.padEnd(q.f.length, '0') === q.f.padEnd(p.f.length, '0') ? 0 : (p.f.padEnd(q.f.length, '0') < q.f.padEnd(p.f.length, '0') ? -1 : 1);
+      if (x.neg !== y.neg) return x.neg ? -1 : 1;
+      const c = mag(x, y);
+      return x.neg ? -c : c;
+    },
     // makes text safe to put inside HTML (element content or a quoted attribute)
     escape: ([t]) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'),
     param: ([query, name]) => {
@@ -912,7 +1005,7 @@ export function createRun(src, ast, opts = {}) {
             }
             return J(raw[key], key);
           }
-          if (raw !== null && typeof raw === 'object') {
+          if (isJsonObject(raw)) {
             if (!Object.hasOwn(raw, key)) {
               const ks = okeys(raw).slice(0, 8).map(k => `"${k}"`).join(', ');
               trap(e, 'RuntimeError', `key "${key}" not found in this JSON object`,
@@ -972,6 +1065,21 @@ export function createRun(src, ast, opts = {}) {
             case 'all': { for (const x of items) if (!(yield* call(f, [x]))) return false; return true; }
             case 'count': { let n = 0; for (const x of items) if (yield* call(f, [x])) n++; return n; }
             case 'fold': { const g = args[2]; let acc = args[1]; for (const x of items) acc = yield* call(g, [acc, x]); return acc; }
+            case 'sortWith': { // stable merge sort; f(a, b) < 0 puts a first
+              let run = items.map(x => [x]);
+              while (run.length > 1) {
+                const next = [];
+                for (let i = 0; i < run.length; i += 2) {
+                  const a = run[i], b = run[i + 1];
+                  if (!b) { next.push(a); continue; }
+                  const m = []; let p = 0, q = 0;
+                  while (p < a.length && q < b.length) m.push((yield* call(f, [b[q], a[p]])) < 0 ? b[q++] : a[p++]);
+                  next.push(m.concat(a.slice(p), b.slice(q)));
+                }
+                run = next;
+              }
+              return run[0] ?? [];
+            }
           }
         }
         if (fnVal && fnVal.fn) return yield* callFn(fnVal.fn, args, e);

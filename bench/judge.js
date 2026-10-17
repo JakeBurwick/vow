@@ -98,7 +98,7 @@ export async function judgeFile(task, file) {
   const fails = [];
   for (const chk of task.checks) {
     const res = isPy ? runCheckPy(file, chk) : multi ? runCheckVowCli(file, chk) : await runCheckVow(src, chk);
-    const args = chk.args ?? chk.requests;
+    const args = chk.args ?? chk.requests ?? (chk.stdin !== undefined ? { stdin: chk.stdin } : undefined);
     if (res.diag) { fails.push({ args, kind: 'diagnostic', detail: res.diag }); continue; }
     if (chk.expect !== undefined && res.got !== chk.expect) fails.push({ args, kind: 'wrong-output', got: res.got, want: chk.expect });
     const missing = (chk.expectContains ?? []).filter(x => !res.got.includes(x));

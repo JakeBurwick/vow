@@ -1,0 +1,126 @@
+// exact decimals kept as text: sign, integer digits (no leading zeros), fraction digits (no trailing zeros)
+struct D { neg, ip, fp }
+struct Entry { name, score }
+
+fn toDec(t) {
+  let g = find(t, `^(-?)(\d+)(?:\.(\d+))?$`)?
+  let ip = replaceAll(g[2], `^0+(?=\d)`, "")
+  let fp = replaceAll(g[3], `0+$`, "")
+  let zero = ip == "0" and fp == ""
+  return ok(D { neg: g[1] == "-" and not zero, ip: ip, fp: fp })
+}
+
+fn cmpAbs(a, b) {
+  if len(a.ip) != len(b.ip) { return if len(a.ip) < len(b.ip) { -1 } else { 1 } }
+  if a.ip != b.ip { return if a.ip < b.ip { -1 } else { 1 } }
+  let w = max(len(a.fp), len(b.fp))
+  let x = padRight(a.fp, w, "0")
+  let y = padRight(b.fp, w, "0")
+  if x == y { return 0 }
+  return if x < y { -1 } else { 1 }
+}
+
+fn cmpDec(a, b) {
+  if a.neg != b.neg { return if a.neg { -1 } else { 1 } }
+  let c = cmpAbs(a, b)
+  return if a.neg { 0 - c } else { c }
+}
+
+fn show(d) {
+  let s = if d.neg { "-" } else { "" }
+  return s + d.ip + (if d.fp == "" { "" } else { "." + d.fp })
+}
+
+fn scoreOf(v) {
+  return match jsonType(v) {
+    "number" => toDec(str(v))
+    "string" => toDec(jsonStr(v)?)
+    _ => err("bad")
+  }
+}
+
+fn main(a) {
+  let files = []
+  for i in range(0, 2) {
+    match parseJson(a[i]) {
+      ok(j) => {
+        if jsonType(j) != "object" {
+          print("error: bad json")
+          return
+        }
+        push(files, j)
+      }
+      err(e) => {
+        print("error: bad json")
+        return
+      }
+    }
+  }
+  let bad = []
+  for f in files {
+    for k in jsonKeys(f) {
+      let v = field(f, k)
+      if isNull(v) { continue }
+      match scoreOf(v) {
+        ok(d) => {}
+        err(e) => push(bad, k)
+      }
+    }
+  }
+  if len(bad) > 0 {
+    print("error: bad score ${sort(bad)[0]}")
+    return
+  }
+  if not matches(a[2], `^[0-9]+$`) {
+    print("error: bad n")
+    return
+  }
+  let n = match int(a[2]) { ok(x) => x  err(e) => 0 }
+  if n < 1 {
+    print("error: bad n")
+    return
+  }
+  let names = []
+  let best = {}
+  for f in files {
+    for k in jsonKeys(f) {
+      let v = field(f, k)
+      if isNull(v) { continue }
+      match scoreOf(v) {
+        ok(d) => {
+          if not has(best, k) {
+            push(names, k)
+            best[k] = d
+          } else if cmpDec(d, best[k]) > 0 {
+            best[k] = d
+          }
+        }
+        err(e) => {}
+      }
+    }
+  }
+  // insertion sort: score desc, then name by code point
+  let es = map(names, k => Entry { name: k, score: best[k] })
+  fn before(x, y) {
+    let c = cmpDec(x.score, y.score)
+    if c != 0 { return c > 0 }
+    return x.name < y.name
+  }
+  let sorted = []
+  for e in es {
+    push(sorted, e)
+    let pos = len(sorted) - 1
+    while pos > 0 and before(e, sorted[pos - 1]) {
+      sorted[pos] = sorted[pos - 1]
+      pos = pos - 1
+    }
+    sorted[pos] = e
+  }
+  let rank = 0
+  for i in range(0, min(n, len(sorted))) {
+    if i == 0 or cmpDec(sorted[i].score, sorted[i - 1].score) != 0 { rank = i + 1 }
+    print("${rank}. ${sorted[i].name} ${show(sorted[i].score)}")
+  }
+}
+
+main(args())

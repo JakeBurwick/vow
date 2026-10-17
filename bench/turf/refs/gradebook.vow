@@ -1,0 +1,182 @@
+// RFC 4180 reader: BOM dropped, LF or CRLF, quoted fields with "" and embedded newlines,
+// completely empty lines skipped. Returns a list of records (lists of field values).
+fn parseCsv(text) {
+  let t = text
+  if startsWith(t, "\u{FEFF}") { t = slice(t, 1, len(t)) }
+  let recs = []
+  let i = 0
+  let n = len(t)
+  fn crlfAt(k) { return k + 1 < n and t[k] == "\r" and t[k + 1] == "\n" }
+  while i < n {
+    if t[i] == "\n" {
+      i = i + 1
+      continue
+    }
+    if crlfAt(i) {
+      i = i + 2
+      continue
+    }
+    let rec = []
+    let going = true
+    while going {
+      let f = ""
+      if i < n and t[i] == "\"" {
+        i = i + 1
+        let inq = true
+        while inq and i < n {
+          if t[i] == "\"" {
+            if i + 1 < n and t[i + 1] == "\"" {
+              f = f + "\""
+              i = i + 2
+            } else {
+              i = i + 1
+              inq = false
+            }
+          } else {
+            let start = i
+            while i < n and t[i] != "\"" { i = i + 1 }
+            f = f + slice(t, start, i)
+          }
+        }
+      } else {
+        let start = i
+        while i < n and t[i] != "," and t[i] != "\n" and not crlfAt(i) { i = i + 1 }
+        f = slice(t, start, i)
+      }
+      push(rec, f)
+      if i < n and t[i] == "," {
+        i = i + 1
+      } else {
+        if crlfAt(i) {
+          i = i + 2
+        } else if i < n and t[i] == "\n" {
+          i = i + 1
+        }
+        going = false
+      }
+    }
+    push(recs, rec)
+  }
+  return recs
+}
+
+// trim spaces and tabs only
+fn trimST(s) { return replaceAll(s, `^[ \t]+|[ \t]+$`, "") }
+
+// column index of each required name, or err when one is missing
+fn columns(hdr, need) {
+  let names = map(hdr, h => trimST(h))
+  let ix = {}
+  for k in need {
+    match indexOf(names, k) {
+      ok(p) => { ix[k] = p }
+      err(e) => { return err("missing") }
+    }
+  }
+  return ok(ix)
+}
+
+// "12", "12.5", "12.50" -> hundredths; err otherwise (ASCII digits only)
+fn hundredths(s) {
+  let m = find(s, `^([0-9]+)(?:\.([0-9]{1,2}))?$`)?
+  let whole = int(m[1])?
+  let frac = int(padRight(m[2], 2, "0"))?
+  return ok(whole * 100 + frac)
+}
+
+let input = match readAll() {
+  ok(t) => t
+  err(e) => ""
+}
+let rows = parseCsv(input)
+if len(rows) == 0 {
+  print("no data")
+  return
+}
+let ix = match columns(rows[0], ["student", "assignment", "score"]) {
+  ok(m) => m
+  err(e) => {
+    print("error: header")
+    return
+  }
+}
+if len(rows) == 1 {
+  print("no data")
+  return
+}
+let width = len(rows[0])
+let scores = {}
+for r in range(1, len(rows)) {
+  let row = rows[r]
+  if len(row) != width {
+    print("error: row ${r}")
+    return
+  }
+  let st = trimST(row[ix["student"]])
+  if st == "" {
+    print("error: row ${r}")
+    return
+  }
+  if not has(scores, st) { scores[st] = [] }
+  let s = trimST(row[ix["score"]])
+  // ASCII-only case-insensitive match of the missing markers
+  if matches(s, `^(?:[nN]/[aA]|[nN][aA][nN]|[aA][bB][sS])?$`) { continue }
+  let h = match hundredths(s) {
+    ok(v) => v
+    err(e) => -1
+  }
+  if h < 0 or h > 10000 {
+    print("error: row ${r}")
+    return
+  }
+  let l = scores[st]
+  push(l, h)
+  scores[st] = l
+}
+fn tenths(t) { return "${floor(t / 10)}.${t % 10}" }
+let all = []
+let names = sort(keys(scores))
+for st in names {
+  let l = scores[st]
+  if len(l) == 0 {
+    print("${st} -")
+  } else {
+    let s = sum(l)
+    let c = len(l)
+    print("${st} ${tenths(floor((2 * s + 10 * c) / (20 * c)))}")
+    for v in l { push(all, v) }
+  }
+}
+all = sort(all)
+let m = len(all)
+if m == 0 {
+  print("median -")
+} else if m % 2 == 1 {
+  print("median ${tenths(floor((all[(m - 1) / 2] + 5) / 10))}")
+} else {
+  print("median ${tenths(floor((all[m / 2 - 1] + all[m / 2] + 10) / 20))}")
+}
+// rank by exact mean (cross-multiplied integers), ties by name: insertion sort over name-sorted list
+let ranked = []
+for st in names {
+  if len(scores[st]) == 0 { continue }
+  push(ranked, st)
+  let j = len(ranked) - 1
+  while j > 0 {
+    let a = scores[ranked[j - 1]]
+    let b = scores[ranked[j]]
+    if sum(b) * len(a) > sum(a) * len(b) {
+      let tmp = ranked[j - 1]
+      ranked[j - 1] = ranked[j]
+      ranked[j] = tmp
+      j = j - 1
+    } else {
+      break
+    }
+  }
+}
+if len(ranked) == 0 {
+  print("top -")
+} else {
+  print("top " + join(slice(ranked, 0, min(3, len(ranked))), ", "))
+}

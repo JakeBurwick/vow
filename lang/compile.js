@@ -25,7 +25,7 @@ const TRAP_BUILTINS = new Set(['range', 'repeat', 'redirect', 'toJson', 'prettyJ
 const SWAPPABLE = new Set(['print', 'args', 'readLine', 'readAll']);
 // builtins that call back into Vow code: compiled to prelude helpers ($map / $mapA, ...),
 // in the same item order and with the same short-circuiting as lang/interp.js
-const HIGHER_ORDER = { map: 2, filter: 2, any: 2, all: 2, count: 2, fold: 3 };
+const HIGHER_ORDER = { map: 2, filter: 2, any: 2, all: 2, count: 2, fold: 3, sortWith: 2 };
 const SKIP_KEYS = new Set(['pos', 'tok', 'nameTok', 'tagTok', 'binderTok', 'calleeNode', 'mod']);
 
 function forEachChild(node, f) {
@@ -173,7 +173,7 @@ function PRELUDE() {
         }
         return { __json: raw[key], __key: key };
       }
-      if (raw !== null && typeof raw === 'object') {
+      if (raw !== null && typeof raw === 'object' && !(raw instanceof $JNum)) {
         if (!Object.hasOwn(raw, key)) {
           const ks = okeys(raw).slice(0, 8).map(k => `"${k}"`).join(', ');
           $trap(e, 'RuntimeError', `key "${key}" not found in this JSON object`,
@@ -209,6 +209,7 @@ function PRELUDE() {
   function $jsonTypeOf(raw) {
     return raw === null ? 'null'
       : Array.isArray(raw) ? 'array'
+        : raw instanceof $JNum ? 'number'
         : typeof raw === 'object' ? 'object'
           : typeof raw === 'boolean' ? 'bool'
             : typeof raw;
@@ -253,6 +254,37 @@ function PRELUDE() {
   async function $countA(xs, f, e) { let n = 0; for (const x of [...xs]) if (await f(x, e)) n++; return n; }
   function $fold(xs, acc, f, e) { for (const x of [...xs]) acc = f(acc, x, e); return acc; }
   async function $foldA(xs, acc, f, e) { for (const x of [...xs]) acc = await f(acc, x, e); return acc; }
+  // stable merge sort, same merge order as the interpreter so both call f with the same pairs
+  function $sortWith(xs, f, e) {
+    let run = [...xs].map(x => [x]);
+    while (run.length > 1) {
+      const next = [];
+      for (let i = 0; i < run.length; i += 2) {
+        const a = run[i], b = run[i + 1];
+        if (!b) { next.push(a); continue; }
+        const m = []; let p = 0, q = 0;
+        while (p < a.length && q < b.length) m.push(f(b[q], a[p], e) < 0 ? b[q++] : a[p++]);
+        next.push(m.concat(a.slice(p), b.slice(q)));
+      }
+      run = next;
+    }
+    return run[0] ?? [];
+  }
+  async function $sortWithA(xs, f, e) {
+    let run = [...xs].map(x => [x]);
+    while (run.length > 1) {
+      const next = [];
+      for (let i = 0; i < run.length; i += 2) {
+        const a = run[i], b = run[i + 1];
+        if (!b) { next.push(a); continue; }
+        const m = []; let p = 0, q = 0;
+        while (p < a.length && q < b.length) m.push((await f(b[q], a[p], e)) < 0 ? b[q++] : a[p++]);
+        next.push(m.concat(a.slice(p), b.slice(q)));
+      }
+      run = next;
+    }
+    return run[0] ?? [];
+  }
   // host builtins (serve) call back into Vow fns/lambdas; each call gets a fresh step budget
   const $ctx = {
     invoke: async (fnVal, args) => {
@@ -782,7 +814,7 @@ export function compile(src, ast, opts = {}) {
 
   const code = [
     '"use strict";',
-    'const { $B, display, deepEq, isJson, okeys, compareText, compareKeys, UNIT: $U, VowError, nodeLoc, src: $src, testIO, runOutput, runTrap } = $rt;',
+    'const { $B, JNum: $JNum, display, deepEq, isJson, okeys, compareText, compareKeys, UNIT: $U, VowError, nodeLoc, src: $src, testIO, runOutput, runTrap } = $rt;',
     `const $MAXS = ${MAXS}, $MAXD = ${MAXD};`,
     'let $D = 0, $S = 0, $ln = 1;',
     "const $L = [0], $N = ['(top level)'], $F = [];",

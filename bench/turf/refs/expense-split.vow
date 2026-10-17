@@ -1,0 +1,141 @@
+// RFC 4180 reader: BOM dropped, LF or CRLF, quoted fields with "" and embedded newlines,
+// completely empty lines skipped. Returns a list of records (lists of field values).
+fn parseCsv(text) {
+  let t = text
+  if startsWith(t, "\u{FEFF}") { t = slice(t, 1, len(t)) }
+  let recs = []
+  let i = 0
+  let n = len(t)
+  fn crlfAt(k) { return k + 1 < n and t[k] == "\r" and t[k + 1] == "\n" }
+  while i < n {
+    if t[i] == "\n" {
+      i = i + 1
+      continue
+    }
+    if crlfAt(i) {
+      i = i + 2
+      continue
+    }
+    let rec = []
+    let going = true
+    while going {
+      let f = ""
+      if i < n and t[i] == "\"" {
+        i = i + 1
+        let inq = true
+        while inq and i < n {
+          if t[i] == "\"" {
+            if i + 1 < n and t[i + 1] == "\"" {
+              f = f + "\""
+              i = i + 2
+            } else {
+              i = i + 1
+              inq = false
+            }
+          } else {
+            let start = i
+            while i < n and t[i] != "\"" { i = i + 1 }
+            f = f + slice(t, start, i)
+          }
+        }
+      } else {
+        let start = i
+        while i < n and t[i] != "," and t[i] != "\n" and not crlfAt(i) { i = i + 1 }
+        f = slice(t, start, i)
+      }
+      push(rec, f)
+      if i < n and t[i] == "," {
+        i = i + 1
+      } else {
+        if crlfAt(i) {
+          i = i + 2
+        } else if i < n and t[i] == "\n" {
+          i = i + 1
+        }
+        going = false
+      }
+    }
+    push(recs, rec)
+  }
+  return recs
+}
+
+// trim spaces and tabs only
+fn trimST(s) { return replaceAll(s, `^[ \t]+|[ \t]+$`, "") }
+
+// column index of each required name, or err when one is missing
+fn columns(hdr, need) {
+  let names = map(hdr, h => trimST(h))
+  let ix = {}
+  for k in need {
+    match indexOf(names, k) {
+      ok(p) => { ix[k] = p }
+      err(e) => { return err("missing") }
+    }
+  }
+  return ok(ix)
+}
+
+// "12", "12.5", "12.50" -> hundredths; err otherwise (ASCII digits only)
+fn hundredths(s) {
+  let m = find(s, `^([0-9]+)(?:\.([0-9]{1,2}))?$`)?
+  let whole = int(m[1])?
+  let frac = int(padRight(m[2], 2, "0"))?
+  return ok(whole * 100 + frac)
+}
+
+let input = match readAll() {
+  ok(t) => t
+  err(e) => ""
+}
+let rows = parseCsv(input)
+if len(rows) == 0 {
+  print("no expenses")
+  return
+}
+let ix = match columns(rows[0], ["payer", "amount", "participants"]) {
+  ok(m) => m
+  err(e) => {
+    print("error: header")
+    return
+  }
+}
+if len(rows) == 1 {
+  print("no expenses")
+  return
+}
+let width = len(rows[0])
+let net = {}
+fn add(name, v) { net[name] = if has(net, name) { net[name] + v } else { v } }
+for r in range(1, len(rows)) {
+  let row = rows[r]
+  if len(row) != width {
+    print("error: row ${r}")
+    return
+  }
+  let payer = trimST(row[ix["payer"]])
+  let parts = map(split(row[ix["participants"]], ";"), p => trimST(p))
+  let cents = match hundredths(trimST(row[ix["amount"]])) {
+    ok(c) => c
+    err(e) => 0
+  }
+  if payer == "" or cents <= 0 or any(parts, p => p == "") or len(uniq(parts)) != len(parts) {
+    print("error: row ${r}")
+    return
+  }
+  add(payer, cents)
+  let k = len(parts)
+  let base = floor(cents / k)
+  let rem = cents % k
+  let sorted = sort(parts)
+  for i in range(0, k) {
+    let share = if i < rem { base + 1 } else { base }
+    add(sorted[i], 0 - share)
+  }
+}
+for name in sort(keys(net)) {
+  let v = net[name]
+  let a = abs(v)
+  let sign = if v > 0 { "+" } else if v < 0 { "-" } else { "" }
+  print("${name} ${sign}${floor(a / 100)}.${padLeft(str(a % 100), 2, "0")}")
+}

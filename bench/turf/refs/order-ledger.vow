@@ -1,0 +1,110 @@
+struct Row { key, date, cents }
+
+// "12.50" -> 12500 for places = 3; err when the text is not a plain decimal or has too many decimals
+fn scaled(t, places) {
+  let g = find(t, `^(\d+)(?:\.(\d+))?$`)?
+  let frac = replaceAll(g[2], `0+$`, "")
+  if len(frac) > places { return err("too many decimals") }
+  let w = int(g[1])?
+  let f = if frac == "" { 0 } else { int(padRight(frac, places, "0"))? }
+  return ok(w * pow(10, places) + f)
+}
+
+fn check(o) {
+  if jsonType(o) != "object" { return err("not an object") }
+  let id = field(o, "id")
+  let key = match jsonType(id) {
+    "number" => {
+      let s = str(id)   // exact digits, even past 2^53
+      if not matches(s, `^[0-9]+$`) { return err("id") }
+      s
+    }
+    "string" => {
+      let s = jsonStr(id)?
+      if not matches(s, `^[0-9]+$`) { return err("id") }
+      replaceAll(s, `^0+(?=\d)`, "")
+    }
+    _ => { return err("id") }
+  }
+  let date = match jsonStr(field(o, "date")) {
+    ok(s) => s
+    err(e) => { return err("date") }
+  }
+  if not matches(date, `^\d{4}-\d{2}-\d{2}$`) { return err("date") }
+  match parseDate(date) {
+    ok(t) => {}
+    err(e) => { return err("date") }
+  }
+  let pv = field(o, "price")
+  let p = match jsonType(pv) {
+    "string" => {
+      let s = jsonStr(pv)?
+      if not matches(s, `^[0-9]+(\.[0-9]{1,3})?$`) { return err("price") }
+      scaled(s, 3)?
+    }
+    "number" => {
+      let v = jsonNum(pv)?
+      if v < 0 { return err("price") }
+      scaled(str(v), 3)?
+    }
+    _ => { return err("price") }
+  }
+  if p >= 100000000 { return err("price") }
+  let q = match jsonNum(field(o, "qty")) {
+    ok(v) => v
+    err(e) => { return err("qty") }
+  }
+  if not isInt(q) or q < 1 or q > 1000 { return err("qty") }
+  let dv = field(o, "discount")
+  let d = 0
+  if not isNull(dv) {
+    let x = match jsonNum(dv) {
+      ok(v) => v
+      err(e) => { return err("discount") }
+    }
+    if x < 0 or x > 1 { return err("discount") }
+    d = scaled(str(x), 2)?
+  }
+  let exact = p * q * (100 - d)          // scaled by 100000, exact while < 2^53
+  return ok(Row { key: key, date: date, cents: floor((exact + 500) / 1000) })
+}
+
+fn money(c) { return "${floor(c / 100)}.${padLeft(str(c % 100), 2, "0")}" }
+
+fn process(j) {
+  let rows = []
+  let i = 0
+  for o in jsonList(j) {
+    i = i + 1
+    match check(o) {
+      ok(r) => push(rows, r)
+      err(e) => {
+        print("error: bad order ${i}")
+        return
+      }
+    }
+  }
+  let seen = {}
+  let days = {}
+  let cnt = 0
+  for r in rows {
+    if has(seen, r.key) { continue }
+    seen[r.key] = true
+    cnt = cnt + 1
+    days[r.date] = if has(days, r.date) { days[r.date] + r.cents } else { r.cents }
+  }
+  let total = 0
+  for d in sort(keys(days)) {
+    print("${d} ${money(days[d])}")
+    total = total + days[d]
+  }
+  print("orders ${cnt}")
+  print("total ${money(total)}")
+}
+
+match parseJson(args()[0]) {
+  err(e) => print("error: bad json")
+  ok(j) => {
+    if jsonType(j) != "array" { print("error: bad json") } else { process(j) }
+  }
+}

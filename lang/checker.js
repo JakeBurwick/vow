@@ -209,9 +209,9 @@ export const BUILTIN_NAMES = ['print', 'str', 'num', 'len', 'range', 'push', 'po
   'sort', 'sortBy', 'reverse', 'contains', 'slice', 'trim', 'upper', 'lower', 'sum',
   'replace', 'startsWith', 'endsWith', 'indexOf', 'repeat', 'padLeft', 'padRight', 'lines',
   'matches', 'find', 'findAll', 'replaceAll', 'splitOn', 'words', 'sig', 'isInt', 'int',
-  'map', 'filter', 'any', 'all', 'count', 'fold', 'uniq', 'values',
+  'map', 'filter', 'any', 'all', 'count', 'fold', 'uniq', 'values', 'remove', 'cmpNum', 'sortWith',
   'readFile', 'writeFile', 'httpGet', 'httpRequest', 'readLine', 'readAll', 'args', 'env', 'serve', 'html', 'text', 'respond', 'redirect', 'param', 'escape', 'checkLogin', 'askLogin', 'now',
-  'urlEncode', 'urlDecode', 'ord', 'chr', 'chars',
+  'urlEncode', 'urlDecode', 'ord', 'chr', 'chars', 'casefold', 'normalize', 'parseCsv',
   'parseJson', 'toJson', 'prettyJson', 'json', 'jsonSet', 'jsonDelete', 'jsonMerge', 'jsonNum', 'jsonStr', 'jsonBool', 'jsonList', 'jsonKeys', 'jsonType', 'field', 'at', 'isNull', 'truthy',
   'sqrt', 'pow', 'exp', 'ln', 'log', 'sin', 'cos', 'tan', 'atan2', 'ceil', 'trunc', 'pi', 'random', 'randomInt',
   'dateParts', 'isoDate', 'parseDate', 'daysBetween'];
@@ -1693,6 +1693,28 @@ export function check(src, ast) {
         if (!unify(t, STR)) diag(e.args[0], `${e.callee}() takes a str, but this is a ${tn(t)}`, '', `convert it first: ${e.callee}(str(${snippet(e.args[0])}))`);
         return e.callee === 'urlEncode' ? STR : resultT(STR, STR);
       }
+      case 'casefold': {
+        arity(e, 1, 'casefold(text)');
+        const [t] = args();
+        if (!unify(t, STR)) diag(e.args[0], `casefold() takes a str, but this is a ${tn(t)}`, '', `convert it first: casefold(str(${snippet(e.args[0])}))`);
+        return STR;
+      }
+      case 'normalize': {
+        if (e.args.length !== 1) arity(e, 2, 'normalize(text) or normalize(text, "NFD")');
+        const ts = args();
+        if (!unify(ts[0], STR)) diag(e.args[0], `normalize() takes a str, but this is a ${tn(ts[0])}`, '', `convert it first: normalize(str(${snippet(e.args[0])}))`);
+        if (ts[1] && !unify(ts[1], STR)) diag(e.args[1], `normalize()'s form is a str, but this is a ${tn(ts[1])}`, '', 'pass "NFC", "NFD", "NFKC" or "NFKD".');
+        const f = e.args[1];
+        if (f && f.t === 'Str' && typeof f.value === 'string' && !['NFC', 'NFD', 'NFKC', 'NFKD'].includes(f.value))
+          diag(f, `"${f.value}" is not a normalization form`, '', 'pass "NFC", "NFD", "NFKC" or "NFKD" (normalize(text) alone is NFC).');
+        return STR;
+      }
+      case 'parseCsv': {
+        arity(e, 1, 'parseCsv(text)');
+        const [t] = args();
+        if (!unify(t, STR)) diag(e.args[0], `parseCsv() takes a str, but this is a ${tn(t)}`, '', 'read the text first: parseCsv(readAll()?)');
+        return resultT(listT(listT(STR)), STR);
+      }
       case 'chars': {
         arity(e, 1, 'chars(text)');
         const [t] = args();
@@ -1797,6 +1819,16 @@ export function check(src, ast) {
         if (e.callee === 'filter') return listT(el);
         return e.callee === 'count' ? NUM : BOOL;
       }
+      case 'sortWith': {
+        const usage = 'sortWith(xs, (a, b) => cmpNum(a.score, b.score))';
+        arity(e, 2, usage);
+        lambdaArity(e.args[1], 2, 'sortWith', usage);
+        const [t, ft] = args();
+        const el = tvar();
+        listArg(e.args[0], t, el, 'sortWith', usage);
+        fnArg(e.args[1], ft, [el, el], NUM, 'sortWith', usage, 'takes two items and returns a num: below 0 when the first goes first, 0 to keep their order, above 0 otherwise');
+        return listT(el);
+      }
       case 'fold': {
         const usage = 'fold(xs, 0, (acc, x) => acc + x)';
         arity(e, 3, usage);
@@ -1813,6 +1845,21 @@ export function check(src, ast) {
         const el = tvar();
         listArg(e.args[0], t, el, 'uniq', 'uniq(xs)');
         return listT(el);
+      }
+      case 'cmpNum': {
+        arity(e, 2, 'cmpNum(a, b)');
+        const ts = args();
+        ts.forEach((t, i) => { if (!unify(t, STR)) diag(e.args[i], `cmpNum() compares numbers written as text, but this is a ${tn(t)}`, '',
+          prune(t).k === 'num' ? 'for nums use < and > directly; cmpNum is for numbers too long for a num, kept as text.' : `pass a str, e.g. str(${snippet(e.args[i])}).`); });
+        return NUM;
+      }
+      case 'remove': {
+        arity(e, 2, 'remove(map, key)');
+        const [t, kt] = args();
+        if (!unify(t, mapT(tvar()))) diag(e.args[0], `remove() takes a map, but this is a ${tn(t)}`, '',
+          prune(t).k === 'json' ? `json is read-only: jsonDelete(${snippet(e.args[0])}, key) returns a copy without the key.` : prune(t).k === 'list' ? 'for lists, use filter(xs, x => x != item) or slice.' : 'pass a map like {"a": 1}.');
+        if (!unify(kt, STR)) diag(e.args[1], `map keys are strs, but this is a ${tn(kt)}`, '', `convert it first: remove(m, str(${snippet(e.args[1])}))`);
+        return BOOL;
       }
       case 'values': {
         arity(e, 1, 'values(map)');

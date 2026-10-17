@@ -257,3 +257,19 @@ Two larger tasks whose submissions must be a folder with a main file plus at lea
 | TypeScript | 4 of 4 passed first submission (4 to 5 files, 228 to 268 lines) | 2 of 2 passed first submission |
 
 Zero failed submissions in either language. Rounds 1-2 accidentally gave both languages the same scratch folders; the log shows every submission was judged in its own language, and all 8 solutions were re-judged in per-language folders afterwards and still pass. The one Vow problem all three Vow agents met: a file that reads fields of a struct declared in another module must import that module, and the error said "no struct has a field" or "no structs are declared" with a misleading fix. The agents found the fix themselves, so it cost no submissions. Fixed afterwards: the error now names the struct and its file and gives the exact import line, and the guide states the rule.
+
+## Home turf: JSON (TypeScript's) and CSV (Python's) (2026-10-17)
+
+Six new tasks built where each baseline language is strongest: three JSON-shaping tasks (order-ledger, stock-events, leaderboard) and three CSV-scripting tasks (expense-split, contact-dedupe, gradebook). Each has 6-7 visible checks the agent's judge uses and 33-40 hidden checks it never sees, aimed at silent-wrong-answer pitfalls documented for those languages (ids past 2^53, half-up money rounding, a byte order mark, quoted commas and newlines, accents typed two ways, ß vs SS, lax number parsing, numeric-looking keys). Reference solutions in Python, TypeScript and Vow agree on every check. Before the runs Vow gained `parseCsv`, `casefold`, `normalize`, exact long JSON numbers, a decimal-only `num()` and `remove(map, key)`.
+
+Round 1 used specs that named every pitfall; all 18 solutions in all three languages passed every hidden check, so the specs were rewritten as plain product tickets that say what to do but never how it can go wrong (bench/turf/SPECS-v2.md). Rounds 2-6 below use those specs. Claude Haiku 4.5, code-running allowed, 5 runs per language per arena (30 solutions per language). "Silent wrong" = passed the judge, then failed at least one hidden check.
+
+| | judge first try | hidden checks passed | silent-wrong solutions (JSON / CSV) |
+|---|---|---|---|
+| Vow | 30 of 30 | 1137 / 1145 (99.3%) | 4 of 30 (4 / 0) |
+| Python | 29 of 30 | 1142 / 1145 (99.7%) | 3 of 30 (0 / 3) |
+| TypeScript | 30 of 30 | 1095 / 1145 (95.6%) | 23 of 30 (10 / 13) |
+
+On TypeScript's own JSON turf, 10 of 15 TypeScript solutions were silently wrong (ids past 2^53 merged in every order-ledger run, big scores in every leaderboard run); Vow's exact long numbers kept ids distinct in all 5 runs. On CSV, TypeScript solutions split quoted fields on commas and missed ß/SS; Vow solutions used `parseCsv` and `casefold` and were all fully correct. Vow's 4 misses are one gap, in leaderboard: comparing scores larger than 2^53, which Python's unbounded ints handle. Vow beats TypeScript clearly on both arenas and is level with Python (4 against 3 silent-wrong solutions). Vow solutions were the longest: 4,094 lines of program across the 30 (plus 681 lines of test blocks), against 3,702 for TypeScript and 3,173 for Python, so Vow is safer here but not yet shorter.
+
+Confirming round after closing that gap (`cmpNum` for exact order of numbers written as text, `sortWith` for a comparator sort, `num()` refusing whole numbers past 2^53 instead of rounding them): 4 fresh Vow agents, 3 on JSON and 1 on CSV, same specs. All 12 solutions passed the judge first try and every hidden check (0 silent-wrong); all 3 leaderboard solutions used `cmpNum` unprompted. Python and TypeScript were not re-run (unchanged). Counting only solutions written on the current language, Vow is 0 of 12 silent-wrong, against Python 3 of 30 and TypeScript 23 of 30.

@@ -1,0 +1,131 @@
+fn scaled(t, places) {
+  let g = find(t, `^(\d+)(?:\.(\d+))?$`)?
+  let frac = replaceAll(g[2], `0+$`, "")
+  if len(frac) > places { return err("too many decimals") }
+  let w = int(g[1])?
+  let f = if frac == "" { 0 } else { int(padRight(frac, places, "0"))? }
+  return ok(w * pow(10, places) + f)
+}
+
+fn priceText(c) {
+  let w = floor(c / 100)
+  let f = c % 100
+  if f == 0 { return str(w) }
+  return "${w}." + replaceAll(padLeft(str(f), 2, "0"), `0$`, "")
+}
+
+fn run(j) {
+  let order = []
+  let live = {}
+  let qty = {}
+  let cents = {}
+  let priced = {}
+  fn exists(s) { return has(live, s) and live[s] }
+  let n = 0
+  for e in jsonList(j) {
+    n = n + 1
+    if jsonType(e) != "object" {
+      print("error: bad event ${n}")
+      return
+    }
+    let t = match jsonStr(field(e, "type")) {
+      ok(s) => s
+      err(x) => {
+        print("error: bad event ${n}")
+        return
+      }
+    }
+    if not contains(["add", "remove", "rename", "price"], t) {
+      print("error: unknown event ${n}")
+      return
+    }
+    let sku = match jsonStr(field(e, "sku")) { ok(s) => s  err(x) => "" }
+    if sku == "" {
+      print("error: bad event ${n}")
+      return
+    }
+    if t == "add" or t == "remove" {
+      let q = match jsonNum(field(e, "qty")) { ok(v) => v  err(x) => 0 }
+      if not isInt(q) or q < 1 {
+        print("error: bad event ${n}")
+        return
+      }
+      if t == "add" {
+        if exists(sku) {
+          qty[sku] = qty[sku] + q
+        } else {
+          push(order, sku)
+          live[sku] = true
+          qty[sku] = q
+          priced[sku] = false
+          cents[sku] = 0
+        }
+      } else {
+        if not exists(sku) or qty[sku] < q {
+          print("error: rejected event ${n}")
+          return
+        }
+        qty[sku] = qty[sku] - q
+      }
+    } else if t == "rename" {
+      let to = match jsonStr(field(e, "to")) { ok(s) => s  err(x) => "" }
+      if to == "" {
+        print("error: bad event ${n}")
+        return
+      }
+      if not exists(sku) or exists(to) {
+        print("error: rejected event ${n}")
+        return
+      }
+      let pos = match indexOf(order, sku) { ok(i) => i  err(x) => 0 }
+      order[pos] = to
+      live[to] = true
+      qty[to] = qty[sku]
+      cents[to] = cents[sku]
+      priced[to] = priced[sku]
+      live[sku] = false
+    } else {
+      if not contains(jsonKeys(e), "price") {
+        print("error: bad event ${n}")
+        return
+      }
+      let pv = field(e, "price")
+      let isSet = not isNull(pv)
+      let c = 0
+      if isSet {
+        let v = match jsonNum(pv) { ok(x) => x  err(x) => -1 }
+        c = match scaled(str(v), 2) { ok(x) => x  err(x) => -1 }
+        if v < 0 or c < 0 or c > 100000000 {
+          print("error: bad event ${n}")
+          return
+        }
+      }
+      if not exists(sku) {
+        print("error: rejected event ${n}")
+        return
+      }
+      priced[sku] = isSet
+      cents[sku] = c
+    }
+  }
+  let parts = map(order, s => {
+    let p = if priced[s] { priceText(cents[s]) } else { "null" }
+    toJson(s) + ":{\"qty\":${qty[s]},\"price\":${p}}"
+  })
+  print("{" + join(parts, ",") + "}")
+  let ps = map(filter(order, s => priced[s]), s => cents[s])
+  if len(ps) == 0 {
+    print("avg price none")
+  } else {
+    let cnt = len(ps)
+    let avg = floor((2 * sum(ps) + cnt) / (2 * cnt))
+    print("avg price ${floor(avg / 100)}.${padLeft(str(avg % 100), 2, "0")}")
+  }
+}
+
+match parseJson(args()[0]) {
+  err(e) => print("error: bad json")
+  ok(j) => {
+    if jsonType(j) != "array" { print("error: bad json") } else { run(j) }
+  }
+}

@@ -612,9 +612,23 @@ let m = {"n": "x", "q": 3}  // ✗ one value type per map;
     </div>
 
     <h2 id="benchmarks">Benchmarks</h2>
-    <p class="prose">Agent tests use Claude Haiku in a fresh context per run, judged against answers from Python reference solutions on tasks the language was never tuned on. Vow agents get the language guide and a short pack of example programs; TypeScript agents get nothing. Every number comes from the benchmark logs in the repository. Each table shows the date it was measured; the newest numbers are in <code>RESULTS.md</code>.</p>
+    <p class="prose">Agent tests use Claude Haiku in a fresh context per run, judged against answers from Python reference solutions on tasks the language was never tuned on. Vow agents get the language guide and a short pack of example programs; TypeScript and Python agents get nothing. Every number comes from the benchmark logs in the repository. Each table shows the date it was measured; the newest numbers are in <code>RESULTS.md</code>.</p>
 
     <div class="bench">
+      <div class="bench-item">
+        <h3 class="result-h">Home turf: JSON and CSV</h3>
+        <p class="result-note">6 everyday tasks where the other languages are strongest: 3 that reshape JSON (TypeScript's home) and 3 that clean up spreadsheet CSV exports (Python's home). Each has 33 to 40 hidden tests the agent never sees, built from bugs developers report in those languages: ids past 2^53, money rounding, quoted commas, accents typed two ways. Claude Haiku. A silent bug is a solution that passed every visible test and still gave a wrong answer on a hidden one. Fewer is better.</p>
+        <div class="result-wrap"><table class="result">
+          <thead><tr><th scope="col">language</th><th scope="col">solutions with a silent bug</th><th scope="col">measured</th></tr></thead>
+          <tbody>
+            <tr><td>Vow</td><td class="best">0 of 12</td><td>Oct 17</td></tr>
+            <tr><td>Python</td><td>3 of 30</td><td>Oct 17</td></tr>
+            <tr><td>TypeScript</td><td>23 of 30</td><td>Oct 17</td></tr>
+          </tbody>
+        </table></div>
+        <p class="result-note">On its own JSON tasks TypeScript was silently wrong in 10 of 15 solutions, mostly big ids merging into one. Vow's 12 runs are on the current language; the 30 Vow runs before the last fix had 4 silent bugs, all on scores past 2^53. Vow programs were also the longest of the three.</p>
+      </div>
+
       <div class="bench-item">
         <h3 class="result-h">Speed: recursive fib(32)</h3>
         <p class="result-note">Measured Oct 7, 2026.</p>
@@ -725,6 +739,7 @@ let m = {"n": "x", "q": 3}  // ✗ one value type per map;
       <li><strong>Math, random and dates</strong>: <code>sqrt</code>, <code>pow</code>, trigonometry, <code>random</code> and <code>randomInt</code> with <code>--seed</code>, and UTC date functions.</li>
       <li><strong>Input and HTTP</strong>: <code>readLine</code> and <code>readAll</code> for standard input, <code>httpRequest</code> with methods, headers and bodies, <code>urlEncode</code>/<code>urlDecode</code>, and JSON building with <code>json</code>, <code>jsonSet</code>, <code>jsonDelete</code>, <code>jsonMerge</code> and <code>prettyJson</code>.</li>
       <li><strong>Built-in tests</strong>: <code>test "name" { ... }</code> blocks with <code>expectEq</code> and <code>run(args, stdin)</code>, run by <code>vow test</code>; <code>vow --check</code> suggests them when a file has none.</li>
+      <li><strong>Data safety</strong>: <code>parseCsv</code> for spreadsheet exports, <code>casefold</code> and <code>normalize</code> for matching names, JSON numbers past 15 digits kept exactly, <code>num</code> rejecting hex, <code>Infinity</code> and too-big whole numbers, <code>cmpNum</code> and <code>sortWith</code> for exact ordering, and <code>remove</code> for map keys.</li>
     </ul>
   </div>
 </section>

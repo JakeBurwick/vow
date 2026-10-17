@@ -14,7 +14,7 @@ x = "six"        // type error — a variable never changes type
 ```
 Primitives: `num`, `str`, `bool` (`true`/`false`). Boolean operators are `and`, `or`, `not` — there is no `&&`, `||`, `!`. Comparison: `==`, `!=`, `<`, `<=`, `>`, `>=`. `not` binds tighter than comparisons: `not f(x)` is fine, but write `a != b` or `not (a == b)`, never `not a == b`. Division by zero is a runtime trap.
 
-Numbers are 64-bit floats (one `num` type, no separate int). Literals: `42`, `3.5`, `1e9`, `2.5e-3`; negative numbers are written `-5` or `-x`. Printing: whole numbers print without a decimal point (`3`, not `3.0`), others print with up to 10 decimals and float noise removed (`0.1 + 0.2` prints `0.3`, `2 / 3` prints `0.6666666667`); `round(x, 2)`/`fixed(x, 2)` control it, `str(1e21)` is `1e+21`. Ten decimals drop digits from very small numbers (`str(0.0000123456789)` is `0.0000123457`); for N significant digits print `toJson(sig(x, N))` (`0.0000123456789`, and `0.3` for `0.1 + 0.2`). `/` is real division (`7 / 2` is `3.5`; use `floor(7 / 2)` for 3). `%` is the JavaScript remainder: the result has the sign of the LEFT side (`-7 % 3` is `-1`, `7 % -3` is `1`) and works on decimals (`5.5 % 2` is `1.5`); for a non-negative modulo write `((a % n) + n) % n`.
+Numbers are 64-bit floats (one `num` type, no separate int): exact for whole numbers up to 9007199254740991 and to about 15 significant digits. Bigger whole numbers (ids, large scores) stay text: `num` and `jsonNum` return an err for them instead of rounding, `str(j)` gives a big JSON number's exact digits, and `cmpNum(a, b)` orders two numbers written as text exactly (-1, 0 or 1). Literals: `42`, `3.5`, `1e9`, `2.5e-3`; negative numbers are written `-5` or `-x`. Printing: whole numbers print without a decimal point (`3`, not `3.0`), others print with up to 10 decimals and float noise removed (`0.1 + 0.2` prints `0.3`, `2 / 3` prints `0.6666666667`); `round(x, 2)`/`fixed(x, 2)` control it, `str(1e21)` is `1e+21`. Ten decimals drop digits from very small numbers (`str(0.0000123456789)` is `0.0000123457`); for N significant digits print `toJson(sig(x, N))` (`0.0000123456789`, and `0.3` for `0.1 + 0.2`). `/` is real division (`7 / 2` is `3.5`; use `floor(7 / 2)` for 3). `%` is the JavaScript remainder: the result has the sign of the LEFT side (`-7 % 3` is `-1`, `7 % -3` is `1`) and works on decimals (`5.5 % 2` is `1.5`); for a non-negative modulo write `((a % n) + n) % n`.
 
 ## Strings
 ```
@@ -118,11 +118,12 @@ A `json` value is any JSON value (object, array, string, number, bool, null). It
 - Parse: `parseJson(text)` → Result<json, str>: `match parseJson(body) { ok(j) => ...  err(e) => ... }`
 - Convert: `json(value)` → json, directly from a num/str/bool/list/map/struct, no Result (it can't fail): `json(["a", "b"])`, `json(User { name: "Ada", tags: [] })`, `json(scores)`. Do not write `parseJson(toJson(x))`
 - Serialize: `toJson(value)` → compact str on one line (same inputs as `json`, plus json) · `prettyJson(value)` → str indented with 2 spaces
-- Read: `field(j, "key")` / `at(j, i)` → json, a **json null** when the key/index is missing or `j` is the wrong kind · `get(j, key)` → Result, for when missing is an error · `has(j, "key")` → bool (false for a json null or any non-object, never traps) · `==` compares json by value, objects in any key order · `j["key"]` / `j[0]` trap on a miss
+- Read: `field(j, "key")` / `at(j, i)` → json, a **json null** when the key/index is missing or `j` is the wrong kind · `get(j, key)` → Result, for when missing is an error · `has(j, "key")` → bool (false for a json null or any non-object, never traps); `has(j, "price")` is true for `{"price": null}` (the key is there), so "present and not null" is `not isNull(field(j, "price"))` · `==` compares json by value, objects in any key order · `j["key"]` / `j[0]` trap on a miss
 - Test: `isNull(j)` · `truthy(j)` (false for null, false, 0, "", `[]` and `{}`; empty containers are falsy, unlike JavaScript) · `jsonType(j)` → "object"/"array"/"string"/"number"/"bool"/"null"
 - Text: `str(j)` (and `print(j)`, `"${j}"`): strings as-is, numbers like `str(num)`, true/false, arrays/objects as compact JSON, and a json null as the text `"null"` (never an empty string). For empty output on a missing value write `if isNull(j) { "" } else { str(j) }`
 - Walk: `jsonList(j)` → list<json> · `jsonKeys(j)` → list<str>; both plain lists, `[]` for the other kinds; object keys keep the order the document wrote them in (`"10"` stays after `"b"`), and so do `toJson`/`prettyJson` and maps passed to `json`
 - Typed values: `jsonNum(j)`, `jsonStr(j)`, `jsonBool(j)` → Results (the err says what was found and where: `the JSON value at "age" is a string ("36"), not a number`)
+- Exact numbers: a JSON number with more than 15 significant digits (an id like `9219976635399687875`, or `0.30000000000000004`) is kept exactly as written, so `str(j)`, `toJson` and `==` never change it: use `str(field(o, "id"))` as the key for big ids. `jsonNum` on it returns an err for a whole number past 9007199254740991 (a num can't hold it exactly), otherwise the nearest num
 - Edit (each returns a NEW json object, `j` is unchanged): `jsonSet(j, "key", value)` → with that key set (`value` is anything `json` accepts) · `jsonDelete(j, "key")` → without that key (no error if absent) · `jsonMerge(a, b)` → deep merge: objects merge key by key, recursively, otherwise `b` wins. A json null counts as `{}` for jsonSet/jsonDelete; any other non-object traps
 - Compare json with `==`/`!=`: same kind and same value (`field(a, "n") == field(b, "n")`)
 ```
@@ -160,13 +161,13 @@ Contracts are checked at runtime with blame (caller vs callee). If the checker c
 Use these instead of hand-rolled loops, decoders and parsers; every family below has its own heading. Your own `fn map(...)`, `let count = ...`, `fn log(...)`, `let json = ...` still work: a fn, `let`, param, loop variable or lambda you define with a builtin's name shadows the builtin within its scope (and only there: a `let text = ...` inside one fn leaves `text(...)` usable everywhere else). Every builtin is listed in the sections below; there are no hidden ones.
 
 ### Core
-`print str num len range push pop get keys has join split abs floor round fixed min max sort sortBy reverse sum contains slice trim upper lower ok err`. `round(x, 2)` rounds half-up to 2 decimals (15.625 → 15.63), `fixed(x, 2)` gives text with exactly 2 decimals ("212.30") and `str()` prints numbers without trailing zeros (12.5, 3). `sort(xs)` orders nums or strs; `sortBy(xs, x => x.price)` orders any list by a num/str key (stable: ties keep their order). Both return a NEW list: write `xs = sort(xs)`. `and`/`or` short-circuit, so `i < len(xs) and xs[i] > 0` is safe.
+`print str num len range push pop get keys has join split abs floor round fixed min max sort sortBy reverse sum contains slice trim upper lower ok err`. `round(x, 2)` rounds half-up to 2 decimals (15.625 → 15.63), `fixed(x, 2)` gives text with exactly 2 decimals ("212.30") and `str()` prints numbers without trailing zeros (12.5, 3). `sort(xs)` orders nums or strs; `sortBy(xs, x => x.price)` orders any list by a num/str key (stable: ties keep their order). Several keys: sort by the least important key first, then the most important (each pass is stable): score high to low, ties by name A to Z is `sortBy(sortBy(xs, p => p.name), p => -p.score)`; no comparator or merge sort needed. For a custom order use `sortWith(xs, (a, b) => ...)`: the fn returns a num below 0 when `a` goes first, 0 to keep their order (stable), above 0 otherwise. Both return a NEW list: write `xs = sort(xs)`. `and`/`or` short-circuit, so `i < len(xs) and xs[i] > 0` is safe.
 
 ### Lists (the fn is a lambda or a named fn; all return NEW values)
 - `map(xs, x => x * 2)` → new list · `filter(xs, x => x > 0)` → kept items · `count(xs, x => x > 0)` → num
 - `any(xs, x => x < 0)` / `all(xs, x => x > 0)` → bool (stop early; `all([], f)` is true)
 - `fold(xs, 0, (acc, x) => acc + x)` → the accumulator (same type as the start value)
-- `uniq(xs)` → first occurrence of each value, order kept (`==` equality, works on structs) · `values(m)` → map values in `keys(m)` order · there is no map delete: rebuild without the key (`let m2 = {}` then copy the other keys) or store a flag value
+- `uniq(xs)` → first occurrence of each value, order kept (`==` equality, works on structs) · `values(m)` → map values in `keys(m)` order · `remove(m, key)` deletes a key from the map in place → bool (true when it was there)
 - `indexOf(xs, item)` → Result<num, str>: first position by `==`, err when absent · `contains(xs, item)` → bool · `reverse(xs)`, `slice(xs, from, to)`, `sum(xs)`
 
 ### Text and Unicode
@@ -179,6 +180,9 @@ Use these instead of hand-rolled loops, decoders and parsers; every family below
   - `chars(t)` → list of one-character strs, one per code point: `chars("a😀")` → `["a", "😀"]`; `len(chars(t))` counts characters, `join(reverse(chars(t)), "")` reverses safely
   - `ord(t)` → code point of the first character: `ord("😀")` → 128512 (`ord("")` traps) · `chr(n)` → the character: `chr(128512)` → "😀"
   - `<`, `sort(xs)` and `sortBy` order strs by code point (`"😀" > "ｚ"`, as `ord` says), never by UTF-16 unit
+- `casefold(t)` → full Unicode case folding, exactly Python's `str.casefold()`: `casefold("Straße") == casefold("STRASSE")` is true, while `lower` leaves "ß". Use it (not `lower`) to compare text case-insensitively
+- `normalize(t)` → NFC, so a letter typed as one code point and as letter + combining accent become equal (`normalize("Jose\u{301}") == "José"`); `normalize(t, "NFD")` / `"NFKC"` / `"NFKD"` for the other forms. A case-insensitive key that also ignores how accents were typed: `normalize(casefold(normalize(t)))`
+- `trim(t)` removes all Unicode whitespace (also tabs, NBSP and a BOM); to trim only spaces and tabs use ``replaceAll(t, `^[ \t]+|[ \t]+$`, "")``
 
 ### Regular expressions (patterns are JavaScript regular expressions; write them as backtick raw strings so `\d` stays `\d`)
 - ``matches(s, `^\d+$`)`` → bool; searches anywhere unless you anchor with `^...$`
@@ -194,8 +198,22 @@ Use these instead of hand-rolled loops, decoders and parsers; every family below
 - `param(query, "name")` → Result<str, str>: one field of a query string or form body, decoded (`+` is a space): `param("a=1&b=x+y", "b")` → ok("x y"), err when missing
 - Build a query: `join(map(sort(keys(m)), k => urlEncode(k) + "=" + urlEncode(m[k])), "&")`
 
+### CSV
+- `parseCsv(text)` → Result<list<list<str>>, str>: one list of fields per record, RFC 4180. It drops a leading BOM, accepts LF or CRLF, handles quoted fields with commas, newlines and `""` (one `"`), and skips completely empty lines. The err names the line (an unclosed quote, text after a closing quote, a `"` inside an unquoted field). Fields are NOT trimmed, and rows may have different lengths: check `len(row)` against the header yourself
+```
+match parseCsv(readAll()?) {
+  ok(rows) => {
+    if len(rows) == 0 { print("empty")  return }
+    let header = map(rows[0], h => trim(h))
+    let col = indexOf(header, "amount")?            // columns can come in any order
+    for row in slice(rows, 1, len(rows)) { ... row[col] ... }
+  }
+  err(e) => print("error: ${e}")
+}
+```
+
 ### Numbers
-`int("42")` → Result, strict (optional `-` then digits; `"4.2"`, `" 5"`, `"+3"` are errs) · `isInt(x)` → bool · `sig(1234.5, 2)` → 1200 (significant digits, 1 to 21) · `abs floor ceil trunc round fixed` · `min(a, b)` / `max(a, b)` take exactly 2 numbers (for a list fold it, or `sort` and take the ends) · math, random and dates: see below
+`int("42")` → Result, strict (optional `-` then digits; `"4.2"`, `" 5"`, `"+3"` are errs) · `cmpNum("9007199254740993", "9007199254740992")` → 1: exact order of two decimal texts of any length (`-1`, `0`, `1`; "12.50" equals "12.5"), rank by it with `sortWith(xs, (a, b) => cmpNum(b.score, a.score))` (highest first) · `num("4.5")` → Result, decimal text only, surrounding whitespace allowed (`"1e3"` is ok; `"0x1A"`, `"Infinity"`, `"nan"`, `""`, `"12abc"` are errs) · `isInt(x)` → bool · `sig(1234.5, 2)` → 1200 (significant digits, 1 to 21) · `abs floor ceil trunc round fixed` · `min(a, b)` / `max(a, b)` take exactly 2 numbers (for a list fold it, or `sort` and take the ends) · math, random and dates: see below
 
 **Capabilities:** a fn that does I/O must declare it in its signature — `fn fetch(url) uses net { return httpGet(url) }`. Capabilities: `net` (httpGet, httpRequest, serve), `fs` (readFile/writeFile), `env` (env). Reading standard input (`readLine`, `readAll`) needs none. Callers of an effectful fn must declare it too; top-level code needs no declaration; declaring a capability you don't use is also an error.
 
@@ -307,6 +325,7 @@ Responses: `html(body)`, `text(body)`, `respond(status, contentType, body)`, `re
 - Writing `"{x}"` to insert x: interpolation is `"${x}"`; plain braces are literal text.
 - Indexing (`xs[i]`, `m[k]`, `j[k]`) when the key might be missing — use `get(...)`, or `field(j, k)` for json.
 - Writing your own truthiness / value-to-text helpers for json: use `truthy(j)` and `str(j)`.
+- Hand-writing a CSV splitter (`split(line, ",")` breaks on quoted commas and newlines): use `parseCsv`. Comparing text with `lower` when case should not matter: use `casefold`.
 - Hand-writing percent-decoding, UTF-8 handling, JSON building or code-point sorting: `urlDecode`/`urlEncode`, `chars`/`ord`/`chr`, `json`/`jsonSet`/`jsonDelete`, and `sort` (by code point) already do it.
 - Declaring a top-level `let` below a fn that uses it: move the let above the fn.
 - Two statements on one line inside a block (`{ print(e)  break }`): each statement goes on its own line.

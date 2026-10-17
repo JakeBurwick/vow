@@ -9,7 +9,11 @@
 // Passing solutions are copied into bench/corpus/<task>/ — a growing corpus of
 // verified Vow programs (few-shot material / future training data).
 
-import { TASKS } from './tasks.js';
+import { TASKS as BASE } from './tasks.js';
+import { JSON_TASKS } from './turf/json.js';
+import { CSV_TASKS } from './turf/csv.js';
+// home-turf tasks: the agent is judged on the visible checks only; turf/score.mjs runs the hidden ones
+const TASKS = [...BASE, ...JSON_TASKS, ...CSV_TASKS];
 import { judgeFile, logAttempt, reportFails, langOf, firstError } from './judge.js';
 import { mkdirSync, copyFileSync, cpSync } from 'node:fs';
 import { isDir } from './judge.js';
