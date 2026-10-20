@@ -60,7 +60,7 @@
   "title": "Capabilities",
   "intro": "A function that touches the network, files or environment has to say so with uses net, uses fs or uses env. Reading a signature tells you exactly what that code can reach. In the playground, network calls always fail safely.",
   "file": "09-capabilities.vow",
-  "code": "// A fn that touches the network, files or environment must say so with uses.\n// Anyone reading the signature knows exactly what it can reach.\nfn fetchQuote(symbol) uses net {\n  return httpGet(\"https://example.com/quote?s=${symbol}\")\n}\n\nfn average(xs) {\n  return sum(xs) / len(xs)\n}\n\nprint(average([3, 4, 5]))\n// In the browser playground network calls return an err; in the CLI they run.\nmatch fetchQuote(\"ACN\") {\n  ok(body) => print(\"got ${len(body)} bytes\")\n  err(e) => print(\"request failed (in the playground, network is always off)\")\n}\n"
+  "code": "// A fn that touches the network, files or environment must say so with uses.\n// Anyone reading the signature knows exactly what it can reach.\nfn fetchQuote(symbol) uses net {\n  return httpGet(\"https://example.com/quote?s=${symbol}\")\n}\n\nfn average(xs) {\n  return sum(xs) / len(xs)\n}\n\nprint(average([3, 4, 5]))\n// In the browser playground network calls return an err; in the CLI they really run.\nmatch fetchQuote(\"ACN\") {\n  ok(body) => print(\"got ${len(body)} bytes\")\n  err(e) => print(\"request failed: ${e}\")\n}\n"
  },
  {
   "n": 10,

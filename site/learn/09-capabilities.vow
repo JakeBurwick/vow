@@ -9,8 +9,8 @@ fn average(xs) {
 }
 
 print(average([3, 4, 5]))
-// In the browser playground network calls return an err; in the CLI they run.
+// In the browser playground network calls return an err; in the CLI they really run.
 match fetchQuote("ACN") {
   ok(body) => print("got ${len(body)} bytes")
-  err(e) => print("request failed (in the playground, network is always off)")
+  err(e) => print("request failed: ${e}")
 }

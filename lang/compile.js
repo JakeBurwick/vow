@@ -22,7 +22,7 @@ const TRAP_BUILTINS = new Set(['range', 'repeat', 'redirect', 'toJson', 'prettyJ
   'sqrt', 'pow', 'exp', 'ln', 'log', 'sin', 'cos', 'tan', 'atan2', 'ceil', 'trunc', 'randomInt', 'dateParts', 'isoDate', 'daysBetween', 'expect', 'expectEq', 'expectErr']);
 // builtins that run(args, stdin) in a test swaps out for the inner program run: compiled
 // calls look them up on $B at call time instead of binding them once
-const SWAPPABLE = new Set(['print', 'args', 'readLine', 'readAll']);
+const SWAPPABLE = new Set(['print', 'eprint', 'args', 'readLine', 'readAll']);
 // builtins that call back into Vow code: compiled to prelude helpers ($map / $mapA, ...),
 // in the same item order and with the same short-circuiting as lang/interp.js
 const HIGHER_ORDER = { map: 2, filter: 2, any: 2, all: 2, count: 2, fold: 3, sortWith: 2 };
@@ -299,7 +299,7 @@ function PRELUDE() {
   // test's I/O. Same contract as the interpreter's run builtin (lang/interp.js).
   async function $run(argv, stdin, node) {
     const lines = [];
-    const saved = { print: $B.print, args: $B.args, readLine: $B.readLine, readAll: $B.readAll };
+    const saved = { print: $B.print, eprint: $B.eprint, args: $B.args, readLine: $B.readLine, readAll: $B.readAll };
     const d0 = $D, l0 = $ln, s0 = $S;
     Object.assign($B, testIO(argv, stdin, lines));
     $D = 0; $ln = 1; $S = 0;

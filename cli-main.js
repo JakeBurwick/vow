@@ -9,7 +9,7 @@
 //   node cli.js test program.vow [--filter word]   run the program's test blocks (exit 1 if any fails)
 
 import { readFile as fsRead, writeFile as fsWrite } from 'node:fs/promises';
-import { readSync, writeSync } from 'node:fs';
+import { readSync, writeSync, readFileSync } from 'node:fs';
 import process from 'node:process';
 import { createServer } from 'node:http';
 import { check } from './lang/checker.js';
@@ -20,6 +20,23 @@ import { loadProgram, nodeHost } from './lang/modules.js';
 import { runTests, formatResult, summary } from './lang/testing.js';
 
 const argv = process.argv.slice(2);
+const USAGE = [
+  'usage: vow <file.vow> [args...]            run a program',
+  '       vow --check <file.vow>              type-check only, run nothing',
+  '       vow test <file.vow> [--filter word] run the file\'s test blocks',
+  '       vow --interp <file.vow> [args...]   interpreter instead of the compiler',
+  '       vow --max-steps N <file.vow>        stop after N statements (0 = no limit)',
+  '       vow --seed N <file.vow>             reproducible random() / randomInt()',
+  '       vow --sandbox <file.vow>            pure computation only: no net, fs or env',
+  '       vow --allow net[=host],fs[=dir],env[=NAME] <file.vow>   sandbox with these grants',
+  '       vow --help | --version',
+].join('\n');
+if (argv[0] === '--help' || argv[0] === '-h') { console.log(USAGE); process.exit(0); }
+if (argv[0] === '--version' || argv[0] === '-v') {
+  const { version } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
+  console.log(`vow ${version}`);
+  process.exit(0);
+}
 // `vow test file.vow`: run the file's test blocks instead of the program (flags may come first)
 let testMode = false;
 if (argv[0] === 'test') { testMode = true; argv.shift(); }
@@ -52,7 +69,7 @@ while (argv[0]?.startsWith('--')) {
       if (scope == null) policy.caps.set(cap, null);
       else if (policy.caps.get(cap) !== null) policy.caps.set(cap, [...(policy.caps.get(cap) ?? []), scope]);
     }
-  } else { console.error(`✗ unknown flag ${flag}`); process.exit(2); }
+  } else { console.error(`✗ unknown flag ${flag}\n${USAGE}`); process.exit(2); }
 }
 if (argv[0] === 'test' && !testMode) { testMode = true; argv.shift(); }
 const file = argv[0];
@@ -74,7 +91,7 @@ if (seed != null && seed !== '') {
 } else seed = undefined;
 
 if (!file) {
-  console.error('usage: vow <file.vow> [args...]\n       vow --check <file.vow>\n       vow test <file.vow> [--filter word]  (run the file\'s test blocks)\n       vow --interp <file.vow> [args...]   (interpreter instead of the compiler)\n       vow --max-steps N <file.vow>       (stop after N statements; 0 = no limit)');
+  console.error(USAGE);
   process.exit(2);
 }
 
@@ -301,6 +318,7 @@ try {
   }
   const runOpts = {
     out: printLine,
+    err: errLine,
     maxSteps,
     maxDepth: 50000,
     stepYields: false,

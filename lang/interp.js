@@ -321,6 +321,8 @@ export function testIO(argv, stdin, lines) {
   let buf = stdin;
   return {
     print: (args) => { lines.push(args.map(a => display(a)).join(' ')); return UNIT; },
+    // run() returns stdout and stderr lines together, in the order they were written
+    eprint: (args) => { lines.push(args.map(a => display(a)).join(' ')); return UNIT; },
     args: () => [...argv],
     readLine: () => {
       if (buf === '') return { tag: 'err', val: 'end of input' };
@@ -366,6 +368,7 @@ export function eqDetail(actual, expected) {
 export function createRun(src, ast, opts = {}) {
   const st = {
     out: opts.out ?? (() => {}),
+    err: opts.err ?? opts.out ?? (() => {}), // eprint(...): stderr in the CLI
     steps: 0,
     maxSteps: opts.maxSteps ?? 1_000_000,
     maxDepth: opts.maxDepth ?? 200, // safe on a default JS stack; the CLI runs on a big-stack worker and raises it
@@ -491,6 +494,7 @@ export function createRun(src, ast, opts = {}) {
   };
   const builtins = {
     print: (args) => { st.out(args.map(a => display(a)).join(' ')); return UNIT; },
+    eprint: (args) => { st.err(args.map(a => display(a)).join(' ')); return UNIT; },
     str: ([v]) => display(v),
     num: ([s]) => {
       // decimal only: no hex/binary/octal, no Infinity/NaN, no "" (JavaScript's Number() accepts all of these)
@@ -843,7 +847,7 @@ export function createRun(src, ast, opts = {}) {
     // returns what it printed. The compiled backend has its own $run with the same contract.
     run: async ([argv, stdin], node) => {
       const lines = [];
-      const saved = { print: builtins.print, args: builtins.args, readLine: builtins.readLine, readAll: builtins.readAll };
+      const saved = { print: builtins.print, eprint: builtins.eprint, args: builtins.args, readLine: builtins.readLine, readAll: builtins.readAll };
       const outer = { globals: st.globals, modGlobals: st.modGlobals, stack: st.stack, steps: st.steps };
       Object.assign(builtins, testIO(argv, stdin, lines));
       fresh();

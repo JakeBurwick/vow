@@ -591,6 +591,10 @@ readLine()         // Result: next stdin line, err at end of input
 readAll()          // Result: the rest of stdin
 env(name)          // Result
 args()             // list of the user's arguments
+eprint(x)          // like print, to stderr
+exit(code)         // end now with this exit code
+let n = num(s)?    // top level: err stops the program,
+                   // error: ... on stderr, exit 1
 now()              // current time, UTC ms
 // every failure is a Result, so a program
 // that compiles has handled all of them.
@@ -780,6 +784,7 @@ let m = {"n": "x", "q": 3}  // ✗ one value type per map;
       <li><strong>Math, random and dates</strong>: <code>sqrt</code>, <code>pow</code>, trigonometry, <code>random</code> and <code>randomInt</code> with <code>--seed</code>, and UTC date functions.</li>
       <li><strong>Input and HTTP</strong>: <code>readLine</code> and <code>readAll</code> for standard input, <code>httpRequest</code> with methods, headers and bodies, <code>urlEncode</code>/<code>urlDecode</code>, and JSON building with <code>json</code>, <code>jsonSet</code>, <code>jsonDelete</code>, <code>jsonMerge</code> and <code>prettyJson</code>.</li>
       <li><strong>Built-in tests</strong>: <code>test "name" { ... }</code> blocks with <code>expectEq</code> and <code>run(args, stdin)</code>, run by <code>vow test</code>; <code>vow --check</code> suggests them when a file has none.</li>
+      <li><strong>Exit codes and stderr</strong>: <code>exit(code)</code>, <code>eprint</code>, and <code>?</code> at the top level, where an err stops the program with <code>error: ...</code> on stderr and exit code 1. <code>vow --help</code> and <code>vow --version</code>.</li>
       <li><strong>Data safety</strong>: <code>parseCsv</code> for spreadsheet exports, <code>casefold</code> and <code>normalize</code> for matching names, JSON numbers past 15 digits kept exactly, <code>num</code> rejecting hex, <code>Infinity</code> and too-big whole numbers, <code>cmpNum</code> and <code>sortWith</code> for exact ordering, and <code>remove</code> for map keys.</li>
     </ul>
   </div>

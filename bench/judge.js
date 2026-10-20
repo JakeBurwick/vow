@@ -19,6 +19,7 @@ async function runCheckVow(src, chk) {
     check(src, ast);
     const { gen } = createRun(src, ast, {
       out: (s) => lines.push(s),
+      err: () => {}, // eprint: stderr, not compared (same as Python/TypeScript runs)
       builtins: {
         args: () => (chk.args ?? []).slice(),
         // web tasks: instead of opening a port, replay the check's scripted requests through

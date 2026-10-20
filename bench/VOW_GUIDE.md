@@ -2,9 +2,9 @@
 
 Vow is a small statically-typed language. All types are inferred — never write a type annotation. There are **no nulls and no exceptions**: anything that can fail returns a `Result` that the checker forces you to handle. Newlines end statements; there are no semicolons.
 
-Run a program with `node cli.js main.vow [args]`. A run stops after 50,000,000 statements (`--max-steps N` raises it, `--max-steps 0` removes the cap). A program can span several files: `main.vow` imports the others (`import "./geometry.vow" as geo`) and the CLI loads them from disk, relative to each importing file. Run the main file; `--check main.vow` checks every file it imports. (The browser playground runs one file.)
+Run a program with `vow main.vow [args]` (installed with `npm install -g github:JakeBurwick/vow`; in a clone of the repo, `node cli.js` is the same command, so `vow X` below means `node cli.js X` there). A run stops after 50,000,000 statements (`--max-steps N` raises it, `--max-steps 0` removes the cap). A program can span several files: `main.vow` imports the others (`import "./geometry.vow" as geo`) and the CLI loads them from disk, relative to each importing file. Run the main file; `--check main.vow` checks every file it imports. (The browser playground runs one file.)
 
-**Before you submit a program written from a spec:** add `test "name" { ... }` blocks to the file, one per example in the spec and one per error line in it (expecting the exact error string, newline included), run `node cli.js test main.vow`, and fix the program until every test passes. See "Testing" below.
+**Before you submit a program written from a spec:** add `test "name" { ... }` blocks to the file, one per example in the spec and one per error line in it (expecting the exact error string, newline included), run `vow test main.vow`, and fix the program until every test passes. See "Testing" below.
 
 ## Variables & types
 ```
@@ -241,7 +241,7 @@ for line in lines(readAll()?) {
 ```
 For interactive input, loop `while true { match readLine() { err(e) => break  ok(line) => ... } }`. In the browser playground both return an err.
 
-`exit(code)` ends the program at once with that exit code (a whole number 0-255): `exit(0)` for success, `exit(1)` for failure. Output printed before it is kept. It fits wherever a value is expected, e.g. as the last line of a match arm block. Inside a test's `run(...)` it ends only that run.
+`eprint(...)` prints like `print` but to stderr (warnings and error text that should not mix into the program's output; inside a test's `run(...)` its lines are part of the returned text). `exit(code)` ends the program at once with that exit code (a whole number 0-255): `exit(0)` for success, `exit(1)` for failure. Output printed before it is kept. It fits wherever a value is expected, e.g. as the last line of a match arm block. Inside a test's `run(...)` it ends only that run.
 
 `httpRequest(method, url, headers, body)` → `Result<HttpResponse, str>`, `HttpResponse { status, headers, body }`: `status` a num, `headers` a map<str, str> with lower-case names, `body` a str. Any status is an `ok` (check `r.status` yourself); only not getting a response (DNS, refused, 15 s timeout) is an err. Pass `{}` for no headers and `""` for no body (ignored for GET/HEAD). `httpGet(url)` is the short form: ok(body) for 2xx, otherwise err("GET url failed: HTTP 404 ...") with the start of the response body.
 ```
@@ -265,7 +265,7 @@ struct Point { x, y }
 fn norm(p) { return sqrt(_sq(p.x) + _sq(p.y)) }
 fn _sq(v) { return v * v }          // _ = private to geometry.vow
 
-// file main.vow (the one you run: node cli.js main.vow)
+// file main.vow (the one you run: vow main.vow)
 import "./geometry.vow" as geo
 let p = geo.Point { x: 3, y: 4 }
 print(geo.norm(p))                  // 5
@@ -280,14 +280,14 @@ print(geo.norm(p))                  // 5
 
 ## Math, random, dates
 - `sqrt(x)`, `pow(x, y)`, `exp(x)`, `ln(x)` (natural log; `log(x)` is the same), `sin cos tan(x)` (radians), `atan2(y, x)`, `ceil(x)`, `trunc(x)` (toward 0), `pi()` → num. There is no `e()` (`e` is the usual err name): use `exp(1)`. A result with no real value traps like division by zero: `sqrt(-1)`, `ln(0)`, `pow(-8, 0.5)`, `pow(0, -1)`, `exp(1000)`. Guard the input first.
-- `random()` → num in [0, 1). `randomInt(lo, hi)` → whole number from lo to hi, **both included** (traps if lo > hi or a bound isn't whole). `node cli.js --seed 42 main.vow` (or `VOW_SEED=42`) makes the sequence repeatable.
+- `random()` → num in [0, 1). `randomInt(lo, hi)` → whole number from lo to hi, **both included** (traps if lo > hi or a bound isn't whole). `vow --seed 42 main.vow` (or `VOW_SEED=42`) makes the sequence repeatable.
 - Times are nums: milliseconds since 1970-01-01T00:00:00Z, **always UTC**. `now()` → current time. `dateParts(ms)` → `DateParts { year, month (1-12), day, hour, minute, second, weekday (0=Sunday..6) }`. `isoDate(ms)` → `"2026-10-08T14:03:00Z"`. `parseDate(s)` → Result<num, str>: accepts `2026-10-08`, `2026-10-08T14:03`, `2026-10-08T14:03:00`, optional `.sss`, and `Z` or `+02:00`; no zone means UTC; impossible dates (`2026-02-30`) are errs. `daysBetween(a, b)` → UTC calendar days from a to b (negative if b is earlier; time of day ignored). One day later: `ms + 86400000`.
 
 ## Program structure
 A Vow file runs its top-level statements from top to bottom; there is no implicit `main`. `fn`s are hoisted (a call may come before the declaration), but top-level `let`s are not: a fn may only use a top-level variable declared ABOVE it, so put shared state (`let cache = {}`, `let pos = 0`, `let config = ...`) at the top of the file, before the fns that use it (a fn can read and reassign it: `pos = pos + 1`) (the checker says `'x' doesn't exist yet` otherwise). Write the program at the top level; helper `fn`s can be declared anywhere, including inside another fn (see Functions). A bare `return` at the top level ends the program early (no value allowed there).
 
 ## Testing
-A file carries its own tests: top-level `test "name" { ... }` blocks. They never run with `node cli.js main.vow`, are type-checked with the rest of the file, are skipped by files that import this one, and run with `node cli.js test main.vow`: one line per test, a summary, exit code 1 if any fails (`--filter word` runs only the tests whose name contains `word`).
+A file carries its own tests: top-level `test "name" { ... }` blocks. They never run with `vow main.vow`, are type-checked with the rest of the file, are skipped by files that import this one, and run with `vow test main.vow`: one line per test, a summary, exit code 1 if any fails (`--filter word` runs only the tests whose name contains `word`).
 ```
 fn toF(c) { return c * 9 / 5 + 32 }
 for a in args() {
@@ -339,4 +339,4 @@ Responses: `html(body)`, `text(body)`, `respond(status, contentType, body)`, `re
 - Declaring a top-level `let` below a fn that uses it: move the let above the fn.
 - Two statements on one line inside a block (`{ print(e)  break }`): each statement goes on its own line.
 
-Type-check only: `node cli.js --check program.vow`. Heavy but legitimate work that trips the step cap: `--max-steps 500000000` (`0` = no limit). Every error message tells you what's wrong, shows the line, and suggests the likely fix — read it and apply the fix.
+Type-check only: `vow --check program.vow`. Heavy but legitimate work that trips the step cap: `--max-steps 500000000` (`0` = no limit). Every error message tells you what's wrong, shows the line, and suggests the likely fix — read it and apply the fix.

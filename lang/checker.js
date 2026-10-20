@@ -205,7 +205,7 @@ class Scope {
   }
 }
 
-export const BUILTIN_NAMES = ['print', 'str', 'num', 'len', 'range', 'push', 'pop', 'get', 'keys', 'has', 'join', 'split', 'abs', 'floor', 'round', 'fixed', 'min', 'max', 'ok', 'err',
+export const BUILTIN_NAMES = ['print', 'eprint', 'str', 'num', 'len', 'range', 'push', 'pop', 'get', 'keys', 'has', 'join', 'split', 'abs', 'floor', 'round', 'fixed', 'min', 'max', 'ok', 'err',
   'sort', 'sortBy', 'reverse', 'contains', 'slice', 'trim', 'upper', 'lower', 'sum',
   'replace', 'startsWith', 'endsWith', 'indexOf', 'repeat', 'padLeft', 'padRight', 'lines',
   'matches', 'find', 'findAll', 'replaceAll', 'splitOn', 'words', 'sig', 'isInt', 'int',
@@ -920,7 +920,9 @@ export function check(src, ast) {
               'A Vow list holds values of a single type, and there are no tuples.',
               !bothScalar && e.items.length <= 4 && e.items.every(i => i.t === 'Ident')
                 ? `to return several things together, declare a struct at the top level and build one: struct Pair { ${e.items.map(i => i.name).join(', ')} } then Pair { ${e.items.map(i => `${i.name}: ${i.name}`).join(', ')} }`
-                : `convert the values to one type (e.g. with str(...)), or bundle different things in a struct instead of a list (${parts.slice(0, 2).join(', ')}).`);
+                : bothScalar
+                  ? `convert the values to one type (e.g. with str(...)), or use a struct. If this is a sort key with several parts, sort once per key, least important first: sortBy(sortBy(xs, x => x.name), x => -x.count); or compare in one pass with sortWith(xs, (a, b) => ...).`
+                  : `convert the values to one type (e.g. with str(...)), or bundle different things in a struct instead of a list (${parts.slice(0, 2).join(', ')}).`);
           }
         }
         return listT(el);
@@ -1450,8 +1452,8 @@ export function check(src, ast) {
   function inferBuiltinCall(e, scope) {
     const args = () => e.args.map(a => inferExpr(a, scope));
     switch (e.callee) {
-      case 'print': {
-        if (e.args.length === 0) diag(e, 'print needs at least one argument', '', 'pass a value: print("hello").');
+      case 'print': case 'eprint': {
+        if (e.args.length === 0) diag(e, `${e.callee} needs at least one argument`, '', `pass a value: ${e.callee}("hello").`);
         args();
         return UNIT;
       }
