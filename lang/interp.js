@@ -211,9 +211,18 @@ function rawJsonEq(x, y) {
   return false;
 }
 
+// A num prints exactly when its shortest form has at most 15 significant digits (what a double holds
+// reliably); past that the tail is float noise (0.1 + 0.2), so it is rounded to 15 and trimmed.
+function numText(v) {
+  const s = String(v);
+  if (Number.isInteger(v)) return s;
+  const digits = s.replace(/e.*$/, '').replace(/^-?0*\.?0*/, '').replace('.', '');
+  return digits.length <= 15 ? s : String(Number(v.toPrecision(15)));
+}
+
 export function display(v, depth = 0) {
   if (v === UNIT) return '(unit)';
-  if (typeof v === 'number') return Number.isInteger(v) ? String(v) : String(Math.round(v * 1e10) / 1e10);
+  if (typeof v === 'number') return numText(v);
   if (typeof v === 'boolean') return v ? 'true' : 'false';
   if (typeof v === 'string') return depth === 0 ? v : JSON.stringify(v);
   if (Array.isArray(v)) {

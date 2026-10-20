@@ -97,7 +97,8 @@ Measured October 2026 (dates per row). Numbers may be out of date; `RESULTS.md` 
 
 | Measure | Vow | Comparison | Measured |
 |---|---|---|---|
-| Solutions with a silent bug (passed visible tests, wrong on hidden ones), 6 JSON and CSV tasks | 0 of 12 | Python 3 of 30, TypeScript 23 of 30 | 2026-10-17 |
+| Solutions with a silent bug (passed visible tests, wrong on hidden ones), 6 JSON and CSV tasks | 0 of 12 | Python 3 of 12 (same round, 2026-10-19), TypeScript 23 of 30 | 2026-10-17 |
+| Solutions with a silent bug, 3 fresh tasks written after those fixes (JSON config merge, timesheet hours, Unicode word counts) | 2 of 12 | Python 2 of 12, TypeScript 0 of 12 | 2026-10-19 |
 | Recursive fib(32) | 0.09 s | Python 0.14 s | 2026-10-07 |
 | Agent code passing 150 fresh hidden tests per task | 99.5% | TypeScript 99.3% | 2026-10-08 |
 | Failed submissions, 3 new hard tasks (Lisp interpreter, JSON schema validator, spreadsheet), 9 runs | 1 | TypeScript 0 | 2026-10-13 |

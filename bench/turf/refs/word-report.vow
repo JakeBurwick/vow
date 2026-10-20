@@ -1,0 +1,48 @@
+// Top-N words: letters/digits plus combining marks, inner apostrophes; NFC + lowercase; aligned by code points.
+struct Row { word, n }
+
+fn isWord(c) { return matches(c, `^[\p{L}\p{Nd}]$`) }
+
+let a = args()
+let arg = if len(a) > 0 { a[0] } else { "" }
+let n = match int(arg) { ok(v) => v err(e) => 0 }
+if not matches(arg, `^[0-9]+$`) or n < 1 or n > 1000 {
+  print("error: bad n")
+  return
+}
+let cs = chars(match readAll() { ok(t) => t err(e) => "" })
+let counts = {}
+let i = 0
+while i < len(cs) {
+  if not isWord(cs[i]) {
+    i = i + 1
+    continue
+  }
+  let buf = ""
+  let going = true
+  while going and i < len(cs) {
+    let c = cs[i]
+    if isWord(c) or matches(c, `^\p{M}$`) {
+      buf = buf + c
+      i = i + 1
+    } else if (c == "'" or c == "\u{2019}") and i + 1 < len(cs) and isWord(cs[i + 1]) {
+      buf = buf + "'"
+      i = i + 1
+    } else {
+      going = false
+    }
+  }
+  let w = lower(normalize(buf))
+  counts[w] = match get(counts, w) { ok(k) => k + 1 err(e) => 1 }
+}
+if len(keys(counts)) == 0 {
+  print("no words")
+  return
+}
+let rows = map(keys(counts), w => Row { word: w, n: counts[w] })
+rows = sortBy(sortBy(rows, r => r.word), r => -r.n)
+rows = slice(rows, 0, min(n, len(rows)))
+let width = fold(rows, 0, (m, r) => max(m, len(chars(r.word))))
+for r in rows {
+  print(r.word + repeat(" ", width - len(chars(r.word))) + " " + str(r.n))
+}

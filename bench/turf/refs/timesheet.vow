@@ -1,0 +1,76 @@
+// Worked time per person from timestamped shifts; overlaps count once.
+struct Shift { start, end }
+
+fn stamp(s) {
+  let m = find(s, `^\d{4}-\d{2}-\d{2}T(\d{2}):(\d{2})(?::(\d{2}))?(Z|[+-](\d{2}):(\d{2}))?$`)?
+  if m[1] > "23" or m[2] > "59" or m[3] > "59" or m[5] > "23" or m[6] > "59" { return err("range") }
+  return parseDate(s)
+}
+
+fn hm(sec) {
+  let m = floor(sec / 60)
+  return "${floor(m / 60)}:${padLeft(str(m % 60), 2, "0")}"
+}
+
+fn covered(xs) {
+  let iv = sortBy(sortBy(xs, x => x.end), x => x.start)
+  let tot = 0
+  let cs = iv[0].start
+  let ce = iv[0].end
+  for x in slice(iv, 1, len(iv)) {
+    if x.start > ce {
+      tot = tot + ce - cs
+      cs = x.start
+      ce = x.end
+    } else {
+      ce = max(ce, x.end)
+    }
+  }
+  return tot + ce - cs
+}
+
+let text = match readAll() { ok(t) => t err(e) => "" }
+let rows = split(text, "\n")
+if len(rows) > 0 and rows[len(rows) - 1] == "" { rows = slice(rows, 0, len(rows) - 1) }
+let shifts = {}
+let failed = 0
+let i = 0
+for raw in rows {
+  i = i + 1
+  let line = if endsWith(raw, "\r") { slice(raw, 0, len(raw) - 1) } else { raw }
+  if matches(line, `^[ \t]*$`) { continue }
+  let parts = map(split(line, ","), p => replaceAll(p, `^[ \t]+|[ \t]+$`, ""))
+  let good = false
+  if len(parts) == 3 and parts[0] != "" {
+    match stamp(parts[1]) {
+      ok(a) => {
+        match stamp(parts[2]) {
+          ok(b) => {
+            if b > a {
+              good = true
+              let prev = match get(shifts, parts[0]) { ok(l) => l err(e) => [] }
+              shifts[parts[0]] = push(prev, Shift { start: a / 1000, end: b / 1000 })
+            }
+          }
+          err(e) => {}
+        }
+      }
+      err(e) => {}
+    }
+  }
+  if not good {
+    failed = i
+    break
+  }
+}
+if failed > 0 {
+  print("error: line ${failed}")
+} else {
+  let grand = 0
+  for name in sort(keys(shifts)) {
+    let s = covered(shifts[name])
+    grand = grand + s
+    print("${name} ${hm(s)}")
+  }
+  print("total ${hm(grand)}")
+}

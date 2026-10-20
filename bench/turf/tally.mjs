@@ -1,18 +1,21 @@
 #!/usr/bin/env node
-// Tally home-turf runs: judge submissions from the log (tags turf-tf<N><a><lang>) and the hidden-suite
-// score of each final solution in bench/scratch/tf<N><a><lang>-<task>.<ext>.
-//   node bench/turf/tally.mjs [--json]
+// Tally home-turf runs: judge submissions from the log (tags turf-<set><N><a><lang>) and the hidden-suite
+// score of each final solution in bench/scratch/<set><N><a><lang>-<task>.<ext>. Set tf = original tasks,
+// fr = fresh held-out tasks (a = f).
+//   node bench/turf/tally.mjs [tf|fr] [--json]
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 const here = dirname(fileURLToPath(import.meta.url)), bench = join(here, '..');
-const log = readFileSync(join(bench, 'log', 'attempts.jsonl'), 'utf8').trim().split('\n').map(l => JSON.parse(l)).filter(e => /^turf-tf\d+[jc](vow|ts|py)$/.test(e.tag ?? ''));
+const set = process.argv.slice(2).find(a => /^(tf|fr)$/.test(a)) ?? 'tf';
+const log = readFileSync(join(bench, 'log', 'attempts.jsonl'), 'utf8').trim().split('\n').map(l => JSON.parse(l)).filter(e => new RegExp(`^turf-${set}\\d+[jcf](vow|ts|py)$`).test(e.tag ?? ''));
 const runs = {};
 for (const f of readdirSync(join(bench, 'scratch'))) {
-  const m = /^tf(\d+)([jc])(vow|ts|py)-([a-z-]+)\.(vow|ts|py)$/.exec(f);
+  const m = new RegExp(`^${set}(\\d+)([jcf])(vow|ts|py)-([a-z-]+)\\.(vow|ts|py)$`).exec(f);
   if (!m) continue;
-  const [, n, a, lang, task] = m, tag = `turf-tf${n}${a}${lang}`;
+  if (!["config-merge","timesheet","word-report"].includes(m[4]) && set === "fr") continue;
+  const [, n, a, lang, task] = m, tag = `turf-${set}${n}${a}${lang}`;
   const subs = log.filter(e => e.tag === tag && e.task === task);
   const r = spawnSync('node', [join(here, 'score.mjs'), task, join(bench, 'scratch', f)], { encoding: 'utf8', timeout: 600000 });
   const s = JSON.parse(r.stdout.trim().split('\n').pop());

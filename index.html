@@ -622,11 +622,25 @@ let m = {"n": "x", "q": 3}  // ✗ one value type per map;
           <thead><tr><th scope="col">language</th><th scope="col">solutions with a silent bug</th><th scope="col">measured</th></tr></thead>
           <tbody>
             <tr><td>Vow</td><td class="best">0 of 12</td><td>Oct 17</td></tr>
-            <tr><td>Python</td><td>3 of 30</td><td>Oct 17</td></tr>
+            <tr><td>Python</td><td>3 of 12</td><td>Oct 19</td></tr>
             <tr><td>TypeScript</td><td>23 of 30</td><td>Oct 17</td></tr>
           </tbody>
         </table></div>
-        <p class="result-note">On its own JSON tasks TypeScript was silently wrong in 10 of 15 solutions, mostly big ids merging into one. Vow's 12 runs are on the current language; the 30 Vow runs before the last fix had 4 silent bugs, all on scores past 2^53. Vow programs were also the longest of the three.</p>
+        <p class="result-note">Python ran 12 times on Oct 19 on the same tasks and prompts. All three of Python's silent bugs came from one agent that did not strip a byte order mark at the start of the CSV file. TypeScript was silently wrong in 10 of 15 solutions on its own JSON tasks, mostly big ids merging into one. Vow programs were also the longest of the three.</p>
+      </div>
+
+      <div class="bench-item">
+        <h3 class="result-h">Fresh tasks</h3>
+        <p class="result-note">Three new tasks were written on Oct 19 after Vow's earlier fixes, so none was tuned for. The tasks are merging two JSON config files into canonical JSON, adding up worked hours from timestamped shifts with time zones, and a word frequency table over Unicode text. Each task has 39 to 43 hidden tests. Claude Haiku ran 4 agents per language for 12 solutions each.</p>
+        <div class="result-wrap"><table class="result">
+          <thead><tr><th scope="col">language</th><th scope="col">solutions with a silent bug</th><th scope="col">measured</th></tr></thead>
+          <tbody>
+            <tr><td>TypeScript</td><td class="best">0 of 12</td><td>Oct 19</td></tr>
+            <tr><td>Python</td><td>2 of 12</td><td>Oct 19</td></tr>
+            <tr><td>Vow</td><td>2 of 12</td><td>Oct 19</td></tr>
+          </tbody>
+        </table></div>
+        <p class="result-note">TypeScript had no silent bugs on these tasks. Python's 2 bugs were logic mistakes. Vow's 2 bugs came from a flaw in Vow itself where printing a decimal number cut it to 10 decimal places. That flaw was fixed the same day so numbers now print exactly up to 15 significant digits. No agent runs were repeated after the fix.</p>
       </div>
 
       <div class="bench-item">

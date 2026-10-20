@@ -12,8 +12,9 @@
 import { TASKS as BASE } from './tasks.js';
 import { JSON_TASKS } from './turf/json.js';
 import { CSV_TASKS } from './turf/csv.js';
+import { FRESH_TASKS } from './turf/fresh.js';
 // home-turf tasks: the agent is judged on the visible checks only; turf/score.mjs runs the hidden ones
-const TASKS = [...BASE, ...JSON_TASKS, ...CSV_TASKS];
+const TASKS = [...BASE, ...JSON_TASKS, ...CSV_TASKS, ...FRESH_TASKS];
 import { judgeFile, logAttempt, reportFails, langOf, firstError } from './judge.js';
 import { mkdirSync, copyFileSync, cpSync } from 'node:fs';
 import { isDir } from './judge.js';

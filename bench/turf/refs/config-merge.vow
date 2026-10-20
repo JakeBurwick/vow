@@ -1,0 +1,53 @@
+// Deep-merge arg 2 into arg 1 (null deletes), print compact JSON with sorted keys.
+fn merge(b, o) {
+  let out = b
+  for k in jsonKeys(o) {
+    let v = field(o, k)
+    if jsonType(v) == "null" {
+      out = jsonDelete(out, k)
+    } else if jsonType(v) == "object" {
+      let bv = field(out, k)
+      let start = if jsonType(bv) == "object" { bv } else { emptyObj() }
+      out = jsonSet(out, k, merge(start, v))
+    } else {
+      out = jsonSet(out, k, v)
+    }
+  }
+  return out
+}
+
+fn emptyObj() {
+  return match parseJson("{}") { ok(j) => j err(e) => field(json(0), "x") }
+}
+
+fn dump(v) {
+  let t = jsonType(v)
+  if t == "object" {
+    return "{" + join(map(sort(jsonKeys(v)), k => toJson(k) + ":" + dump(field(v, k))), ",") + "}"
+  }
+  if t == "array" {
+    return "[" + join(map(jsonList(v), x => dump(x)), ",") + "]"
+  }
+  if t == "string" { return toJson(v) }
+  if t == "number" {
+    return toJson(v)
+  }
+  return str(v)
+}
+
+let a = args()
+match parseJson(a[0]) {
+  ok(base) => {
+    match parseJson(a[1]) {
+      ok(over) => {
+        if jsonType(base) != "object" or jsonType(over) != "object" {
+          print("error: not an object")
+        } else {
+          print(dump(merge(base, over)))
+        }
+      }
+      err(e) => print("error: bad json")
+    }
+  }
+  err(e) => print("error: bad json")
+}

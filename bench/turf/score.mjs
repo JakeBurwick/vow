@@ -3,10 +3,11 @@
 //   node bench/turf/score.mjs <task> <file> [-v]
 import { JSON_TASKS } from './json.js';
 import { CSV_TASKS } from './csv.js';
+import { FRESH_TASKS } from './fresh.js';
 import { judgeFile } from '../judge.js';
 
 const [id, file, flag] = process.argv.slice(2);
-const task = [...JSON_TASKS, ...CSV_TASKS].find((t) => t.id === id);
+const task = [...JSON_TASKS, ...CSV_TASKS, ...FRESH_TASKS].find((t) => t.id === id);
 if (!task || !file) { console.error('usage: score.mjs <task> <file> [-v]'); process.exit(2); }
 const fails = await judgeFile({ ...task, checks: task.hidden }, file);
 // stdin checks have no args to match on, so re-run them one at a time to label each failure
