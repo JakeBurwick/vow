@@ -331,6 +331,7 @@ try {
     }
   }
 } catch (e) {
+  if (e?.vowExit) { if (e.exitMessage) errLine(e.exitMessage); process.exit(e.exitCode); }
   if (e instanceof VowError) {
     errLine(formatDiag(src, e.diag));
     process.exit(1);

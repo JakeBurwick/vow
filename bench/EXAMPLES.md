@@ -144,8 +144,7 @@ Task: The first CLI arg is a semicolon-separated list of commands. Command forms
 ```
 // bank-ledger: process semicolon-separated banking commands from the first CLI arg
 
-let argv = args()
-let input = match get(argv, 0) { ok(s) => s err(e) => "" }
+let input = get(args(), 0)?   // top-level ?: no arg stops the program with "error: ..." and exit code 1
 
 let accounts = {}        // empty map: its value type is pinned by the first insert below
 let failed = false
@@ -153,10 +152,9 @@ let failed = false
 for c in split(input, ";") {
   if not failed and c != "" {
     let parts = split(c, " ")
-    let op = match get(parts, 0) { ok(s) => s err(e) => "" }
-    let name = match get(parts, 1) { ok(s) => s err(e) => "" }
-    let amtStr = match get(parts, 2) { ok(s) => s err(e) => "0" }
-    let amt = match num(amtStr) { ok(n) => n err(e) => 0 }
+    let op = get(parts, 0)?
+    let name = get(parts, 1)?
+    let amt = if op == "balance" { 0 } else { num(get(parts, 2)?)? }
 
     if op == "open" {
       if has(accounts, name) {

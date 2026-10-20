@@ -15,7 +15,8 @@ export async function runTests(tests, { src, filter, onResult } = {}) {
     let r;
     try { await t.run(); r = { name: t.name, ok: true }; }
     catch (e) {
-      if (e instanceof VowError) r = { name: t.name, ok: false, message: formatDiag(src, e.diag) };
+      if (e?.vowExit) r = e.exitCode === 0 ? { name: t.name, ok: true } : { name: t.name, ok: false, message: `✗ the test called exit(${e.exitCode})` };
+      else if (e instanceof VowError) r = { name: t.name, ok: false, message: formatDiag(src, e.diag) };
       else if (e instanceof RangeError && /call stack/i.test(e.message)) r = { name: t.name, ok: false, message: STACK };
       else throw e;
     }

@@ -47,6 +47,7 @@ async function runCheckVow(src, chk) {
     while (!r.done) r = (r.value && r.value.await) ? gen.next(await r.value.await) : gen.next();
     return { got: lines.join('\n') };
   } catch (e) {
+    if (e?.vowExit) return e.exitCode === 0 ? { got: lines.join('\n') } : { got: lines.join('\n'), diag: e.exitMessage ?? `exit code ${e.exitCode}` };
     if (e instanceof VowError) return { got: lines.join('\n'), diag: formatDiag(src, e.diag) };
     throw e;
   }

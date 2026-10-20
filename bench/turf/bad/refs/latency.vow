@@ -1,0 +1,43 @@
+// Latency report: per-path count/mean/max, p95 (nearest rank), 5xx count. Fails loudly on any line it cannot read.
+fn report(text) {
+  let durs = {}
+  let all = []
+  let errors = 0
+  let n = 0
+  for line in split(text, "\n") {
+    n = n + 1
+    if line == "" { continue }
+    let f = split(line, " ")
+    if len(f) != 5 { return err("line ${n}: expected 5 fields, got ${len(f)}") }
+    let path = f[2]
+    if not startsWith(path, "/") { return err("line ${n}: bad path ${path}") }
+    if not matches(f[3], `^[0-9]{3}$`) { return err("line ${n}: bad status ${f[3]}") }
+    let status = int(f[3])?
+    let m = match find(f[4], `^([0-9]+)ms$`) { ok(m) => m err(e) => { return err("line ${n}: bad duration ${f[4]}") } }
+    let ms = int(m[1])?
+    let prev = match get(durs, path) { ok(l) => l err(e) => [] }
+    push(prev, ms)
+    durs[path] = prev
+    push(all, ms)
+    if status >= 500 { errors = errors + 1 }
+  }
+  if len(all) == 0 { return err("no requests, p95 is undefined") }
+  let out = []
+  for p in sort(keys(durs)) {
+    let d = durs[p]
+    let c = len(d)
+    let t = floor((20 * sum(d) + c) / (2 * c))
+    let mx = fold(d, 0, (a, x) => max(a, x))
+    push(out, "${p} ${c} ${floor(t / 10)}.${t % 10} ${mx}")
+  }
+  let sorted = sort(all)
+  push(out, "p95 ${sorted[floor((95 * len(all) + 99) / 100) - 1]}")
+  push(out, "errors ${errors}")
+  return ok(out)
+}
+
+let input = match readAll() { ok(t) => t err(e) => "" }
+match report(input) {
+  ok(out) => { for l in out { print(l) } }
+  err(e) => print("error: ${e}")
+}

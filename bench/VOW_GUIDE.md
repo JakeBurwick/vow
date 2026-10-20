@@ -82,18 +82,18 @@ let label = match jsonType(v) {
 ```
 - A `Result` can never be ignored — unused Results are compile errors.
 - `match` must handle **both** arms.
-- `match` works as an expression: `let v = match num(s) { ok(n) => n err(e) => 0 }`. An arm can also be a block — its **last line must be a bare expression**, and that is the arm's value:
+- `match` works as an expression: `let kind = match num(s) { ok(n) => "number" err(e) => "text" }`. An arm can also be a block — its **last line must be a bare expression**, and that is the arm's value:
 ```
 let v = match num(s) {
   ok(n) => {
     let d = n * 2
-    d
+    "double is ${d}"
   }
-  err(e) => 0 - 1
+  err(e) => "not a number: ${e}"
 }
 ```
 In a statement match (value unused) an arm that only prints needs no value: `err(e) => print("bad: " + e)`. In a value-producing match every arm ends in a value; an arm that also prints puts the value on its own last line: `err(e) => { print(e)` newline `0 }`. Arms may `return`, `break` or `continue` in a statement match (`err(e) => continue`); inside a fn a value-producing arm or if/else branch may `return` from the function (`err(e) => { return -1 }`, which then needs no value), but `break`/`continue` can't escape a value-producing arm. `if/else` is a value too: `let size = if x > 5 { "big" } else { "small" }` (else required; each branch's last line is its value; `else if` chains work).
-- `?` unwraps ok or propagates the err to the caller — **only inside a function** (whose returns are `ok(...)`/`err(...)`), never at top level:
+- `?` unwraps ok. On err: inside a fn it returns that err to the caller (the fn's returns must be `ok(...)`/`err(...)`); at top level it stops the program, printing `error: <e>` to stderr with exit code 1. `let n = num(args()[0])?` at top level is the shortest way to get a value. Not allowed in test blocks. Inside a fn:
 ```
 fn area(w, h) {
   let a = num(w)?
@@ -229,9 +229,19 @@ match readLine() {
   ok(line) => print("hi ${trim(line)}")     // \r\n handled; works with a terminal and with `echo x | vow prog.vow`
   err(e) => print("no input: ${e}")         // "end of input" at EOF (Ctrl+D, or the pipe is drained)
 }
-let rest = match readAll() { ok(t) => t  err(e) => "" }   // everything left on stdin; ok("") when it is empty
+let rest = readAll()?   // everything left on stdin; ok("") when it is empty
 ```
-Loop `while true { match readLine() { err(e) => break  ok(line) => ... } }` to process input line by line. In the browser playground both return an err.
+To process piped input line by line, read it all and loop over its lines (top-level `?` works inside the loop):
+```
+for line in lines(readAll()?) {
+  if trim(line) == "" { continue }
+  let qty = num(trim(line))?
+  print(qty * 2)
+}
+```
+For interactive input, loop `while true { match readLine() { err(e) => break  ok(line) => ... } }`. In the browser playground both return an err.
+
+`exit(code)` ends the program at once with that exit code (a whole number 0-255): `exit(0)` for success, `exit(1)` for failure. Output printed before it is kept. It fits wherever a value is expected, e.g. as the last line of a match arm block. Inside a test's `run(...)` it ends only that run.
 
 `httpRequest(method, url, headers, body)` → `Result<HttpResponse, str>`, `HttpResponse { status, headers, body }`: `status` a num, `headers` a map<str, str> with lower-case names, `body` a str. Any status is an `ok` (check `r.status` yourself); only not getting a response (DNS, refused, 15 s timeout) is an err. Pass `{}` for no headers and `""` for no body (ignored for GET/HEAD). `httpGet(url)` is the short form: ok(body) for 2xx, otherwise err("GET url failed: HTTP 404 ...") with the start of the response body.
 ```
@@ -317,7 +327,6 @@ Responses: `html(body)`, `text(body)`, `respond(status, contentType, body)`, `re
 
 ## Common mistakes
 - Putting different value types in one map (`{"name": "x", "qty": 3}`): a map holds ONE value type. Use a struct for records.
-- Using `?` at top level (only valid inside a fn) — use `match` instead.
 - `return` inside a value-producing match arm block to give the ARM its value: the block's last line is the arm's value. A `return` there returns from the whole fn (useful for `err(e) => { return err(...) }`).
 - Using `if` as a value without an `else` (there would be no value when the condition is false).
 - Forgetting an `err` arm, or ignoring a Result entirely.

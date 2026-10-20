@@ -234,6 +234,7 @@ function doRun() {
     setStatus(`✓ finished in ${ms} ms, ${state.steps.toLocaleString()} steps${provedNote}`, 'ok');
     if (shownLines === 0) appendLine('(program produced no output)');
   } catch (e) {
+    if (e?.vowExit) { if (e.exitMessage) appendError(e.exitMessage); setStatus(`${e.exitCode === 0 ? '✓' : '✗'} exited with code ${e.exitCode}`, e.exitCode === 0 ? 'ok' : 'bad'); return; }
     if (!(e instanceof VowError)) throw e;
     appendError(formatDiag(c.src, e.diag), e.diag);
     setStatus(`✗ ${e.diag.kind} at line ${e.diag.line}`, 'bad');

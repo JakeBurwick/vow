@@ -8,6 +8,17 @@ export class VowError extends Error {
   }
 }
 
+// exit(code): ends the program at once. Not an error; every runner reads .exitCode.
+export class VowExit extends Error {
+  // message: set when a top-level `?` hit an err; runners print it to stderr (it is not program output)
+  constructor(code, message) {
+    super(message ?? `exit(${code})`);
+    this.vowExit = true;
+    this.exitCode = code;
+    this.exitMessage = message;
+  }
+}
+
 function offsetToLineCol(src, offset) {
   let line = 1, lineStart = 0;
   for (let i = 0; i < offset && i < src.length; i++) {

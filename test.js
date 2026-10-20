@@ -85,7 +85,8 @@ const extra = [
 match area("8", "4") { ok(v) => print(v) err(e) => print("E " + e) }
 match area("8", "x") { ok(v) => print(v) err(e) => print("E " + e) }
 `, true],
-  ['? at top level rejected', 'let x = num("4")?\nprint(x)\n', false],
+  ['? at top level unwraps ok', 'let x = num("4")?\nprint(x)\n', true],
+  ['? in a test block rejected', 'test "t" { let x = num("4")?\n expect(x == 4) }\n', false],
   ['? on non-Result rejected', 'fn f() {\n  let x = 5?\n  return ok(x)\n}\nprint("no")\n', false],
   ['? then bare return rejected', 'fn f(s) {\n  let n = num(s)?\n  return n\n}\nprint("no")\n', false],
   ['new builtins', 'print(sort([3,1,2]))\nprint(sort(["b","a"]))\nprint(reverse([1,2,3]))\nprint(contains("hello", "ell"))\nprint(contains([1,2,3], 4))\nprint(slice([1,2,3,4], 1, 3))\nprint(slice("playground", 0, 4))\nprint(upper(trim("  hi ")))\nprint(lower("LOUD"))\nprint(sum([1,2,3,4]))\n', true],
@@ -1088,6 +1089,8 @@ for (const [dir, needles] of moduleDiagTests) {
   const temp = exampleFromMd('temperature-converter');
   const tempF = prog('temp', temp.program);
   const noTests = prog('notests', 'print(1)\n');
+  const topF = prog('toptry', 'print("start")\nlet n = num(args()[0])?\nprint("double ${n * 2}")\ntest "bad" { expectEq(run(["x"], ""), "start\\nerror: \\"x\\" is not a number\\n") }\ntest "ok" { expectEq(run(["2"], ""), "start\\ndouble 4\\n") }\n');
+  const exitF = prog('exit', 'fn parseQty(s) {\n  return match num(s) {\n    ok(n) => n\n    err(m) => {\n      print("error: bad qty ${s}")\n      exit(1)\n    }\n  }\n}\nlet q = parseQty(args()[0])\nprint("qty ${q}")\nif q > 100 { exit(0) }\nprint("small")\ntest "bad qty" { expectEq(run(["12a"], ""), "error: bad qty 12a\\n") }\ntest "big" { expectEq(run(["500"], ""), "qty 500\\n") }\n');
   const modMain = join(here, 'compile-test', 'modules', 'tests', 'main.vow');
   const modGeo = join(here, 'compile-test', 'modules', 'tests', 'geo.vow');
   checks.push(
@@ -1105,6 +1108,17 @@ for (const [dir, needles] of moduleDiagTests) {
     ['EXAMPLES.md temperature-converter: vow test prints its stated report (compiled)', cli(['test', tempF]), r => r.status === 0 && r.stderr === '' && r.stdout === temp.report],
     ['EXAMPLES.md temperature-converter on --interp', cli(['--interp', 'test', tempF]), r => r.status === 0 && r.stdout === temp.report],
     ['EXAMPLES.md temperature-converter: the stated normal run', cli([tempF, '100C', '50F', 'abcC', '7']), r => r.status === 0 && r.stdout === '100C = 212F\n50F = 10C\nerror: not a number: abcC\nerror: unknown unit: 7\n'],
+    ['exit(1) stops the program with that exit code, output kept (compiled)', cli([exitF, '12a']), r => r.status === 1 && r.stdout === 'error: bad qty 12a\n'],
+    ['exit(1) on --interp', cli(['--interp', exitF, '12a']), r => r.status === 1 && r.stdout === 'error: bad qty 12a\n'],
+    ['exit(0) ends early with status 0', cli([exitF, '500']), r => r.status === 0 && r.stdout === 'qty 500\n'],
+    ['no exit: normal end, status 0', cli([exitF, '5']), r => r.status === 0 && r.stdout === 'qty 5\nsmall\n'],
+    ['exit inside run(...) ends only that run', cli(['test', exitF]), r => r.status === 0 && r.stdout === '✓ bad qty\n✓ big\n2 tests, 2 passed\n'],
+    ['top-level ? on err: error on stderr, exit 1, output before it kept (compiled)', cli([topF, '12a']), r => r.status === 1 && r.stdout === 'start\n' && r.stderr === 'error: "12a" is not a number\n'],
+    ['top-level ? on err on --interp', cli(['--interp', topF, '12a']), r => r.status === 1 && r.stdout === 'start\n' && r.stderr === 'error: "12a" is not a number\n'],
+    ['top-level ? on ok continues', cli([topF, '21']), r => r.status === 0 && r.stdout === 'start\ndouble 42\n'],
+    ['top-level ? inside run(...): the error line joins the output', cli(['test', topF]), r => r.status === 0 && r.stdout.includes('2 tests, 2 passed')],
+    ['exit(300) traps', cli([prog('exitbad', 'exit(300)\n')]), r => r.status === 1 && r.stderr.includes('whole number from 0 to 255')],
+    ['exit("x") is a type error', cli(['--check', prog('exitstr', 'exit("x")\n')]), r => r.status === 1 && r.stderr.includes('exit() takes a num')],
     ['EXAMPLES.md temperature-converter: stdin mode', cli([tempF], '10C\n\nbadF\n'), r => r.status === 0 && r.stdout === '10C = 50F\nerror: not a number: badF\n2 converted\n'],
   );
   for (const [name, r, ok] of checks) {

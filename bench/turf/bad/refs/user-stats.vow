@@ -1,0 +1,74 @@
+// User stats: per-plan count and mean age, oldest user, signups per month. Fails loudly on any record it cannot read.
+struct User { id, name, age, plan, month }
+
+fn need(u, k, i) {
+  let v = field(u, k)
+  if isNull(v) { return err("user ${i}: missing ${k}") }
+  return ok(v)
+}
+
+fn readUser(u, i) {
+  if jsonType(u) != "object" { return err("user ${i}: expected an object") }
+  let idj = need(u, "id", i)?
+  let namej = need(u, "name", i)?
+  let agej = need(u, "age", i)?
+  let planj = need(u, "plan", i)?
+  let signj = need(u, "signup", i)?
+  let id = str(idj)
+  if jsonType(idj) != "number" or not matches(id, `^-?[0-9]+$`) { return err("user ${i}: bad id") }
+  let age = match jsonNum(agej) { ok(a) => a err(e) => { return err("user ${i}: bad age ${agej}") } }
+  if not isInt(age) or age < 0 { return err("user ${i}: bad age ${agej}") }
+  let name = match jsonStr(namej) { ok(s) => s err(e) => { return err("user ${i}: name must be a string") } }
+  let plan = match jsonStr(planj) { ok(s) => s err(e) => { return err("user ${i}: plan must be a string") } }
+  let s = match jsonStr(signj) { ok(s) => s err(e) => { return err("user ${i}: bad signup") } }
+  if not matches(s, `^[0-9]{4}-[0-9]{2}-[0-9]{2}$`) { return err("user ${i}: bad signup ${s}") }
+  match parseDate(s) {
+    ok(d) => {}
+    err(e) => { return err("user ${i}: invalid signup date ${s}") }
+  }
+  return ok(User { id: id, name: name, age: age, plan: plan, month: slice(s, 0, 7) })
+}
+
+fn stats(text) {
+  let data = match parseJson(text) { ok(j) => j err(e) => { return err("invalid JSON: ${e}") } }
+  if jsonType(data) != "array" { return err("expected a JSON array") }
+  let items = jsonList(data)
+  if len(items) == 0 { return err("no users, there is no oldest user") }
+  let users = []
+  let i = 0
+  for u in items {
+    i = i + 1
+    push(users, readUser(u, i)?)
+  }
+  let counts = {}
+  let ages = {}
+  let months = {}
+  for u in users {
+    counts[u.plan] = match get(counts, u.plan) { ok(c) => c + 1 err(e) => 1 }
+    ages[u.plan] = match get(ages, u.plan) { ok(a) => a + u.age err(e) => u.age }
+    months[u.month] = match get(months, u.month) { ok(c) => c + 1 err(e) => 1 }
+  }
+  let out = []
+  for p in sort(keys(counts)) {
+    let c = counts[p]
+    let t = floor((20 * ages[p] + c) / (2 * c))
+    push(out, "${p} ${c} ${floor(t / 10)}.${t % 10}")
+  }
+  let best = users[0]
+  for u in users {
+    if u.age > best.age or (u.age == best.age and cmpNum(u.id, best.id) < 0) { best = u }
+  }
+  push(out, "oldest ${best.id} ${best.name}")
+  for m in sort(keys(months)) { push(out, "${m} ${months[m]}") }
+  return ok(out)
+}
+
+let a = args()
+if len(a) < 1 {
+  print("error: missing argument")
+} else {
+  match stats(a[0]) {
+    ok(out) => { for l in out { print(l) } }
+    err(e) => print("error: ${e}")
+  }
+}

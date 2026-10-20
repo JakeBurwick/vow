@@ -210,7 +210,7 @@ export const BUILTIN_NAMES = ['print', 'str', 'num', 'len', 'range', 'push', 'po
   'replace', 'startsWith', 'endsWith', 'indexOf', 'repeat', 'padLeft', 'padRight', 'lines',
   'matches', 'find', 'findAll', 'replaceAll', 'splitOn', 'words', 'sig', 'isInt', 'int',
   'map', 'filter', 'any', 'all', 'count', 'fold', 'uniq', 'values', 'remove', 'cmpNum', 'sortWith',
-  'readFile', 'writeFile', 'httpGet', 'httpRequest', 'readLine', 'readAll', 'args', 'env', 'serve', 'html', 'text', 'respond', 'redirect', 'param', 'escape', 'checkLogin', 'askLogin', 'now',
+  'readFile', 'writeFile', 'httpGet', 'httpRequest', 'readLine', 'readAll', 'args', 'env', 'serve', 'html', 'text', 'respond', 'redirect', 'param', 'escape', 'checkLogin', 'askLogin', 'now', 'exit',
   'urlEncode', 'urlDecode', 'ord', 'chr', 'chars', 'casefold', 'normalize', 'parseCsv',
   'parseJson', 'toJson', 'prettyJson', 'json', 'jsonSet', 'jsonDelete', 'jsonMerge', 'jsonNum', 'jsonStr', 'jsonBool', 'jsonList', 'jsonKeys', 'jsonType', 'field', 'at', 'isNull', 'truthy',
   'sqrt', 'pow', 'exp', 'ln', 'log', 'sin', 'cos', 'tan', 'atan2', 'ceil', 'trunc', 'pi', 'random', 'randomInt',
@@ -958,12 +958,15 @@ export function check(src, ast) {
               ? `${e.operand.callee}() returns a plain list ([] when the value is the wrong kind), so drop the ?: ${snippet(e.operand)}`
               : 'remove the ?, or apply it to something that returns a Result (like num(...) or get(...)).');
         }
+        if (!currentFn && inTest) {
+          diag(e, `'?' doesn't work in a test block`,
+            `When the value is err(e), '?' makes the surrounding function return that err; in a test block there's nothing to return from.`,
+            `compare the whole Result: expectEq(${snippet(e.operand)}, ok(...)) or expectErr(${snippet(e.operand)}); or handle it with match:\n  match ${snippet(e.operand)} { ok(v) => ...  err(e) => ... }`);
+        }
         if (!currentFn) {
-          diag(e, `'?' only works inside a function`,
-            `When the value is err(e), '?' makes the surrounding function return that err; ${inTest ? 'in a test block' : 'at the top level'} there's nothing to return from.`,
-            inTest
-              ? `compare the whole Result: expectEq(${snippet(e.operand)}, ok(...)) or expectErr(${snippet(e.operand)}); or handle it with match:\n  match ${snippet(e.operand)} { ok(v) => ...  err(e) => ... }`
-              : `handle the Result with match instead:\n  match ${snippet(e.operand)} { ok(v) => ...  err(e) => ... }`);
+          // top level: an err stops the program with "error: <e>" on stderr and exit code 1
+          e.topLevel = true;
+          return okT;
         }
         const info = currentFn.info;
         if (!unify(info.retType, resultT(tvar(), errT))) {
@@ -1974,6 +1977,12 @@ export function check(src, ast) {
         return RESPONSE;
       }
       case 'now': { arity(e, 0, 'now()'); return NUM; }
+      case 'exit': {
+        arity(e, 1, 'exit(code)');
+        const [t] = args();
+        if (!unify(t, NUM)) diag(e.args[0], `exit() takes a num (the exit code), but this is a ${tn(t)}`, '', 'exit(1)');
+        return tvar(); // never returns, so it fits wherever a value is expected
+      }
       // ---- math (domain errors trap at runtime, like division by zero) ----
       case 'sqrt': case 'exp': case 'ln': case 'log': case 'sin': case 'cos': case 'tan': case 'ceil': case 'trunc': {
         const usage = `${e.callee}(x)`;

@@ -1,0 +1,56 @@
+// Temperature readings: min, max and mean per station, coldest reading. Fails loudly on any line it cannot read.
+struct Reading { station, date, t }
+
+fn deg(t) {
+  let a = abs(t)
+  let sign = if t < 0 { "-" } else { "" }
+  return "${sign}${floor(a / 10)}.${a % 10}"
+}
+
+fn report(text) {
+  let rs = []
+  let n = 0
+  for line in split(text, "\n") {
+    n = n + 1
+    if line == "" { continue }
+    let f = split(line, " ")
+    if len(f) != 4 { return err("line ${n}: expected 4 fields, got ${len(f)}") }
+    if f[0] == "" { return err("line ${n}: missing station") }
+    if not matches(f[1], `^[0-9]{4}-[0-9]{2}-[0-9]{2}$`) { return err("line ${n}: bad date ${f[1]}") }
+    match parseDate(f[1]) {
+      ok(d) => {}
+      err(e) => { return err("line ${n}: invalid date ${f[1]}") }
+    }
+    if not matches(f[2], `^([01][0-9]|2[0-3]):[0-5][0-9]$`) { return err("line ${n}: bad time ${f[2]}") }
+    let m = match find(f[3], `^(-?)([0-9]+)(?:\.([0-9]))?$`) { ok(m) => m err(e) => { return err("line ${n}: bad temp ${f[3]}") } }
+    let t = int(m[2])? * 10
+    if m[3] != "" { t = t + int(m[3])? }
+    if m[1] == "-" { t = 0 - t }
+    push(rs, Reading { station: f[0], date: f[1], t: t })
+  }
+  if len(rs) == 0 { return err("no readings, there is no coldest reading") }
+  let lo = {}
+  let hi = {}
+  let sum = {}
+  let cnt = {}
+  for r in rs {
+    lo[r.station] = match get(lo, r.station) { ok(v) => min(v, r.t) err(e) => r.t }
+    hi[r.station] = match get(hi, r.station) { ok(v) => max(v, r.t) err(e) => r.t }
+    sum[r.station] = match get(sum, r.station) { ok(v) => v err(e) => 0 } + r.t
+    cnt[r.station] = match get(cnt, r.station) { ok(v) => v err(e) => 0 } + 1
+  }
+  let out = []
+  for s in sort(keys(cnt)) {
+    let k = cnt[s]
+    push(out, "${s} ${deg(lo[s])} ${deg(hi[s])} ${deg(floor((2 * sum[s] + k) / (2 * k)))}")
+  }
+  let c = sortBy(sortBy(sortBy(rs, r => r.station), r => r.date), r => r.t)[0]
+  push(out, "coldest ${c.station} ${c.date}")
+  return ok(out)
+}
+
+let input = match readAll() { ok(t) => t err(e) => "" }
+match report(input) {
+  ok(out) => { for l in out { print(l) } }
+  err(e) => print("error: ${e}")
+}

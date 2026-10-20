@@ -657,6 +657,20 @@ let m = {"n": "x", "q": 3}  // ✗ one value type per map;
       </div>
 
       <div class="bench-item">
+        <h3 class="result-h">Unmentioned bad data</h3>
+        <p class="result-note">This benchmark measures whether agent programs report errors or output wrong answers when input contains unmentioned bad data. On Oct 20, 2026, Claude Haiku ran 4 agents per language across 3 rounds of 3 new tasks using CSV, JSON, and text logs. Tasks had 9 valid input tests and 10 to 12 bad data tests. Solutions passed all valid tests in rounds 2 and 3. Round 1 valid test passes were 108 of 108 for Vow and Python, and 104 for TypeScript.</p>
+        <div class="result-wrap"><table class="result">
+          <thead><tr><th scope="col">language</th><th scope="col">round 1</th><th scope="col">round 2</th><th scope="col">round 3</th></tr></thead>
+          <tbody>
+            <tr><td>Python</td><td class="best">81%</td><td class="best">74%</td><td class="best">71%</td></tr>
+            <tr><td>Vow</td><td>8%</td><td>52%</td><td>56%</td></tr>
+            <tr><td>TypeScript</td><td>29%</td><td>23%</td><td>55%</td></tr>
+          </tbody>
+        </table></div>
+        <p class="result-note">Percent of bad data cases each language's programs flagged, measured Oct 20. Python led every round because unhandled exceptions stop Python programs by default. In round 1, Vow agents handled mandatory errors by substituting default values from guide examples, turning bad input into clean reports. An exit builtin was added before round 1. After round 1, top level ? operators stopped programs on bad values, and guide examples stopped using defaults. After round 2, the guide added line loops for piped input so ? reaches each row. Vow flagged 52 percent in round 2 and 56 percent in round 3. Each round used new tasks. Vow moved from last to roughly level with TypeScript.</p>
+      </div>
+
+      <div class="bench-item">
         <h3 class="result-h">Speed: recursive fib(32)</h3>
         <p class="result-note">Measured Oct 7, 2026.</p>
         <div class="result-wrap"><table class="result">

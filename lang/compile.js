@@ -304,7 +304,7 @@ function PRELUDE() {
     Object.assign($B, testIO(argv, stdin, lines));
     $D = 0; $ln = 1; $S = 0;
     try { await $main(); }
-    catch (e) { throw runTrap(e, node, $src); }
+    catch (e) { if (!e?.vowExit) throw runTrap(e, node, $src); if (e.exitMessage) lines.push(e.exitMessage); } // exit() inside run() just ends that run
     finally { Object.assign($B, saved); $D = d0; $ln = l0; $S = s0; }
     return runOutput(lines);
   }
@@ -519,7 +519,7 @@ export function compile(src, ast, opts = {}) {
       case 'Try': {
         const x = cExpr(e.operand, scope, out, fx);
         const T = tmp();
-        out.push(`const ${T} = ${x};`, `if (${T}.tag !== "ok") return ${ret(fx, T)};`);
+        out.push(`const ${T} = ${x};`, e.topLevel ? `if (${T}.tag !== "ok") topErr(${T});` : `if (${T}.tag !== "ok") return ${ret(fx, T)};`);
         return `${T}.val`;
       }
       case 'StructLit': {
@@ -814,7 +814,7 @@ export function compile(src, ast, opts = {}) {
 
   const code = [
     '"use strict";',
-    'const { $B, JNum: $JNum, display, deepEq, isJson, okeys, compareText, compareKeys, UNIT: $U, VowError, nodeLoc, src: $src, testIO, runOutput, runTrap } = $rt;',
+    'const { $B, JNum: $JNum, display, deepEq, isJson, okeys, compareText, compareKeys, UNIT: $U, VowError, nodeLoc, src: $src, testIO, runOutput, runTrap, topErr } = $rt;',
     `const $MAXS = ${MAXS}, $MAXD = ${MAXD};`,
     'let $D = 0, $S = 0, $ln = 1;',
     "const $L = [0], $N = ['(top level)'], $F = [];",

@@ -1,0 +1,54 @@
+// Inventory restock: skus at or below their reorder point, restock qty and cost. Fails loudly on any row it cannot read.
+struct Item { sku, qty, cost }
+
+fn cents(p) {
+  let m = find(p, `^([0-9]+)(?:\.([0-9]{1,2}))?$`)?
+  let whole = int(m[1])?
+  let frac = 0
+  if m[2] != "" { frac = int(padRight(m[2], 2, "0"))? }
+  return ok(whole * 100 + frac)
+}
+
+fn money(c) { return "${floor(c / 100)}.${padLeft(str(c % 100), 2, "0")}" }
+
+fn report(text) {
+  let ls = split(text, "\n")
+  if len(ls) > 0 and ls[len(ls) - 1] == "" { ls = slice(ls, 0, len(ls) - 1) }
+  if len(ls) == 0 { return err("empty input, no header") }
+  if ls[0] != "sku,name,on_hand,reorder_at,unit_cost" { return err("bad header: ${ls[0]}") }
+  let items = []
+  let n = 1
+  for line in slice(ls, 1, len(ls)) {
+    n = n + 1
+    let f = split(line, ",")
+    if len(f) != 5 { return err("line ${n}: expected 5 fields, got ${len(f)}") }
+    if f[0] == "" { return err("line ${n}: missing sku") }
+    if not matches(f[2], `^[0-9]+$`) { return err("line ${n}: bad on_hand ${f[2]}") }
+    if not matches(f[3], `^[0-9]+$`) { return err("line ${n}: bad reorder_at ${f[3]}") }
+    let oh = int(f[2])?
+    let ra = int(f[3])?
+    let c = match cents(f[4]) {
+      ok(v) => v
+      err(e) => { return err("line ${n}: bad unit_cost ${f[4]}") }
+    }
+    if oh <= ra {
+      let qty = 2 * ra - oh
+      push(items, Item { sku: f[0], qty: qty, cost: qty * c })
+    }
+  }
+  let out = []
+  let total = 0
+  for it in sortBy(items, it => it.sku) {
+    push(out, "${it.sku} ${it.qty} ${money(it.cost)}")
+    total = total + it.cost
+  }
+  push(out, "total ${money(total)}")
+  push(out, "items ${len(items)}")
+  return ok(out)
+}
+
+let input = match readAll() { ok(t) => t err(e) => "" }
+match report(input) {
+  ok(out) => { for l in out { print(l) } }
+  err(e) => print("error: ${e}")
+}

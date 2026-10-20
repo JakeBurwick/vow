@@ -43,7 +43,8 @@ try {
     parentPort.postMessage({ ok: true, output: out.join('\n'), truncated: out.length >= MAX_OUT });
   }
 } catch (e) {
-  if (e instanceof VowError) parentPort.postMessage({ ok: false, output: out.join('\n'), error: formatDiag(src, e.diag) });
+  if (e?.vowExit) parentPort.postMessage(e.exitCode === 0 ? { ok: true, output: out.join('\n') } : { ok: false, output: out.join('\n'), error: e.exitMessage ?? `exited with code ${e.exitCode}` });
+  else if (e instanceof VowError) parentPort.postMessage({ ok: false, output: out.join('\n'), error: formatDiag(src, e.diag) });
   else if (e instanceof RangeError) parentPort.postMessage({ ok: false, output: out.join('\n'), error: '✗ RuntimeError: ran out of stack space\n  Likely fix: turn the deepest recursion into a loop.' });
   else parentPort.postMessage({ ok: false, output: out.join('\n'), error: `internal error: ${e.message}` });
 }

@@ -289,3 +289,43 @@ Confirming round after closing that gap (`cmpNum` for exact order of numbers wri
 No edge for Vow here: TypeScript was perfect on all three, Python's misses were logic slips, and Vow's were a flaw in Vow. Program size: Vow 973 lines (plus 141 of test blocks), TypeScript 1,445, Python 839.
 
 **Fix.** A non-whole num used to print rounded to 10 decimals. It now prints exactly (shortest round-trip form) up to 15 significant digits, and only past that is the float noise rounded off, so `0.1 + 0.2` still prints `0.3` but `0.123456789012` and `1.50000000000001` print as written. `2 / 3` now prints `0.666666666666667` (was `0.6666666667`). Three old calc-vars corpus programs that relied on the old default instead of rounding to the 10 significant digits their spec asks for now fail; every other corpus program is unchanged. The guide also now documents `json({})` as the empty JSON object (two agents had built one by hand). Re-scored on the fixed language, 11 of 12 Vow solutions are fully correct; the last one converts `0.30000000000000004` to a num, past what a num prints exactly (`str(j)` on the JSON value stays exact). No agent rounds were re-run after the fix.
+
+## Bad data nobody mentioned (2026-10-20)
+
+Question: when a ticket describes only the happy path, does the agent's program say something is wrong on bad data, or print a normal-looking answer? Three tickets (sales-report CSV, user-stats JSON, latency logs) that never mention errors or validation; hidden suites with 9 happy checks and 10-11 bad-data traps each, where no normal output is correct (bench/turf/bad/, README there). Claude Haiku 4.5, 4 agents per language, each solving all three (12 solutions per language). Every solution passed the visible checks on its first submission. `exit(code)` was added to Vow before the runs, with a neutral guide line.
+
+| | happy checks | bad-data traps flagged (loud) | silent |
+|---|---|---|---|
+| Python | 108/108 | 100/124 (81%) | 24 |
+| TypeScript | 104/108 | 36/124 (29%) | 88 |
+| Vow | 108/108 | 10/124 (8%) | 114 |
+
+**Vow lost badly.** Cause: Vow forces every Result to be handled, and the agents handled them with a default (`err(e) => 0`, `err(e) => ""`), which turns `12a`, `N/A` or a missing field into 0 and prints a clean report. The guide's own first `match` example is `match num(s) { ok(n) => n err(e) => 0 }`, and EXAMPLES.md does the same, so the docs taught the habit. Python won because an unhandled `int("12a")` or `d["age"]` raises and the program dies loudly by default; its misses were the empty-input cases and month 13. TypeScript's misses were NaN and undefined flowing through, and it printed ids past 2^53 wrong on 4 of 12.
+
+Lesson: forcing errors to be handled does not make programs loud. With an agent writing the handler, the cheapest handler is a default, and a default is silent. Loud-by-default (Python's exceptions) beat must-handle (Vow's Results) here.
+
+### After the fix: fresh held-out bad-data set (2026-10-20)
+
+Fix (66faf52): `?` at top level now stops the program with `error: <e>` on stderr and exit code 1 (it used to be a compile error), and the guide's first `match` example plus the bank-ledger example stopped modeling `err(e) => 0`. Three NEW tickets written after the fix (bench/turf/bad2: inventory-restock CSV, grade-curve JSON, trip-log text; 9 happy checks and 10-11 traps each, refs agree in py/ts/vow). Same prompts, Claude Haiku 4.5, 4 agents per language, 12 solutions each; all 36 passed the visible checks first try.
+
+| | happy checks | traps flagged (loud) | silent | silent but printed a warning line |
+|---|---|---|---|---|
+| Python | 108/108 | 95/128 (74%) | 33 | 0 |
+| Vow | 108/108 | 67/128 (52%) | 61 | 19 |
+| TypeScript | 108/108 | 29/128 (23%) | 99 | 0 |
+
+Vow agents now unwrap with `?` (zero `err => default` arms in 12 solutions, against nearly all of them before). Vow moved from last to between Python and TypeScript. Python still leads. Vow's remaining misses: skip-and-continue in the stdin loop (19 cases printed `"12a" is not a number` or `skipped: ...` and then a normal report with exit 0; counted silent, since a script reading the exit code sees success), and logic traps that all three languages mostly miss (two starts in a row, end reading below start, 2026-04-31, empty input given a default). Different tasks from the first set, so the 8% -> 52% jump is not a same-task comparison; the same-set comparison is the table above.
+
+### Third fresh bad-data set (2026-10-20)
+
+Guide change before this round (dd3438e): the piped-stdin idiom is `for line in lines(readAll()?)`, so a top-level `?` inside the loop ends the program. New tickets (bench/turf/bad3: payroll CSV, order-merge JSON, temp-readings text; 9 happy checks and 11-12 traps each). Same prompts, Haiku 4.5, 4 agents per language, all 36 solutions passed the visible checks first try.
+
+| | happy checks | traps flagged (loud) | silent |
+|---|---|---|---|
+| Python | 108/108 | 97/136 (71%) | 39 |
+| Vow | 108/108 | 76/136 (56%) | 60 |
+| TypeScript | 108/108 | 75/136 (55%) | 61 |
+
+Vow tied TypeScript and stayed behind Python. Three of the four Vow agents scored 22-23 of 34; the fourth skipped bad rows and scored 12. TypeScript did far better on this set (55%) than on the first two (29%, 23%), so the per-set swing is large and 12 solutions per language is a small sample.
+
+**Across all three sets:** Python is the most reliably loud on bad data nobody mentioned (81%, 74%, 71%), because an unhandled exception ends the program by default. Vow went from 8% (before the fixes) to 52% and 56%, ahead of TypeScript on one set and tied on the other. The claim "Vow fails loudly where other languages stay silent" holds against TypeScript at best, and does not hold against Python.

@@ -1,0 +1,71 @@
+// Grade curve: percent and letter per student, class average. Fails loudly on any record it cannot read.
+struct Row { name, t }
+
+fn wholeNum(j) {
+  if jsonType(j) != "number" { return err("not a number") }
+  let v = jsonNum(j)?
+  if not isInt(v) { return err("not whole") }
+  return ok(v)
+}
+
+fn letter(t) {
+  if t >= 900 { return "A" }
+  if t >= 800 { return "B" }
+  if t >= 700 { return "C" }
+  if t >= 600 { return "D" }
+  return "F"
+}
+
+fn readStudent(s, i, mx) {
+  if jsonType(s) != "object" { return err("student ${i}: expected an object") }
+  let name = match jsonStr(field(s, "name")) { ok(v) => v err(e) => { return err("student ${i}: missing name") } }
+  let sc = field(s, "scores")
+  if jsonType(sc) != "array" { return err("student ${i}: missing scores") }
+  let scores = jsonList(sc)
+  if len(scores) == 0 { return err("student ${i} (${name}): no scores, mean is undefined") }
+  let total = 0
+  for x in scores {
+    let v = match wholeNum(x) { ok(v) => v err(e) => { return err("student ${i} (${name}): bad score ${x}") } }
+    if v < 0 { return err("student ${i} (${name}): bad score ${x}") }
+    total = total + v
+  }
+  let c = len(scores)
+  return ok(Row { name: name, t: floor((2000 * total + c * mx) / (2 * c * mx)) })
+}
+
+fn report(text) {
+  let data = match parseJson(text) { ok(j) => j err(e) => { return err("invalid JSON: ${e}") } }
+  if jsonType(data) != "object" { return err("expected a JSON object") }
+  let mx = match wholeNum(field(data, "max")) { ok(v) => v err(e) => { return err("bad max ${field(data, "max")}") } }
+  if mx <= 0 { return err("bad max ${mx}") }
+  let sj = field(data, "students")
+  if jsonType(sj) != "array" { return err("missing students list") }
+  let students = jsonList(sj)
+  if len(students) == 0 { return err("no students, class avg is undefined") }
+  let rows = []
+  let i = 0
+  for s in students {
+    i = i + 1
+    push(rows, readStudent(s, i, mx)?)
+  }
+  let out = []
+  let sum = 0
+  for r in sortBy(sortBy(rows, r => r.name), r => -r.t) {
+    push(out, "${r.name} ${floor(r.t / 10)}.${r.t % 10} ${letter(r.t)}")
+    sum = sum + r.t
+  }
+  let k = len(rows)
+  let a = floor((2 * sum + k) / (2 * k))
+  push(out, "class avg ${floor(a / 10)}.${a % 10}")
+  return ok(out)
+}
+
+let a = args()
+if len(a) < 1 {
+  print("error: missing argument")
+} else {
+  match report(a[0]) {
+    ok(out) => { for l in out { print(l) } }
+    err(e) => print("error: ${e}")
+  }
+}

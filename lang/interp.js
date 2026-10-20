@@ -2,7 +2,7 @@
 // debugger can pause before every statement. Contracts (expects/ensures)
 // are checked at runtime with caller-vs-callee blame in the message.
 
-import { VowError, nodeLoc } from './diagnostics.js';
+import { VowError, VowExit, nodeLoc } from './diagnostics.js';
 import { compileRegex } from './checker.js';
 import { casefold } from './casefold.js';
 
@@ -333,6 +333,10 @@ export function testIO(argv, stdin, lines) {
   };
 }
 // what the CLI would have written to stdout: every printed line ends in a newline
+// a top-level `?` on err(e): stop the program, exit code 1, "error: <e>" for stderr
+export function topErr(v) {
+  throw new VowExit(1, `error: ${typeof v.val === 'string' ? v.val : display(v.val)}`);
+}
 export const runOutput = (lines) => lines.map(l => l + '\n').join('');
 // a trap inside run(...): the program's own diagnostic, plus where the test called run
 export function runTrap(e, node, src) {
@@ -635,6 +639,14 @@ export function createRun(src, ast, opts = {}) {
     },
     askLogin: ([realm]) => ({ __response: true, status: 401, type: 'text/plain; charset=utf-8', body: 'login required', authenticate: realm }),
     now: () => Date.now(),
+    exit: ([code], node) => {
+      if (!Number.isInteger(code) || code < 0 || code > 255) {
+        trap(node, 'RuntimeError', `exit() takes a whole number from 0 to 255, but got ${display(code, 1)}`,
+          'The exit code tells the shell how the program ended: 0 means success, anything else means failure.',
+          'use exit(0) for success and exit(1) for an error.');
+      }
+      throw new VowExit(code);
+    },
     // ---- math: domain errors trap (no NaN / Infinity values) ----
     sqrt: math('sqrt', Math.sqrt),
     pow: math('pow', Math.pow),
@@ -836,7 +848,7 @@ export function createRun(src, ast, opts = {}) {
       Object.assign(builtins, testIO(argv, stdin, lines));
       fresh();
       try { await drive(program()); }
-      catch (e) { throw runTrap(e, node, src); }
+      catch (e) { if (!e?.vowExit) throw runTrap(e, node, src); if (e.exitMessage) lines.push(e.exitMessage); } // exit() inside run() just ends that run
       finally { Object.assign(builtins, saved); Object.assign(st, outer); }
       return runOutput(lines);
     },
@@ -1135,6 +1147,7 @@ export function createRun(src, ast, opts = {}) {
       case 'Try': {
         const v = yield* evalExpr(e.operand, env);
         if (v.tag === 'ok') return v.val;
+        if (e.topLevel) topErr(v);
         throw new ErrPropagation(v);
       }
       case 'StructLit': {

@@ -1,0 +1,54 @@
+// Sales report: revenue per region, total, mean units. Fails loudly on any row it cannot read.
+fn cents(p) {
+  let m = find(p, `^([0-9]+)(?:\.([0-9]{1,2}))?$`)?
+  let whole = int(m[1])?
+  let frac = 0
+  if m[2] != "" { frac = int(padRight(m[2], 2, "0"))? }
+  return ok(whole * 100 + frac)
+}
+
+fn money(c) { return "${floor(c / 100)}.${padLeft(str(c % 100), 2, "0")}" }
+
+fn report(text) {
+  let ls = split(text, "\n")
+  if len(ls) > 0 and ls[len(ls) - 1] == "" { ls = slice(ls, 0, len(ls) - 1) }
+  if len(ls) == 0 { return err("empty input, no header") }
+  if ls[0] != "region,rep,units,unit_price" { return err("bad header: ${ls[0]}") }
+  let rows = slice(ls, 1, len(ls))
+  if len(rows) == 0 { return err("no sales rows, mean units is undefined") }
+  let byRegion = {}
+  let unitsSum = 0
+  let n = 1
+  for line in rows {
+    n = n + 1
+    let f = split(line, ",")
+    if len(f) != 4 { return err("line ${n}: expected 4 fields, got ${len(f)}") }
+    if f[0] == "" or f[1] == "" { return err("line ${n}: missing region or rep") }
+    if not matches(f[2], `^[0-9]+$`) { return err("line ${n}: bad units ${f[2]}") }
+    let u = int(f[2])?
+    let c = match cents(f[3]) {
+      ok(v) => v
+      err(e) => { return err("line ${n}: bad unit_price ${f[3]}") }
+    }
+    let prev = match get(byRegion, f[0]) { ok(v) => v err(e) => 0 }
+    byRegion[f[0]] = prev + u * c
+    unitsSum = unitsSum + u
+  }
+  let out = []
+  let total = 0
+  for r in sort(keys(byRegion)) {
+    push(out, "${r} ${money(byRegion[r])}")
+    total = total + byRegion[r]
+  }
+  push(out, "total ${money(total)}")
+  let k = len(rows)
+  let t = floor((20 * unitsSum + k) / (2 * k))
+  push(out, "avg units ${floor(t / 10)}.${t % 10}")
+  return ok(out)
+}
+
+let input = match readAll() { ok(t) => t err(e) => "" }
+match report(input) {
+  ok(out) => { for l in out { print(l) } }
+  err(e) => print("error: ${e}")
+}

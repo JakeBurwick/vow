@@ -1,0 +1,77 @@
+// Order merge: orders, items and spend per customer, best-selling sku. Fails loudly on any record it cannot read.
+struct Sku { sku, qty }
+
+fn whole(j) {
+  if jsonType(j) != "number" { return err("not a number") }
+  let v = jsonNum(j)?
+  if not isInt(v) or v < 0 { return err("not a whole number") }
+  return ok(v)
+}
+
+fn cents(j) {
+  if jsonType(j) != "number" { return err("not a number") }
+  let p = jsonNum(j)?
+  if not (p - p == 0) or p < 0 { return err("not a price") }
+  let c = round(p * 100)
+  if c / 100 != p { return err("not in whole cents") }
+  return ok(c)
+}
+
+fn money(c) { return "${floor(c / 100)}.${padLeft(str(c % 100), 2, "0")}" }
+
+fn report(text) {
+  let data = match parseJson(text) { ok(j) => j err(e) => { return err("invalid JSON: ${e}") } }
+  if jsonType(data) != "object" { return err("expected a JSON object") }
+  let oj = field(data, "orders")
+  if jsonType(oj) != "array" { return err("missing orders list") }
+  let orders = jsonList(oj)
+  if len(orders) == 0 { return err("no orders, there is no best sku") }
+  let nOrders = {}
+  let nItems = {}
+  let spent = {}
+  let skus = {}
+  let i = 0
+  for o in orders {
+    i = i + 1
+    if jsonType(o) != "object" { return err("order ${i}: expected an object") }
+    let c = match jsonStr(field(o, "customer")) { ok(v) => v err(e) => { return err("order ${i}: missing customer") } }
+    if c == "" { return err("order ${i}: missing customer") }
+    let ij = field(o, "items")
+    if jsonType(ij) != "array" { return err("order ${i}: missing items list") }
+    let k = match get(nOrders, c) { ok(v) => v err(e) => 0 } + 1
+    let q = match get(nItems, c) { ok(v) => v err(e) => 0 }
+    let s = match get(spent, c) { ok(v) => v err(e) => 0 }
+    let j = 0
+    for it in jsonList(ij) {
+      j = j + 1
+      if jsonType(it) != "object" { return err("order ${i} item ${j}: expected an object") }
+      let sku = match jsonStr(field(it, "sku")) { ok(v) => v err(e) => { return err("order ${i} item ${j}: missing sku") } }
+      if sku == "" { return err("order ${i} item ${j}: missing sku") }
+      let qty = match whole(field(it, "qty")) { ok(v) => v err(e) => { return err("order ${i} item ${j}: bad qty ${field(it, "qty")}") } }
+      let pc = match cents(field(it, "price")) { ok(v) => v err(e) => { return err("order ${i} item ${j}: bad price ${field(it, "price")}") } }
+      q = q + qty
+      s = s + qty * pc
+      skus[sku] = match get(skus, sku) { ok(v) => v err(e) => 0 } + qty
+    }
+    nOrders[c] = k
+    nItems[c] = q
+    spent[c] = s
+  }
+  let out = []
+  for c in sort(keys(nOrders)) { push(out, "${c} ${nOrders[c]} ${nItems[c]} ${money(spent[c])}") }
+  let list = []
+  for k in keys(skus) { push(list, Sku { sku: k, qty: skus[k] }) }
+  let best = sortBy(sortBy(list, x => x.sku), x => -x.qty)[0]
+  push(out, "best ${best.sku} ${best.qty}")
+  return ok(out)
+}
+
+let a = args()
+if len(a) < 1 {
+  print("error: missing argument")
+} else {
+  match report(a[0]) {
+    ok(out) => { for l in out { print(l) } }
+    err(e) => print("error: ${e}")
+  }
+}

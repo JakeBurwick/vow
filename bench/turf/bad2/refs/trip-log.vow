@@ -1,0 +1,61 @@
+// Trip log: km per day from odometer start/end pairs, total, longest day. Fails loudly on any line it cannot read.
+fn km(t) { return "${floor(t / 10)}.${t % 10}" }
+
+fn report(text) {
+  let days = {}
+  let openDate = ""
+  let openTenths = 0
+  let openLine = 0
+  let n = 0
+  for line in split(text, "\n") {
+    n = n + 1
+    if line == "" { continue }
+    let f = split(line, " ")
+    if len(f) != 4 { return err("line ${n}: expected 4 fields, got ${len(f)}") }
+    let date = f[0]
+    if not matches(date, `^[0-9]{4}-[0-9]{2}-[0-9]{2}$`) { return err("line ${n}: bad date ${date}") }
+    match parseDate(date) {
+      ok(d) => {}
+      err(e) => { return err("line ${n}: invalid date ${date}") }
+    }
+    if not matches(f[1], `^([01][0-9]|2[0-3]):[0-5][0-9]$`) { return err("line ${n}: bad time ${f[1]}") }
+    let m = match find(f[3], `^([0-9]+)(?:\.([0-9]))?$`) { ok(m) => m err(e) => { return err("line ${n}: bad odometer ${f[3]}") } }
+    let tenths = int(m[1])? * 10
+    if m[2] != "" { tenths = tenths + int(m[2])? }
+    if f[2] == "start" {
+      if openLine > 0 { return err("line ${n}: start while the trip from line ${openLine} has no end") }
+      openDate = date
+      openTenths = tenths
+      openLine = n
+    } else if f[2] == "end" {
+      if openLine == 0 { return err("line ${n}: end without a start") }
+      if openDate != date { return err("line ${n}: end on ${date} for a start on ${openDate}") }
+      if tenths < openTenths { return err("line ${n}: end odometer ${f[3]} is below the start") }
+      let prev = match get(days, date) { ok(v) => v err(e) => 0 }
+      days[date] = prev + tenths - openTenths
+      openLine = 0
+    } else {
+      return err("line ${n}: bad event ${f[2]}")
+    }
+  }
+  if openLine > 0 { return err("line ${openLine}: start has no end") }
+  if len(keys(days)) == 0 { return err("no trips, there is no longest day") }
+  let out = []
+  let dates = sort(keys(days))
+  let best = dates[0]
+  let total = 0
+  for d in dates {
+    push(out, "${d} ${km(days[d])}")
+    total = total + days[d]
+    if days[d] > days[best] { best = d }
+  }
+  push(out, "total ${km(total)}")
+  push(out, "longest ${best}")
+  return ok(out)
+}
+
+let input = match readAll() { ok(t) => t err(e) => "" }
+match report(input) {
+  ok(out) => { for l in out { print(l) } }
+  err(e) => print("error: ${e}")
+}
