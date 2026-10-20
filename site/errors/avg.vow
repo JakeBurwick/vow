@@ -1,0 +1,5 @@
+fn average(xs) {
+  return sum(xs) / len(xs)
+}
+let scores = map(filter(split(args()[0], ","), s => s != ""), s => match num(s) { ok(n) => n err(e) => 0 })
+print(average(scores))

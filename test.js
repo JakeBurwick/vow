@@ -443,6 +443,8 @@ for (const [name, src, shouldPass] of extra) {
 // the repair hint — these errors are Vow's product surface for agents.
 const diagTests = [
   ['diag: prover sees inside if/else values', 'fn f(x) {\n  let y = if x > 0 { 10 / 0 } else { 1 }\n  return y\n}\nprint(f(1))\n', 'division by zero'],
+  ['diag: a Result used in arithmetic says unpack it, not num()', 'let qty = num("4")\nprint(qty + 1)\n', "'qty' is a Result<num, str>, not a num"],
+  ['diag: a Result in a comparison says match it', 'let r = num("5")\nif r > 3 { print("x") }\n', 'match r { ok(v) =>'],
   ['diag: discarded sort says assign it back', 'let xs = [2, 1]\nsort(xs)\n', 'xs = sort(xs)'],
   ['diag: len on str param infers str', 'fn pad(s) {\n  let o = s\n  while len(o) < 3 { o = o + "." }\n  return o\n}\nprint(len(5))\n', 'but this is a num'],
   ['diag: shared field still ambiguous when nothing pins it', 'struct A { n, a }\nstruct B { n, b }\nfn f(x) { return x.n }\n', 'is ambiguous here'],

@@ -1164,6 +1164,18 @@ export function check(src, ast) {
       return BOOL;
     }
 
+    // an unpacked Result next to a plain value: the generic "convert one side" fix sends agents to
+    // num(...) again when num(...) is what made the Result
+    if ((pl.k === 'result') !== (pr.k === 'result')) {
+      const [rNode, rT, other] = pl.k === 'result' ? [e.left, pl, rt] : [e.right, pr, lt];
+      const s = snippet(rNode);
+      diag(rNode, `'${s}' is a ${tn(rT)}, not a ${tn(rT.ok)}`,
+        `It came from something that can fail, so it holds ok(value) or err(message) and has to be unpacked before '${op}' can use it.`,
+        `unpack it first: match ${s} { ok(v) => ... use v ...  err(e) => print("error: \${e}") }; inside a fn, ${s}? gives the value and passes the err up.`);
+      unify(rT.ok, other);
+      return ['<', '<=', '>', '>=', '==', '!='].includes(op) ? BOOL : other;
+    }
+
     if (op === '+') {
       if ((pl.k === 'str' && pr.k === 'num') || (pl.k === 'num' && pr.k === 'str')) {
         const numSide = pl.k === 'num' ? e.left : e.right;

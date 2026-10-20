@@ -1,0 +1,4 @@
+match parseJson(args()[0]) {
+  ok(order) => print("order ${field(order, "id")}")
+  err(e) => print("bad json: ${e}")
+}

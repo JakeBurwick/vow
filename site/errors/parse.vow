@@ -1,0 +1,2 @@
+let qty = num(args()[0])
+print(qty + 1)

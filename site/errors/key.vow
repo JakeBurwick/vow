@@ -1,0 +1,3 @@
+let prices = {"apple": 1.25, "plum": 0.5}
+let item = args()[0]
+print(prices[item] * 2)

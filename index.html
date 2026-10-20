@@ -72,6 +72,7 @@ a.btn {
     <button class="tab active" data-view="home" aria-current="page">Home</button>
     <button class="tab" data-view="learn">Learn</button>
     <button class="tab" data-view="play">Playground</button>
+    <button class="tab" data-view="errors">Errors</button>
     <button class="tab" data-view="docs">Docs</button>
   </nav>
 </header>
@@ -173,6 +174,7 @@ abc: "abc" is not a number
                ^^^^^^^^^^^^^^^
   '"Total: "' is a str and 'sum' is a num. Vow never converts types implicitly.
   Likely fix: convert the number to text first: str(sum)</pre>
+        <p class="result-note err-more"><a href="#errors" data-go="errors">Five bugs side by side in Vow, TypeScript and Python</a></p>
       </div>
       <div>
         <h2 class="h-small">A sandbox refusal, before any code runs</h2>
@@ -267,6 +269,17 @@ node cli.js hello.vow</pre>
 </main>
 
 <!-- ====================== DOCS ====================== -->
+<section id="view-errors" class="page" aria-label="Errors" hidden>
+  <div class="page-inner docs">
+    <h1 class="docs-title">Errors</h1>
+    <p class="prose" id="errors-intro">This page shows five bugs. Each example includes the same program written in Vow, TypeScript, and Python, and the exact output from bad input. Click a button above the code to pick a bug. Some bugs produce an explicit error in one language and a quiet wrong answer in another.</p>
+    <div class="err-cases" role="tablist" aria-label="Bug" id="err-cases"></div>
+    <p class="err-task" id="err-task"></p>
+    <div class="err-grid" id="err-grid"></div>
+    <p class="result-note err-foot" id="err-foot">Every output was captured by running the program, using a script in the repository at <code>site/errors/gen.mjs</code>, and is shown unedited except that file paths are shortened to <code>/work</code>. TypeScript was type-checked with <code>deno check</code> before running, with Deno's default settings. With the TypeScript setting <code>noUncheckedIndexedAccess</code> turned on, the type checker also flags the missing-key case before it runs. Measured on <span id="err-measured"></span>.</p>
+  </div>
+</section>
+
 <section id="view-docs" class="page" aria-label="Docs" hidden>
   <div class="page-inner docs">
 
@@ -770,10 +783,10 @@ window.VOW_REPO = 'https://github.com/JakeBurwick/vow.git';
   document.querySelectorAll('[data-repo-plain]').forEach(function (el) { el.textContent = web.replace(/^https?:\/\//, ''); });
 })();
 
-var VIEWS = ['home', 'learn', 'play', 'docs'];
+var VIEWS = ['home', 'learn', 'play', 'errors', 'docs'];
 // Anchors that live inside a view: going to them shows the view, then scrolls.
 var ANCHORS = { install: 'home', ai: 'home', benchmarks: 'docs', ref: 'docs', changelog: 'docs' };
-var HASH_FOR = { home: 'home', learn: 'learn', play: 'playground', docs: 'docs' };
+var HASH_FOR = { home: 'home', learn: 'learn', play: 'playground', errors: 'errors', docs: 'docs' };
 
 function showView(view, opts) {
   opts = opts || {};
@@ -859,6 +872,8 @@ setTimeout(function () {
   if (out) out.textContent = 'The playground did not load. Reload the page to try again.';
 }, 6000);
 </script>
+<script src="site/errors/cases.js"></script>
+<script src="site/errors/errors.js"></script>
 <script src="site/learn/lessons.js"></script>
 <script src="learn.js"></script>
 <script>routeFromHash();</script>
