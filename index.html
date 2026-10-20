@@ -584,6 +584,7 @@ print(geo.norm(p))       // 5</pre>
         <h3>I/O (CLI only)</h3>
 <pre class="codeblock vow">readFile(path)     // Result: text or err
 writeFile(p, s)    // Result
+appendFile(p, s)   // Result: adds to the end
 httpGet(url)       // Result: body, or err on non-2xx
 httpRequest(method, url, headers, body)
                    // Result: HttpResponse { status, headers, body }

@@ -28,7 +28,7 @@ try {
     stepYields: false,
     builtins: {
       args: () => args.slice(),
-      readFile: () => sandboxed('readFile'), writeFile: () => sandboxed('writeFile'),
+      readFile: () => sandboxed('readFile'), writeFile: () => sandboxed('writeFile'), appendFile: () => sandboxed('appendFile'),
       httpGet: () => sandboxed('httpGet'), httpRequest: () => sandboxed('httpRequest'), env: () => sandboxed('env'),
       readLine: () => sandboxed('readLine'), readAll: () => sandboxed('readAll'),
     },

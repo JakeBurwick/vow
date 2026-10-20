@@ -2,6 +2,8 @@
 
 Vow is a small statically-typed language. All types are inferred — never write a type annotation. There are **no nulls and no exceptions**: anything that can fail returns a `Result` that the checker forces you to handle. Newlines end statements; there are no semicolons.
 
+**Quick start (the 6 things that trip newcomers):** 1) types are inferred, never annotated; 2) anything that can fail returns a Result: unwrap with `let v = num(s)?` (top level: an err stops the program with exit code 1), or `match r { ok(v) => ...  err(e) => ... }`; 3) only `"${expr}"` inserts a value in a string; 4) a list or map holds ONE type, so use a struct for records and `sortBy` twice (or `sortWith`) for multi-key sorts; 5) one statement per line, no semicolons, `and`/`or`/`not`; 6) a fn doing I/O declares it: `fn load(p) uses fs { ... }`.
+
 Run a program with `vow main.vow [args]` (installed with `npm install -g github:JakeBurwick/vow`; in a clone of the repo, `node cli.js` is the same command, so `vow X` below means `node cli.js X` there). A run stops after 50,000,000 statements (`--max-steps N` raises it, `--max-steps 0` removes the cap). A program can span several files: `main.vow` imports the others (`import "./geometry.vow" as geo`) and the CLI loads them from disk, relative to each importing file. Run the main file; `--check main.vow` checks every file it imports. (The browser playground runs one file.)
 
 **Before you submit a program written from a spec:** add `test "name" { ... }` blocks to the file, one per example in the spec and one per error line in it (expecting the exact error string, newline included), run `vow test main.vow`, and fix the program until every test passes. See "Testing" below.
@@ -186,7 +188,7 @@ Use these instead of hand-rolled loops, decoders and parsers; every family below
 
 ### Regular expressions (patterns are JavaScript regular expressions; write them as backtick raw strings so `\d` stays `\d`)
 - ``matches(s, `^\d+$`)`` → bool; searches anywhere unless you anchor with `^...$`
-- ``find(s, `(\w+)=(\d+)`)`` → Result: `ok([whole, group1, group2])` (an unmatched group is `""`), `err("no match")`
+- ``find(s, `(\w+)=(\d+)`)`` → Result: `ok([whole, group1, group2])` (an unmatched group is `""`), `err("no match for /pattern/ in \"text\"")`
 - ``findAll(s, `\d+`)`` → list of every match · ``replaceAll(s, `(\w+)@`, "$1 at ")`` → str (`$1` = group 1)
 - ``splitOn(s, `\s*[,;]\s*`)`` → list (groups in the pattern do not add pieces) · `words(s)` → split on any whitespace, no empty strings
 - `replace(t, old, new)` stays literal text; a bad pattern literal is a compile error
@@ -220,7 +222,7 @@ match parseCsv(readAll()?) {
 ## Files, stdin and HTTP
 - `args()` → list<str>: only the user's arguments, never the program name
 - `readLine()` → Result<str, str>: the next stdin line without its newline, err("end of input") at EOF · `readAll()` → Result<str, str>: everything left on stdin (ok("") when empty). No capability needed
-- `readFile(path)` → Result<str, str> · `writeFile(path, text)` → Result<bool, str> (`uses fs`)
+- `readFile(path)` → Result<str, str> · `writeFile(path, text)` → Result<bool, str> (replaces the file) · `appendFile(path, text)` → Result<bool, str> (adds to the end, creates the file if missing) (`uses fs`). Under `--sandbox`/`--allow`, a blocked call returns an err whose text starts with `sandbox:`, so a fallback like `err(e) => ""` for a missing file also hides a blocked one; check `startsWith(e, "sandbox:")` if you treat a missing file as empty.
 - `env("HOME")` → Result<str, str> (`uses env`)
 - `httpGet(url)` → Result<str, str>: ok(body) for 2xx · `httpRequest(method, url, headers, body)` → Result<HttpResponse, str> (`uses net`; both below)
 ```

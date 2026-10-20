@@ -33,7 +33,7 @@ const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        code: { type: 'string', description: 'Full Vow source code.' },
+        code: { type: 'string', description: 'Full Vow source code of this file (always required, even with path; the imported files are read from disk).' },
         path: { type: 'string', description: 'Optional absolute path of the file this code is saved as (e.g. /home/me/app/main.vow). Needed only for programs that import other .vow files: imports are read from disk relative to it. Without it, import is an error.' },
       },
       required: ['code'], additionalProperties: false,
@@ -41,11 +41,11 @@ const TOOLS = [
   },
   {
     name: 'vow_run',
-    description: 'Type-check and run a Vow program in a sandbox (no filesystem, network, or environment access; 10 s and 5,000,000-step limits). Returns printed output, or the output so far plus a diagnostic if it fails.',
+    description: 'Type-check and run a Vow program in a sandbox (no filesystem, network, or environment access; 10 s and 5,000,000-step limits). Returns printed output, or the output so far plus a diagnostic if it fails. readFile, writeFile, appendFile, httpGet and env return an err here: check such a program with vow_check and test its logic with vow_test (run(args, stdin)), then run it for real with the Vow CLI.',
     inputSchema: {
       type: 'object',
       properties: {
-        code: { type: 'string', description: 'Full Vow source code.' },
+        code: { type: 'string', description: 'Full Vow source code of this file (always required, even with path; the imported files are read from disk).' },
         args: { type: 'array', items: { type: 'string' }, description: 'Values returned by args() inside the program.' },
         seed: { type: 'integer', description: 'Optional: makes random() and randomInt() reproducible.' },
         path: { type: 'string', description: 'Optional absolute path of the file this code is saved as (e.g. /home/me/app/main.vow). Needed only for programs that import other .vow files: imports are read from disk relative to it. Without it, import is an error.' },

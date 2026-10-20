@@ -16,7 +16,7 @@ import { BUILTIN_NAMES } from './checker.js';
 class Unsupported extends Error {}
 
 // builtins the host (CLI) may implement asynchronously; calls to them are awaited
-const ASYNC_BUILTINS = new Set(['readFile', 'writeFile', 'httpGet', 'httpRequest', 'serve', 'env', 'run']);
+const ASYNC_BUILTINS = new Set(['readFile', 'writeFile', 'appendFile', 'httpGet', 'httpRequest', 'serve', 'env', 'run']);
 // builtins that can trap: their VowError needs the compiled call stack as notes
 const TRAP_BUILTINS = new Set(['range', 'repeat', 'redirect', 'toJson', 'prettyJson', 'jsonSet', 'jsonDelete', 'json', 'ord', 'chr', 'matches', 'find', 'findAll', 'replaceAll', 'splitOn', 'sig',
   'sqrt', 'pow', 'exp', 'ln', 'log', 'sin', 'cos', 'tan', 'atan2', 'ceil', 'trunc', 'randomInt', 'dateParts', 'isoDate', 'daysBetween', 'expect', 'expectEq', 'expectErr']);

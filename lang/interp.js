@@ -615,6 +615,7 @@ export function createRun(src, ast, opts = {}) {
     // In the browser playground they fail softly, as Results.
     readFile: () => err('readFile is only available in the Vow CLI; the browser playground has no filesystem'),
     writeFile: () => err('writeFile is only available in the Vow CLI; the browser playground has no filesystem'),
+    appendFile: () => err('appendFile is only available in the Vow CLI; the browser playground has no filesystem'),
     httpGet: () => err('httpGet is only available in the Vow CLI; the browser playground cannot reach the network'),
     httpRequest: () => err('httpRequest is only available in the Vow CLI; the browser playground cannot reach the network'),
     readLine: () => err('readLine is only available in the Vow CLI; the browser playground has no standard input'),
@@ -774,7 +775,7 @@ export function createRun(src, ast, opts = {}) {
     matches: ([s, p], node) => regex(p, '', node).test(s),
     find: ([s, p], node) => {
       const m = regex(p, '', node).exec(s);
-      return m ? ok([...m].map(x => x ?? '')) : err('no match');
+      return m ? ok([...m].map(x => x ?? '')) : err(`no match for /${p}/ in ${JSON.stringify(s.length > 60 ? s.slice(0, 57) + '...' : s)}`);
     },
     findAll: ([s, p], node) => s.match(regex(p, 'g', node)) ?? [],
     replaceAll: ([s, p, r], node) => s.replace(regex(p, 'g', node), r),

@@ -8,7 +8,7 @@
 //   node cli.js --max-steps N program.vow stop after N statements (default 50,000,000; 0 = no limit)
 //   node cli.js test program.vow [--filter word]   run the program's test blocks (exit 1 if any fails)
 
-import { readFile as fsRead, writeFile as fsWrite } from 'node:fs/promises';
+import { readFile as fsRead, writeFile as fsWrite, appendFile as fsAppend } from 'node:fs/promises';
 import { readSync, writeSync, readFileSync } from 'node:fs';
 import process from 'node:process';
 import { createServer } from 'node:http';
@@ -29,6 +29,7 @@ const USAGE = [
   '       vow --seed N <file.vow>             reproducible random() / randomInt()',
   '       vow --sandbox <file.vow>            pure computation only: no net, fs or env',
   '       vow --allow net[=host],fs[=dir],env[=NAME] <file.vow>   sandbox with these grants',
+  '                                           (a bare net, fs or env grants all hosts, paths or variables)',
   '       vow --help | --version',
 ].join('\n');
 if (argv[0] === '--help' || argv[0] === '-h') { console.log(USAGE); process.exit(0); }
@@ -187,6 +188,11 @@ const ioBuiltins = {
     try { await fsWrite(p, text); return ok(true); }
     catch (e) { return err(`could not write "${p}": ${e.code ?? e.message}`); }
   },
+  // creates the file when it doesn't exist
+  appendFile: async ([p, text]) => {
+    try { await fsAppend(p, text); return ok(true); }
+    catch (e) { return err(`could not append to "${p}": ${e.code ?? e.message}`); }
+  },
   httpGet: async ([url]) => {
     try {
       const res = await fetch(url, { signal: AbortSignal.timeout(15000), redirect: 'follow' });
@@ -275,6 +281,7 @@ const raw = { ...ioBuiltins };
 const guarded = {
   readFile: ([p]) => permits('fs', d => (resolvePath(p) + sep).startsWith(resolvePath(d) + sep)) ? raw.readFile([p]) : denied('fs', `"${p}"`),
   writeFile: ([p, text]) => permits('fs', d => (resolvePath(p) + sep).startsWith(resolvePath(d) + sep)) ? raw.writeFile([p, text]) : denied('fs', `"${p}"`),
+  appendFile: ([p, text]) => permits('fs', d => (resolvePath(p) + sep).startsWith(resolvePath(d) + sep)) ? raw.appendFile([p, text]) : denied('fs', `"${p}"`),
   httpGet: ([url]) => {
     let host; try { host = new URL(url).host; } catch { return err(`GET ${url} failed: invalid URL`); }
     return permits('net', h => h === host) ? raw.httpGet([url]) : denied('net', host);

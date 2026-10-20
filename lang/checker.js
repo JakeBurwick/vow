@@ -210,7 +210,7 @@ export const BUILTIN_NAMES = ['print', 'eprint', 'str', 'num', 'len', 'range', '
   'replace', 'startsWith', 'endsWith', 'indexOf', 'repeat', 'padLeft', 'padRight', 'lines',
   'matches', 'find', 'findAll', 'replaceAll', 'splitOn', 'words', 'sig', 'isInt', 'int',
   'map', 'filter', 'any', 'all', 'count', 'fold', 'uniq', 'values', 'remove', 'cmpNum', 'sortWith',
-  'readFile', 'writeFile', 'httpGet', 'httpRequest', 'readLine', 'readAll', 'args', 'env', 'serve', 'html', 'text', 'respond', 'redirect', 'param', 'escape', 'checkLogin', 'askLogin', 'now', 'exit',
+  'readFile', 'writeFile', 'appendFile', 'httpGet', 'httpRequest', 'readLine', 'readAll', 'args', 'env', 'serve', 'html', 'text', 'respond', 'redirect', 'param', 'escape', 'checkLogin', 'askLogin', 'now', 'exit',
   'urlEncode', 'urlDecode', 'ord', 'chr', 'chars', 'casefold', 'normalize', 'parseCsv',
   'parseJson', 'toJson', 'prettyJson', 'json', 'jsonSet', 'jsonDelete', 'jsonMerge', 'jsonNum', 'jsonStr', 'jsonBool', 'jsonList', 'jsonKeys', 'jsonType', 'field', 'at', 'isNull', 'truthy',
   'sqrt', 'pow', 'exp', 'ln', 'log', 'sin', 'cos', 'tan', 'atan2', 'ceil', 'trunc', 'pi', 'random', 'randomInt',
@@ -459,7 +459,7 @@ export function check(src, ast) {
 
   function checkEffects() {
     const BUILTIN_EFFECTS = new Map([
-      ['httpGet', 'net'], ['httpRequest', 'net'], ['serve', 'net'], ['readFile', 'fs'], ['writeFile', 'fs'], ['env', 'env'],
+      ['httpGet', 'net'], ['httpRequest', 'net'], ['serve', 'net'], ['readFile', 'fs'], ['writeFile', 'fs'], ['appendFile', 'fs'], ['env', 'env'],
     ]);
     const CAPS = ['net', 'fs', 'env'];
     const fnUses = new Map(); // fn name -> Set of declared capabilities
@@ -472,7 +472,7 @@ export function check(src, ast) {
           let best = null, bestD = 3;
           for (const c of CAPS) { const d = editDistance(u.name, c); if (d < bestD) { bestD = d; best = c; } }
           diag(u.tok, `'${u.name}' is not a capability`,
-            `Vow has three capabilities: net (httpGet, httpRequest, serve), fs (readFile, writeFile) and env (env). Reading standard input (readLine, readAll) needs none.`,
+            `Vow has three capabilities: net (httpGet, httpRequest, serve), fs (readFile, writeFile, appendFile) and env (env). Reading standard input (readLine, readAll) needs none.`,
             best ? `did you mean '${best}'?` : `remove it from the uses clause.`, 'EffectError');
         }
       }
@@ -1912,11 +1912,11 @@ export function check(src, ast) {
         if (!unify(t, STR)) diag(e.args[0], `readFile() takes a str path, but this is a ${tn(t)}`, '', 'pass a path like readFile("data.txt").');
         return resultT(STR, STR);
       }
-      case 'writeFile': {
-        arity(e, 2, 'writeFile(path, text)');
+      case 'writeFile': case 'appendFile': {
+        arity(e, 2, `${e.callee}(path, text)`);
         const ts = args();
         ts.forEach((t, i) => {
-          if (!unify(t, STR)) diag(e.args[i], `writeFile() takes strs, but this is a ${tn(t)}`, '',
+          if (!unify(t, STR)) diag(e.args[i], `${e.callee}() takes strs, but this is a ${tn(t)}`, '',
             i === 0 ? 'pass a path like "out.txt".' : 'convert the content first with str(...).');
         });
         return resultT(BOOL, STR);
