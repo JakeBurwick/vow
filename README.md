@@ -130,6 +130,10 @@ python3 bench/hidden/run.py   # hidden-test correctness check
 | `mcp/` | MCP server (the `vow-mcp` command) so AI agents can check and run Vow code |
 | `templates/AGENTS.md`, `llms.txt` | Instructions for AI coding tools that write Vow |
 
+## Contact
+
+vowlang@proton.me. For security problems, see [SECURITY.md](SECURITY.md).
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
