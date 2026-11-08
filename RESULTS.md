@@ -329,3 +329,16 @@ Guide change before this round (dd3438e): the piped-stdin idiom is `for line in 
 Vow tied TypeScript and stayed behind Python. Three of the four Vow agents scored 22-23 of 34; the fourth skipped bad rows and scored 12. TypeScript did far better on this set (55%) than on the first two (29%, 23%), so the per-set swing is large and 12 solutions per language is a small sample.
 
 **Across all three sets:** Python is the most reliably loud on bad data nobody mentioned (81%, 74%, 71%), because an unhandled exception ends the program by default. Vow went from 8% (before the fixes) to 52% and 56%, ahead of TypeScript on one set and tied on the other. The claim "Vow fails loudly where other languages stay silent" holds against TypeScript at best, and does not hold against Python.
+
+## Fresh hard tasks on bigger models (2026-11-05)
+
+Same three fresh hard tasks (mini-lisp, json-schema, spreadsheet), same protocol as 2026-10-13: fresh agent per run, Vow agents get only VOW_GUIDE.md and EXAMPLES.md, rounds 1-2 may check and run code, round 3 type-check only, judged by `bench/run.js`. Each agent worked in an isolated folder with only the specs (and guide for Vow). Claude Sonnet 5.5 and Claude Opus 5.5. Counted from `bench/log/attempts.jsonl` (tags `hd-<model>-<lang>`, `hd3-<model>-<lang>`).
+
+| | runs solved | judged submissions | failed |
+|---|---|---|---|
+| Sonnet 5.5, Vow | 9 of 9 | 10 | 1 |
+| Sonnet 5.5, TypeScript | 9 of 9 | 9 | 0 |
+| Opus 5.5, Vow | 9 of 9 | 9 | 0 |
+| Opus 5.5, TypeScript | 9 of 9 | 9 | 0 |
+
+For reference, Haiku 4.5 on the same tasks: Vow 1 failed in 9 runs, TypeScript 0 (2026-10-13); Vow 0 in 9 after the 2026-10-13 night fixes. The one failure here: a json-schema agent compared the spec's type name "boolean" against `jsonType`'s "bool". Bigger models do not open a gap in either direction on this set; it is near the ceiling for all three models.

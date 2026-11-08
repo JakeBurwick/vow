@@ -3,6 +3,8 @@
 #
 #   python3 bench/model-loop.py ollama:llama3.2:3b
 #   python3 bench/model-loop.py gemini:gemini-flash-latest [task ...]
+#   python3 bench/model-loop.py claude:sonnet        (or claude:opus, claude:haiku; uses the local
+#                                                     `claude` CLI login, tools off, no session saved)
 #
 # Results append to bench/log/model-loop.jsonl; judge attempts are logged as usual
 # with tag model-<name>-<lang>.
@@ -39,6 +41,24 @@ def gemini_chat(model, messages):
             last = e
     raise RuntimeError(f"gemini unavailable: {last}")
 
+def claude_chat(model, messages):
+    system = "\n\n".join(m["content"] for m in messages if m["role"] == "system")
+    turns = [m for m in messages if m["role"] != "system"]
+    if len(turns) == 1:
+        prompt = turns[0]["content"]
+    else:  # the CLI is one-shot, so earlier turns ride along as a transcript
+        prompt = "\n\n".join(f"<{m['role']}>\n{m['content']}\n</{m['role']}>" for m in turns[:-1])
+        prompt += "\n\n" + turns[-1]["content"]
+    cmd = ["claude", "-p", "--model", model, "--tools", "", "--no-session-persistence",
+           "--output-format", "text", "--system-prompt", system]
+    for wait in [0, 30, 90]:
+        if wait: time.sleep(wait)
+        r = subprocess.run(cmd, input=prompt, capture_output=True, text=True, timeout=900, cwd="/tmp")
+        if r.returncode == 0 and r.stdout.strip():
+            return r.stdout
+        last = (r.stderr or r.stdout)[-400:]
+    raise RuntimeError(f"claude {model} failed: {last}")
+
 def extract_code(text, lang):
     blocks = re.findall(r"```[a-zA-Z]*\n(.*?)```", text, re.S)
     return (blocks[-1] if blocks else text).strip() + "\n"
@@ -50,7 +70,7 @@ def judge(task, path, tag):
     return out.startswith("PASS"), out
 
 def run(provider, model, task, lang):
-    chat = ollama_chat if provider == "ollama" else gemini_chat
+    chat = {"ollama": ollama_chat, "gemini": gemini_chat, "claude": claude_chat}[provider]
     spec = subprocess.run(["node", "bench/run.js", task, "--spec"], cwd=ROOT, capture_output=True, text=True).stdout.strip()
     if lang == "vow":
         system = ("You write programs in Vow, a new programming language. Everything you know about Vow is in this guide "
