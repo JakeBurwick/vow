@@ -548,6 +548,23 @@ export function check(src, ast) {
         if (!program.has(cap)) program.set(cap, { node: s.nameTok ?? s, why: `fn ${s.name} declares 'uses ${cap}'${s.mod && !s.mod.isEntry ? ` (imported from ${s.mod.label})` : ''}` });
       }
     }
+    // The first place the program can write a file (writeFile/appendFile called, or
+    // named as a value), so a host can offer a read-only fs grant. Recorded on the
+    // map as a property: it is not a capability of its own.
+    const WRITERS = new Set(['writeFile', 'appendFile']);
+    let fsWrite = null;
+    (function findWrite(node) {
+      if (fsWrite || node == null || typeof node !== 'object') return;
+      if (Array.isArray(node)) { for (const n of node) findWrite(n); return; }
+      if (node.t === 'Call' && node.resolved !== 'user' && WRITERS.has(node.callee)) { fsWrite = { node, why: `calls ${node.callee}(...), which writes a file` }; return; }
+      if (node.t === 'Ident' && node.resolved !== 'user' && WRITERS.has(node.name) && !fnUses.has(node.name)) { fsWrite = { node, why: `passes ${node.name} around as a value, and ${node.name} writes a file` }; return; }
+      for (const k in node) {
+        if (k === 'pos' || k === 'tok' || k === 'nameTok' || k === 'start' || k === 'end' || k === 'calleeNode' || k === 'mod') continue;
+        const v = node[k];
+        if (v != null && typeof v === 'object') findWrite(v);
+      }
+    })(ast.stmts);
+    program.fsWrite = fsWrite;
     return program;
   }
 

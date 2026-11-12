@@ -30,6 +30,7 @@ const USAGE = [
   '       vow --sandbox <file.vow>            pure computation only: no net, fs or env',
   '       vow --allow net[=host],fs[=dir],env[=NAME] <file.vow>   sandbox with these grants',
   '                                           (a bare net, fs or env grants all hosts, paths or variables)',
+  '       vow --allow fs-read[=dir] <file.vow>  files may be read, never written',
   '       vow --help | --version',
 ].join('\n');
 if (argv[0] === '--help' || argv[0] === '-h') { console.log(USAGE); process.exit(0); }
@@ -44,7 +45,9 @@ if (argv[0] === 'test') { testMode = true; argv.shift(); }
 // Sandbox policy. Any --allow (or --sandbox) turns it on; then the program may only reach
 // what is listed. `--allow net` = any host, `--allow net=host:port`, `--allow fs=./dir`,
 // `--allow env=NAME`. Repeat the flag for more. `--sandbox` alone = pure computation only.
-const policy = { on: false, caps: new Map() }; // cap -> null (any) | string[] (scoped)
+// `--allow fs-read[=dir]` is the read-only file grant: readFile works there, and a program
+// that can write any file is refused before it runs unless a full `fs` grant is also given.
+const policy = { on: false, caps: new Map(), read: undefined }; // cap -> null (any) | string[] (scoped); read: same shape, fs-read grants
 let checkOnly = false;
 let forceInterp = false;
 // --seed N (or VOW_SEED=N) makes random() / randomInt() reproducible
@@ -66,7 +69,12 @@ while (argv[0]?.startsWith('--')) {
     policy.on = true;
     for (const part of (argv.shift() ?? '').split(',').filter(Boolean)) {
       const [cap, scope] = part.split('=');
-      if (!['net', 'fs', 'env'].includes(cap)) { console.error(`✗ --allow: unknown capability '${cap}' (net, fs, env)`); process.exit(2); }
+      if (cap === 'fs-read') {
+        if (scope == null) policy.read = null;
+        else if (policy.read !== null) policy.read = [...(policy.read ?? []), scope];
+        continue;
+      }
+      if (!['net', 'fs', 'env'].includes(cap)) { console.error(`✗ --allow: unknown capability '${cap}' (net, fs, fs-read, env)`); process.exit(2); }
       if (scope == null) policy.caps.set(cap, null);
       else if (policy.caps.get(cap) !== null) policy.caps.set(cap, [...(policy.caps.get(cap) ?? []), scope]);
     }
@@ -278,8 +286,10 @@ import { resolve as resolvePath, sep } from 'node:path';
 const denied = (cap, what) => err(`sandbox: ${cap} access to ${what} is not allowed (--allow ${cap}=...)`);
 const permits = (cap, test) => !policy.on || policy.caps.get(cap) === null || (policy.caps.get(cap) ?? []).some(test);
 const raw = { ...ioBuiltins };
+const under = (p) => (d) => (resolvePath(p) + sep).startsWith(resolvePath(d) + sep);
+const mayRead = (p) => permits('fs', under(p)) || policy.read === null || (policy.read ?? []).some(under(p));
 const guarded = {
-  readFile: ([p]) => permits('fs', d => (resolvePath(p) + sep).startsWith(resolvePath(d) + sep)) ? raw.readFile([p]) : denied('fs', `"${p}"`),
+  readFile: ([p]) => mayRead(p) ? raw.readFile([p]) : denied('fs', `"${p}"`),
   writeFile: ([p, text]) => permits('fs', d => (resolvePath(p) + sep).startsWith(resolvePath(d) + sep)) ? raw.writeFile([p, text]) : denied('fs', `"${p}"`),
   appendFile: ([p, text]) => permits('fs', d => (resolvePath(p) + sep).startsWith(resolvePath(d) + sep)) ? raw.appendFile([p, text]) : denied('fs', `"${p}"`),
   httpGet: ([url]) => {
@@ -303,7 +313,15 @@ try {
   const { proved, effects } = check(src, ast);
   if (policy.on) {
     // Refuse before running a single statement if the program can reach anything not granted.
-    const over = [...effects].filter(([cap]) => !policy.caps.has(cap));
+    const readOnly = policy.read !== undefined && !policy.caps.has('fs');
+    const over = [...effects].filter(([cap]) => !policy.caps.has(cap) && !(cap === 'fs' && readOnly));
+    if (!over.length && readOnly && effects.fsWrite) {
+      const info = effects.fsWrite;
+      const loc = info.node?.start != null ? nodeLoc(src, info.node) : null;
+      const at = loc ? ` (${loc.file ? loc.file + ', ' : ''}line ${loc.line})` : '';
+      console.error(`✗ SandboxError: this program can write files, and the sandbox only grants reading them\n  fs: ${info.why}${at}\n  Nothing was run.\n  Likely fix: remove the write, or run with --allow fs=<dir> to let it write there`);
+      process.exit(3);
+    }
     if (over.length) {
       const lines = over.map(([cap, info]) => {
         const loc = info.node?.start != null ? nodeLoc(src, info.node) : null;

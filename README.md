@@ -53,6 +53,7 @@ This installs two commands: `vow`, the compiler and runner, and `vow-mcp`, an MC
 | `vow --check app.vow` | Type-check without running |
 | `vow test app.vow` | Run the file's `test "name" { ... }` blocks; exit 1 if any fails (`--filter word` narrows them) |
 | `vow --sandbox --allow fs=./data app.vow` | Only let the program touch `./data`, checked before it runs |
+| `vow --allow fs-read=./data app.vow` | Let it read `./data` and never write a file |
 | `vow --sandbox --allow net=api.example.com app.vow` | Only let it call one host |
 | `vow --seed 7 game.vow` | Make random numbers repeatable |
 | `vow --interp app.vow` | Use the interpreter instead of the compiler |
@@ -108,9 +109,11 @@ Measured October 2026 (dates per row). Numbers may be out of date; `RESULTS.md` 
 | Failed submissions, 4 new moderately hard tasks, 12 runs | 0 | TypeScript 0 | 2026-10-13 |
 | Failed submissions per run, older hard set, agents may run code first | 1.0 (2.3 a day earlier) | TypeScript 1.0 | 2026-10-13 (TS 2026-10-12) |
 | Failed attempts, same tasks, no running allowed | 15 | TypeScript 7 | 2026-10-08 |
-| Attack programs blocked by the sandbox | 6 of 7 | Deno 7 of 7 | 2026-10-02 |
+| Failed submissions, same 3 hard tasks on Claude Sonnet 5.5 and Opus 5.5, 18 runs per language | 1 | TypeScript 0 | 2026-11-05 |
+| Attack programs blocked by the sandbox (6 of 7 on 2026-10-02, before the read-only file grant) | 7 of 7 | Deno 7 of 7 | 2026-11-12 |
+| Real jobs finished in those 7 attack programs | 2 of 7 | Deno 7 of 7 | 2026-11-12 |
 
-On October 13, after fixes for built-in tests, clearer documentation, and checker bugs, testing on three new hard tasks produced one failed submission for Vow and zero for TypeScript across nine runs, with every run solved. The single Vow failure occurred when the agent misread the specification. Tests from October 7 to 12 on an older task set recorded about twice as many attempts in Vow as in TypeScript, while tests with Claude Sonnet produced zero failed submissions in both languages. The Vow sandbox does not yet support a read-only file grant, which is the one attack Deno blocks and Vow does not.
+On October 13, after fixes for built-in tests, clearer documentation, and checker bugs, testing on three new hard tasks produced one failed submission for Vow and zero for TypeScript across nine runs, with every run solved. The single Vow failure occurred when the agent misread the specification. Tests from October 7 to 12 on an older task set recorded about twice as many attempts in Vow as in TypeScript, while tests with Claude Sonnet produced zero failed submissions in both languages. On November 5, 2026, Claude Sonnet 5.5 and Claude Opus 5.5 solved every task across 36 runs, with 1 failed submission for Vow and 0 for TypeScript. On November 12, 2026, the new read-only grant blocked the single sandbox attack Vow had missed in October.
 
 ## Development
 

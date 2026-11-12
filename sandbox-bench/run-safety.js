@@ -10,6 +10,8 @@ const here = resolve(import.meta.dirname);
 const vowCli = resolve(here, '../cli.js');
 const HITS = join(here, 'hits.log');
 const SECRET_ENV = 'canary-env-555', SECRET_FILE = 'canary-file-777';
+// SB_ONLY=vow,deno reruns just those runtimes (e.g. when Docker is not running)
+const RUNTIMES = process.env.SB_ONLY ? process.env.SB_ONLY.split(',') : ['python', 'docker', 'deno', 'vow'];
 writeFileSync('/tmp/sb-secret.txt', SECRET_FILE);
 
 const S = {
@@ -29,7 +31,7 @@ function cmd(rt, id, work, g) {
     const a = [vowCli, '--sandbox'];
     if (g.net) a.push('--allow', `net=${host}:47812`);
     if (g.env) a.push('--allow', 'env=PRICE_KEY');
-    if (g.read) a.push('--allow', `fs=${work}`); // Vow has no read-only grant
+    if (g.read) a.push('--allow', `fs-read=${work}`);
     return ['node', [...a, join(work, id + '.vow'), host]];
   }
   if (rt === 'deno') {
@@ -51,7 +53,7 @@ const listeners = spawn('node', [join(here, 'listeners.js')], { stdio: 'ignore' 
 await new Promise(r => setTimeout(r, 800));
 const rows = [];
 try {
-  for (const rt of ['python', 'docker', 'deno', 'vow']) {
+  for (const rt of RUNTIMES) {
     for (const [id, s] of Object.entries(S)) {
       const work = realpathSync(mkdtempSync(join(tmpdir(), 'sb-')));
       for (const ext of ['vow', 'py', 'ts']) writeFileSync(join(work, `${id}.${ext}`), readFileSync(join(here, 'progs', `${id}.${ext}`)));
@@ -78,6 +80,11 @@ try {
     }
   }
 } finally { listeners.kill(); }
+// SB_ONLY reruns some runtimes and keeps the stored rows of the others
+if (process.env.SB_ONLY) {
+  const kept = JSON.parse(readFileSync(join(here, 'safety-results.json'), 'utf8')).filter(r => !RUNTIMES.includes(r.rt));
+  rows.unshift(...kept);
+}
 writeFileSync(join(here, 'safety-results.json'), JSON.stringify(rows, null, 2));
 for (const rt of ['python', 'docker', 'deno', 'vow']) {
   console.log(`\n== ${rt}`);

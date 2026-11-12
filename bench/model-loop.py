@@ -41,6 +41,9 @@ def gemini_chat(model, messages):
             last = e
     raise RuntimeError(f"gemini unavailable: {last}")
 
+# token counts of the current run (claude provider only; reset per task and language)
+USAGE = {"in": 0, "out": 0, "calls": 0}
+
 def claude_chat(model, messages):
     system = "\n\n".join(m["content"] for m in messages if m["role"] == "system")
     turns = [m for m in messages if m["role"] != "system"]
@@ -50,12 +53,23 @@ def claude_chat(model, messages):
         prompt = "\n\n".join(f"<{m['role']}>\n{m['content']}\n</{m['role']}>" for m in turns[:-1])
         prompt += "\n\n" + turns[-1]["content"]
     cmd = ["claude", "-p", "--model", model, "--tools", "", "--no-session-persistence",
-           "--output-format", "text", "--system-prompt", system]
+           "--output-format", "json", "--system-prompt", system,
+           # no MCP servers or user settings: otherwise every call carries ~240k tokens of tool listings
+           "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}', "--setting-sources", ""]
     for wait in [0, 30, 90]:
         if wait: time.sleep(wait)
         r = subprocess.run(cmd, input=prompt, capture_output=True, text=True, timeout=900, cwd="/tmp")
         if r.returncode == 0 and r.stdout.strip():
-            return r.stdout
+            try:
+                d = json.loads(r.stdout)
+                u = d.get("usage") or {}
+                # input = everything the model read, cached or not
+                USAGE["in"] += u.get("input_tokens", 0) + u.get("cache_creation_input_tokens", 0) + u.get("cache_read_input_tokens", 0)
+                USAGE["out"] += u.get("output_tokens", 0)
+                USAGE["calls"] += 1
+                if d.get("result", "").strip(): return d["result"]
+            except ValueError:
+                return r.stdout
         last = (r.stderr or r.stdout)[-400:]
     raise RuntimeError(f"claude {model} failed: {last}")
 
@@ -104,6 +118,7 @@ if __name__ == "__main__":
     for task in tasks:
         for lang in ["vow", "ts"]:
             t0 = time.time()
+            USAGE.update({"in": 0, "out": 0, "calls": 0})
             try:
                 tries, ok = run(provider, model, task, lang)
             except Exception as e:
@@ -111,6 +126,8 @@ if __name__ == "__main__":
                 print(f"{task:15} {lang:3} ERROR {e}", flush=True)
             rec = {"ts": time.strftime("%Y-%m-%dT%H:%M:%S"), "model": f"{provider}:{model}", "task": task,
                    "lang": lang, "tries": tries, "pass": ok, "seconds": round(time.time() - t0)}
+            if USAGE["calls"]: rec.update({"tokens_in": USAGE["in"], "tokens_out": USAGE["out"]})
             open(os.path.join(HERE, "log", "model-loop.jsonl"), "a").write(json.dumps(rec) + "\n")
             if tries is not None:
-                print(f"{task:15} {lang:3} {'PASS' if ok else 'FAIL'} in {tries} tries ({rec['seconds']}s)", flush=True)
+                tok = f", {rec['tokens_in']} in / {rec['tokens_out']} out tokens" if "tokens_in" in rec else ""
+                print(f"{task:15} {lang:3} {'PASS' if ok else 'FAIL'} in {tries} tries ({rec['seconds']}s{tok})", flush=True)

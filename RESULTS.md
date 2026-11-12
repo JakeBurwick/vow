@@ -31,6 +31,15 @@ Across all 15 tasks with a Python baseline, haiku never needed fewer attempts in
 | TypeScript in Deno (`--allow-*` flags) | **7/7** | **7/7** | **15-30 ms** |
 | Vow `--sandbox --allow` | 6/7 (no read-only file grant) | 4/7 (rejects the whole program up front) | 60-90 ms |
 
+**Rerun 2026-11-12** with the new read-only grant (`--allow fs-read=DIR`; Vow and Deno rerun, Python and Docker rows unchanged from 2026-10-02):
+
+| runtime | attacks blocked | legit jobs done | typical run time |
+|---|---|---|---|
+| TypeScript in Deno | 7/7 | 7/7 | 30-45 ms |
+| Vow `--sandbox --allow` | 7/7 | 2/7 | 75-95 ms |
+
+The overwrite-its-own-input program is now refused before it runs. The cost: the two programs that hold a file write (drop a file outside the workdir, overwrite the input) are refused whole, so Vow finishes the legit job in 2 of 7, down from 4.
+
 Vow's one unique property is rejecting a program before anything runs, with the line that needs the capability. That's real but marginal: Deno blocks the same accesses at runtime with a clear error, and the denied action never happens.
 
 ## 3. Raw speed

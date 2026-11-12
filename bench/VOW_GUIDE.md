@@ -258,7 +258,7 @@ fn post(url, data) uses net {
   return ok(r.status)
 }
 ```
-Both obey `--sandbox --allow net=host` by host, like httpGet.
+Both obey `--sandbox --allow net=host` by host, like httpGet. Files: `--allow fs=dir` grants reading and writing inside dir; `--allow fs-read=dir` grants reading only, and a program that calls writeFile or appendFile anywhere is refused before it runs.
 
 ## Modules (multi-file programs)
 ```

@@ -1009,6 +1009,10 @@ for (const [dir, needles] of moduleDiagTests) {
   const cli = (args, input) => spawnSync(process.execPath, [join(here, 'cli.js'), ...args], { cwd: here, encoding: 'utf8', input: input ?? '' });
   const guess = prog('guess', 'let secret = 42\nlet tries = 0\nprint("guess:")\nwhile true {\n  match readLine() {\n    err(e) => {\n      print("bye (${e})")\n      break\n    }\n    ok(line) => {\n      tries = tries + 1\n      match int(trim(line)) {\n        err(e) => print("not a number: ${line}")\n        ok(g) => {\n          if g < secret { print("higher") }\n          else if g > secret { print("lower") }\n          else {\n            print("got it in ${tries}")\n            break\n          }\n        }\n      }\n    }\n  }\n}\n');
   const all = prog('all', 'match readLine() { ok(l) => print("first: ${l}")  err(e) => print(e) }\nmatch readAll() { ok(t) => print("rest:", lines(t), len(t))  err(e) => print(e) }\nmatch readLine() { ok(l) => print(l)  err(e) => print("then: ${e}") }\n');
+  const roData = join(tmpDir, 'ro-data.txt'); writeFileSync(roData, '7\n8\n');
+  const roRead = prog('ro-read', `match readFile(${JSON.stringify(roData)}) { ok(t) => print(len(lines(t)))  err(e) => print(e) }\n`);
+  const roWrite = prog('ro-write', `match readFile(${JSON.stringify(roData)}) { ok(t) => print(len(lines(t)))  err(e) => print(e) }\nmatch writeFile(${JSON.stringify(roData)}, "999") { ok(v) => print("overwrote")  err(e) => print(e) }\n`);
+  const roFn = prog('ro-fn', 'fn save(p, t) uses fs { match appendFile(p, t) { ok(v) => print("w") err(e) => print(e) } }\nprint(1)\n');
   const loop = prog('loop', 'let i = 0\nwhile true { i = i + 1 }\n');
   // the form-signups program in bench/EXAMPLES.md (keep the two in sync) and its stated output
   const urlq = prog('urlq', exampleFromMd('form-signups'));
@@ -1034,6 +1038,12 @@ for (const [dir, needles] of moduleDiagTests) {
     ['output printed before a trap stays before the error (same destination)', cli([order]), r => r.status === 1 && r.stdout.endsWith('line 2999\n') && r.stderr.includes('index 5 is out of range')],
     ['httpRequest obeys the net allow-list', cli(['--sandbox', '--allow', 'net=example.com', net]), r => r.status === 0 && r.stdout === 'sandbox: net access to api.github.com is not allowed (--allow net=...)\n'],
     ['httpRequest needs net under --sandbox', cli(['--sandbox', net]), r => r.status === 3 && r.stderr.includes("net: calls fn f, which declares 'uses net'")],
+    ['--allow fs-read lets a program read', cli(['--allow', `fs-read=${tmpDir}`, roRead]), r => r.status === 0 && r.stdout === '2\n'],
+    ['--allow fs-read refuses a program that can write, before it runs', cli(['--allow', `fs-read=${tmpDir}`, roWrite]), r => r.status === 3 && r.stdout === '' && r.stderr.includes('only grants reading') && r.stderr.includes('calls writeFile(...), which writes a file (line 2)') && r.stderr.includes('Nothing was run') && readFileSync(roData, 'utf8') === '7\n8\n'],
+    ['--allow fs-read refuses a write inside a fn that is never called', cli(['--allow', 'fs-read', roFn]), r => r.status === 3 && r.stdout === '' && r.stderr.includes('calls appendFile(...), which writes a file')],
+    ['--allow fs-read is scoped to its directory', cli(['--allow', `fs-read=${join(tmpDir, 'nowhere')}`, roRead]), r => r.status === 0 && r.stdout.includes('sandbox: fs access to') && r.stdout.includes('is not allowed')],
+    ['--allow fs-read does not grant net or env', cli(['--allow', 'fs-read', net]), r => r.status === 3 && r.stderr.includes('net:')],
+    ['--allow fs-read plus fs=dir reads anywhere granted, writes only in dir', cli(['--allow', `fs-read=${tmpDir},fs=${join(tmpDir, 'out')}`, roWrite]), r => r.status === 0 && r.stdout.startsWith('2\nsandbox: fs access to') && readFileSync(roData, 'utf8') === '7\n8\n'],
   ];
   // the same destination for stdout and stderr: every printed line must come before the error text
   const both = spawnSync(process.execPath, [join(here, 'cli.js'), order], { cwd: here, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });

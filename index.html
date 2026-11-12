@@ -563,6 +563,7 @@ fn shout(s) { upper(s) }      // provably touches nothing
 // capability you don't use is also an error
 
 // vow --sandbox --allow net=api.example.com,fs=./data app.vow
+// vow --allow fs-read=./data app.vow   (read, never write)
 // refuses the program before it runs if it reaches further</pre>
       </div>
 
@@ -727,6 +728,21 @@ let m = {"n": "x", "q": 3}  // ✗ one value type per map;
       </div>
 
       <div class="bench-item">
+        <h3 class="result-h">Hard tasks on bigger models</h3>
+        <p class="result-note">On November 5, 2026, we benchmarked Claude Sonnet 5.5 and Claude Opus 5.5 on three tasks: a Lisp interpreter, a JSON schema validator, and a spreadsheet. Each agent ran fresh in its own folder with only the task specification, plus the Vow guide for Vow runs. Agents could check and run their code before a judged submission.</p>
+        <div class="result-wrap"><table class="result">
+          <thead><tr><th scope="col">model, language</th><th scope="col">runs solved</th><th scope="col">failed submissions</th></tr></thead>
+          <tbody>
+            <tr><td>Sonnet 5.5, Vow</td><td>9 of 9</td><td>1</td></tr>
+            <tr><td>Sonnet 5.5, TypeScript</td><td>9 of 9</td><td class="best">0</td></tr>
+            <tr><td>Opus 5.5, Vow</td><td>9 of 9</td><td class="best">0</td></tr>
+            <tr><td>Opus 5.5, TypeScript</td><td>9 of 9</td><td class="best">0</td></tr>
+          </tbody>
+        </table></div>
+        <p class="result-note">Every run solved its task across 36 total runs. The one Vow failure occurred when an agent compared the spec's type name <code>boolean</code> against <code>bool</code> returned by <code>jsonType</code>. Token use per run was not measured, and these tasks were near the ceiling for all tested models.</p>
+      </div>
+
+      <div class="bench-item">
         <h3 class="result-h">Older hard tasks, agents may run their code</h3>
         <p class="result-note">4 hard tasks, Claude Haiku. Agents could check, run and test their program before each judged submission, as real coding agents do. Every run solved its task. Failed submissions per run, fewer is better.</p>
         <div class="result-wrap"><table class="result">
@@ -754,15 +770,16 @@ let m = {"n": "x", "q": 3}  // ✗ one value type per map;
 
       <div class="bench-item">
         <h3 class="result-h">Safety: 7 attack programs</h3>
-        <p class="result-note">Each program does a real job plus one attack, under the tightest permissions each runtime supports. Measured Oct 2, 2026.</p>
+        <p class="result-note">The safety test uses 7 attack programs that each perform a real job and one attack. In the October 2, 2026 run, Vow blocked 6 of 7 attacks because it lacked a read-only file grant to stop a program from overwriting its input file. The November 12, 2026 rerun tested Vow with the new read-only grant.</p>
         <div class="result-wrap"><table class="result">
-          <thead><tr><th scope="col">runtime</th><th scope="col">attacks blocked</th></tr></thead>
+          <thead><tr><th scope="col">runtime</th><th scope="col">attacks blocked</th><th scope="col">real jobs finished</th><th scope="col">measured</th></tr></thead>
           <tbody>
-            <tr><td>TypeScript in Deno</td><td class="best">7 / 7</td></tr>
-            <tr><td>Vow sandbox</td><td>6 / 7 <span class="muted">(no read-only file grant yet)</span></td></tr>
-            <tr><td>Python in Docker</td><td>6 / 7</td></tr>
+            <tr><td>TypeScript in Deno</td><td class="best">7 / 7</td><td class="best">7 / 7</td><td>Nov 12</td></tr>
+            <tr><td>Vow sandbox</td><td class="best">7 / 7</td><td>2 / 7</td><td>Nov 12</td></tr>
+            <tr><td>Python in Docker</td><td>6 / 7</td><td class="best">7 / 7</td><td>Oct 2</td></tr>
           </tbody>
         </table></div>
+        <p class="result-note">Vow finished the real job in 2 of 7 programs, and Deno finished in 7 of 7. Vow refuses the whole program up front when any line reaches past what was granted.</p>
       </div>
     </div>
 
@@ -777,6 +794,7 @@ let m = {"n": "x", "q": 3}  // ✗ one value type per map;
       <li><strong>v0.8</strong>: capabilities: a function can't touch the network, files or environment unless its signature says <code>uses net</code>, <code>fs</code> or <code>env</code>, and callers inherit the obligation.</li>
       <li><strong>v0.9</strong>: block-bodied match arms, string and number patterns in <code>match</code> with <code>_</code>, and functions and lambdas whose last line is their value.</li>
       <li><strong>Sandbox mode</strong>: <code>--sandbox</code> with <code>--allow net=host,fs=dir,env=NAME</code> rejects a program before it runs if it can reach anything not granted.</li>
+      <li><strong>Read-only file grant</strong>: <code>--allow fs-read=dir</code> lets a program read files inside a directory and refuses execution up front with line numbers if the code calls <code>writeFile</code> or <code>appendFile</code>.</li>
       <li><strong>Compiler to JavaScript</strong>: the CLI compiles Vow to JavaScript by default, about 50 times faster than the interpreter (<code>--interp</code> still runs it). A differential test checks that both give identical output.</li>
       <li><strong><code>${}</code> strings</strong>: only <code>"${expr}"</code> inserts a value, so plain braces in templates and JSON need no escaping. Nested functions can now call themselves.</li>
       <li><strong>Standard library</strong>: 17 builtins picked from a usage count over 96 TypeScript solutions: regex (<code>matches</code>, <code>find</code>, <code>findAll</code>, <code>replaceAll</code>, <code>splitOn</code>), <code>words</code>, <code>sig</code>, <code>int</code>, <code>isInt</code>, and list functions (<code>map</code>, <code>filter</code>, <code>any</code>, <code>all</code>, <code>count</code>, <code>fold</code>, <code>uniq</code>, <code>values</code>).</li>
