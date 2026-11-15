@@ -1,0 +1,71 @@
+// Playlist stats: tracks and length per playlist, top artist, longest track. Fails loudly on any record it cannot read.
+struct Count { artist, n }
+
+fn seconds(j) {
+  if jsonType(j) != "number" { return err("not a number") }
+  let v = jsonNum(j)?
+  if not (v - v == 0) or not isInt(v) or v < 0 { return err("not a whole number of seconds") }
+  return ok(v)
+}
+
+fn hms(s) {
+  let h = floor(s / 3600)
+  let m = floor(s / 60) % 60
+  return "${h}:${padLeft(str(m), 2, "0")}:${padLeft(str(s % 60), 2, "0")}"
+}
+
+fn report(text) {
+  let data = match parseJson(text) { ok(j) => j err(e) => { return err("invalid JSON: ${e}") } }
+  if jsonType(data) != "object" { return err("expected a JSON object") }
+  let pj = field(data, "playlists")
+  if jsonType(pj) != "array" { return err("missing playlists list") }
+  let pls = jsonList(pj)
+  if len(pls) == 0 { return err("no playlists, there is no top artist") }
+  let out = []
+  let artists = {}
+  let longest = -1
+  let longTitle = ""
+  let i = 0
+  for p in pls {
+    i = i + 1
+    if jsonType(p) != "object" { return err("playlist ${i}: expected an object") }
+    let name = match jsonStr(field(p, "name")) { ok(v) => v err(e) => { return err("playlist ${i}: missing name") } }
+    let tj = field(p, "tracks")
+    if jsonType(tj) != "array" { return err("playlist ${i}: missing tracks list") }
+    let tracks = jsonList(tj)
+    let total = 0
+    let j = 0
+    for t in tracks {
+      j = j + 1
+      if jsonType(t) != "object" { return err("playlist ${i} track ${j}: expected an object") }
+      let title = match jsonStr(field(t, "title")) { ok(v) => v err(e) => { return err("playlist ${i} track ${j}: missing title") } }
+      let artist = match jsonStr(field(t, "artist")) { ok(v) => v err(e) => { return err("playlist ${i} track ${j}: missing artist") } }
+      if artist == "" { return err("playlist ${i} track ${j}: missing artist") }
+      let s = match seconds(field(t, "seconds")) { ok(v) => v err(e) => { return err("playlist ${i} track ${j}: bad seconds ${field(t, "seconds")}") } }
+      total = total + s
+      artists[artist] = match get(artists, artist) { ok(v) => v err(e) => 0 } + 1
+      if s > longest {
+        longest = s
+        longTitle = title
+      }
+    }
+    push(out, "${name} ${len(tracks)} ${hms(total)}")
+  }
+  if longest < 0 { return err("no tracks, there is no top artist or longest track") }
+  let list = []
+  for a in keys(artists) { push(list, Count { artist: a, n: artists[a] }) }
+  let top = sortBy(sortBy(list, c => c.artist), c => -c.n)[0]
+  push(out, "artist ${top.artist} ${top.n}")
+  push(out, "longest ${longTitle}")
+  return ok(out)
+}
+
+let a = args()
+if len(a) < 1 {
+  print("error: missing argument")
+} else {
+  match report(a[0]) {
+    ok(out) => { for l in out { print(l) } }
+    err(e) => print("error: ${e}")
+  }
+}
