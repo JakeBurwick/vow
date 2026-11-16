@@ -6,7 +6,8 @@
 //                                         the compiled JS backend (lang/compile.js)
 //   node cli.js --seed 42 program.vow     reproducible random() / randomInt() (also VOW_SEED=42)
 //   node cli.js --max-steps N program.vow stop after N statements (default 50,000,000; 0 = no limit)
-//   node cli.js test program.vow [--filter word]   run the program's test blocks (exit 1 if any fails)
+//   node cli.js test program.vow [--filter word]   run the program's test blocks (exit 1 if any fails),
+//                                                  then the bad-input probe (--no-probe skips it)
 
 import { readFile as fsRead, writeFile as fsWrite, appendFile as fsAppend } from 'node:fs/promises';
 import { readSync, writeSync, readFileSync } from 'node:fs';
@@ -18,12 +19,14 @@ import { createCompiledRun } from './lang/runtime.js';
 import { VowError, formatDiag, nodeLoc } from './lang/diagnostics.js';
 import { loadProgram, nodeHost } from './lang/modules.js';
 import { runTests, formatResult, summary } from './lang/testing.js';
+import { probe, formatProbe } from './lang/probe.js';
 
 const argv = process.argv.slice(2);
 const USAGE = [
   'usage: vow <file.vow> [args...]            run a program',
   '       vow --check <file.vow>              type-check only, run nothing',
-  '       vow test <file.vow> [--filter word] run the file\'s test blocks',
+  '       vow test <file.vow> [--filter word] run the file\'s test blocks, then the bad-input probe',
+  '       vow test --no-probe <file.vow>      tests only, no probe',
   '       vow --interp <file.vow> [args...]   interpreter instead of the compiler',
   '       vow --max-steps N <file.vow>        stop after N statements (0 = no limit)',
   '       vow --seed N <file.vow>             reproducible random() / randomInt()',
@@ -42,6 +45,8 @@ if (argv[0] === '--version' || argv[0] === '-v') {
 // `vow test file.vow`: run the file's test blocks instead of the program (flags may come first)
 let testMode = false;
 if (argv[0] === 'test') { testMode = true; argv.shift(); }
+// vow test runs the bad-input probe after the tests pass (lang/probe.js); --no-probe skips it
+let noProbe = false;
 // Sandbox policy. Any --allow (or --sandbox) turns it on; then the program may only reach
 // what is listed. `--allow net` = any host, `--allow net=host:port`, `--allow fs=./dir`,
 // `--allow env=NAME`. Repeat the flag for more. `--sandbox` alone = pure computation only.
@@ -58,6 +63,7 @@ while (argv[0]?.startsWith('--')) {
   const flag = argv.shift();
   if (flag === '--check') checkOnly = true;
   else if (flag === '--interp') forceInterp = true;
+  else if (flag === '--no-probe') noProbe = true;
   else if (flag === '--seed') seed = argv.shift();
   else if (flag === '--max-steps') {
     const n = argv.shift();
@@ -91,7 +97,8 @@ if (testMode) {
     if (a === '--filter') {
       testFilter = rest.shift();
       if (testFilter == null || testFilter === '') { console.error('✗ --filter takes a word: vow test file.vow --filter word'); process.exit(2); }
-    } else { console.error(`✗ vow test takes a file and an optional --filter word, got "${a}"`); process.exit(2); }
+    } else if (a === '--no-probe') noProbe = true;
+    else { console.error(`✗ vow test takes a file, an optional --filter word and --no-probe, got "${a}"`); process.exit(2); }
   }
 }
 if (seed != null && seed !== '') {
@@ -363,6 +370,12 @@ try {
     const results = await runTests(tests, { src, filter: testFilter, onResult: (r) => printLine(formatResult(r)) });
     const s = summary(results, { total: tests.length, filter: testFilter, file });
     printLine(s.line);
+    // the probe only means something once every test passes, and only on the whole suite
+    if (s.code === 0 && !noProbe && testFilter == null) {
+      const p = formatProbe(await probe(file, ast, effects));
+      if (p.text) printLine(p.text);
+      process.exit(p.code);
+    }
     process.exit(s.code);
   }
   if (compiled) await compiled.run();

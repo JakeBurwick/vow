@@ -2404,6 +2404,13 @@ export function check(src, ast) {
         }
       } else {
         const t = inferExpr(arm.body, inner);
+        // a statement match throws its arms' values away, so a Result there is ignored
+        // (bench bad3 order-merge: `ok(data) => summarize(data)` dropped every err silently)
+        if (!asExpr && prune(t).k === 'result') {
+          diag(arm.body, 'this Result is ignored',
+            `'${snippet(arm.body)}' returns a ${tn(t)}, and this match is a statement, so the value of the arm is thrown away; an error from it would vanish.`,
+            `handle it: ${arm.binder ? `${arm.tag}(${arm.binder})` : arm.tag} => ${snippet(arm.body)}?   (at the top level, ? stops the program with "error: ...")`);
+        }
         if (asExpr && !unify(valueT, t)) {
           diag(arm.body, `match arms produce different types`,
             `The other arm produces ${tn(valueT)}, but this one produces ${tn(t)}; a match that's used as a value must produce one type.`,

@@ -9,6 +9,10 @@ import { loadCode } from './server-load.js';
 import { createRun } from '../lang/interp.js';
 import { VowError, formatDiag } from '../lang/diagnostics.js';
 import { runTests, formatReport } from '../lang/testing.js';
+import { probe, formatProbe } from '../lang/probe.js';
+import { writeFileSync, unlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, dirname } from 'node:path';
 
 const { code, args, path, seed, mode, filter } = workerData;
 const sandboxed = (name) => ({ tag: 'err', val: `${name} is disabled in the ${mode === 'test' ? 'vow_test' : 'vow_run'} sandbox; test the logic with args() instead, then run real I/O with the Vow CLI` });
@@ -19,7 +23,7 @@ try {
   const loaded = await loadCode(code, path);
   src = loaded.src;
   const ast = loaded.ast;
-  check(src, ast);
+  const { effects } = check(src, ast);
   const { gen, tests } = createRun(src, ast, {
     seed,
     out: (line) => { if (out.length < MAX_OUT) out.push(line); },
@@ -35,7 +39,18 @@ try {
   });
   if (mode === 'test') {
     const results = await runTests(tests, { src, filter });
-    const { text, code: exit } = formatReport(results, { total: tests.length, filter });
+    let { text, code: exit } = formatReport(results, { total: tests.length, filter });
+    // the bad-input probe (lang/probe.js) reruns the program as a process, so it needs a file:
+    // a sibling of `path` when given (imports resolve from there), else a temp file
+    if (exit === 0 && !filter) {
+      const f = join(path ? dirname(path) : tmpdir(), `.vow-probe-${process.pid}-${Date.now()}.vow`);
+      writeFileSync(f, code);
+      try {
+        const p = formatProbe(await probe(f, ast, effects));
+        if (p.text) text += '\n' + p.text.replaceAll('vow test --no-probe FILE', 'vow_test with a filter, or vow test --no-probe FILE on the CLI');
+        if (p.code) exit = p.code;
+      } finally { try { unlinkSync(f); } catch {} }
+    }
     parentPort.postMessage({ ok: exit === 0, output: out.join('\n'), report: text });
   } else {
     let r = gen.next();

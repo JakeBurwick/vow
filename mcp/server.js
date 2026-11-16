@@ -55,7 +55,7 @@ const TOOLS = [
   },
   {
     name: 'vow_test',
-    description: 'Run the test blocks (test "name" { ... }) of a Vow program in the vow_run sandbox. Prints one line per test and a summary; a failing test shows the expected and actual values and the line. Write one test per example and per error line of a spec, then fix the program until every test passes.',
+    description: 'Run the test blocks (test "name" { ... }) of a Vow program in the vow_run sandbox. Prints one line per test and a summary; a failing test shows the expected and actual values and the line. Write one test per example and per error line of a spec, then fix the program until every test passes. When every test passes, the bad-input probe corrupts the inputs your run(args, stdin) tests use and reports any corrupted copy that still printed a normal answer.',
     inputSchema: {
       type: 'object',
       properties: {

@@ -654,7 +654,7 @@ print("${count} signups")
 
 Task: Convert temperatures written like `100C` or `212F`. With arguments, print one conversion per argument; without arguments, convert each non-empty line of stdin and finish with `<n> converted`. Round to one decimal. A value whose last character is not C or F prints `error: unknown unit: <value>`; a non-numeric value prints `error: not a number: <value>`.
 
-This program carries its own tests: one `test` block per example and per error line of the task, and two `run(args, stdin)` tests for the whole CLI. `node cli.js test temp.vow` prints exactly:
+This program carries its own tests: one `test` block per example and per error line of the task, and `run(args, stdin)` tests for the whole CLI. After the tests pass, `vow test` runs the bad-input probe: it corrupts the inputs those `run` tests use (an empty input, a field that reads `12a`, a missing field) and reports any corrupted copy that still printed a normal answer. The empty-input test is here because the task says what empty stdin prints (`0 converted`), and a test that expects a normal answer tells the probe that answer is right. `node cli.js test temp.vow` prints exactly:
 
 ```
 ✓ celsius to fahrenheit
@@ -664,7 +664,9 @@ This program carries its own tests: one `test` block per example and per error l
 ✓ not a number
 ✓ cli: one line per argument
 ✓ cli: stdin mode converts each non-empty line and counts them
-7 tests, 7 passed
+✓ cli: empty stdin converts nothing
+8 tests, 8 passed
+probe: 3 corrupted copies of the test input, every one rejected ✓
 ```
 
 Verified: `node cli.js temp.vow 100C 50F abcC 7` prints `100C = 212F`, `50F = 10C`, `error: not a number: abcC`, `error: unknown unit: 7`; the test blocks never run then.
@@ -720,4 +722,5 @@ test "cli: one line per argument" { expectEq(run(["0C", "212F"], ""), "0C = 32F\
 test "cli: stdin mode converts each non-empty line and counts them" {
   expectEq(run([], "10C\n\nbadF\n"), "10C = 50F\nerror: not a number: badF\n2 converted\n")
 }
+test "cli: empty stdin converts nothing" { expectEq(run([], ""), "0 converted\n") }
 ```

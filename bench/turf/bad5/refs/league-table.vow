@@ -1,0 +1,69 @@
+// League table: played, won, drawn, lost, goals and points per team, leader, number of matchdays. Fails loudly on any line it cannot read.
+struct Team { name, p, w, d, l, gf, ga, pts }
+
+fn played(t, gf, ga) {
+  let r = t
+  r.p = r.p + 1
+  if gf > ga {
+    r.w = r.w + 1
+    r.pts = r.pts + 3
+  } else if gf == ga {
+    r.d = r.d + 1
+    r.pts = r.pts + 1
+  } else {
+    r.l = r.l + 1
+  }
+  r.gf = r.gf + gf
+  r.ga = r.ga + ga
+  return r
+}
+
+fn report(text) {
+  let ls = split(text, "\n")
+  if len(ls) > 0 and ls[len(ls) - 1] == "" { ls = slice(ls, 0, len(ls) - 1) }
+  let teams = {}
+  let playing = {}
+  let n = 0
+  for line in ls {
+    n = n + 1
+    let f = split(line, " ")
+    if len(f) != 4 { return err("line ${n}: expected 4 fields, got ${len(f)}") }
+    if not matches(f[0], `^[0-9]+$`) { return err("line ${n}: bad matchday ${f[0]}") }
+    let m = match find(f[2], `^([0-9]+)-([0-9]+)$`) { ok(v) => v err(e) => { return err("line ${n}: bad score ${f[2]}") } }
+    let home = f[1]
+    let away = f[3]
+    if home == "" or away == "" { return err("line ${n}: missing team") }
+    if home == away { return err("line ${n}: ${home} plays itself") }
+    let day = str(int(f[0])?)
+    for t in [home, away] {
+      let key = "${day} ${t}"
+      if has(playing, key) { return err("line ${n}: ${t} plays twice on matchday ${day}") }
+      playing[key] = day
+    }
+    let hg = int(m[1])?
+    let ag = int(m[2])?
+    for t in [home, away] {
+      if not has(teams, t) { teams[t] = Team { name: t, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 } }
+    }
+    teams[home] = played(teams[home], hg, ag)
+    teams[away] = played(teams[away], ag, hg)
+  }
+  if len(keys(teams)) == 0 { return err("no matches, there is no leader") }
+  let out = []
+  let list = []
+  for k in sort(keys(teams)) {
+    let t = teams[k]
+    push(list, t)
+    push(out, "${t.name} ${t.p} ${t.w} ${t.d} ${t.l} ${t.gf} ${t.ga} ${t.pts}")
+  }
+  let lead = sortBy(sortBy(list, t => -(t.gf - t.ga)), t => -t.pts)[0]
+  push(out, "leader ${lead.name} ${lead.pts}")
+  push(out, "matchdays ${len(uniq(values(playing)))}")
+  return ok(out)
+}
+
+let input = match readAll() { ok(t) => t err(e) => "" }
+match report(input) {
+  ok(out) => { for l in out { print(l) } }
+  err(e) => print("error: ${e}")
+}

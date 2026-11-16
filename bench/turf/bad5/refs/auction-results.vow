@@ -1,0 +1,72 @@
+// Auction results: bids and outcome per lot, revenue, busiest bidder. Fails loudly on any record it cannot read.
+struct Count { bidder, n }
+
+fn money(c) { return "${floor(c / 100)}.${padLeft(str(c % 100), 2, "0")}" }
+
+fn cents(j) {
+  if jsonType(j) != "number" { return err("not a number") }
+  let v = jsonNum(j)?
+  if not (v - v == 0) or v < 0 { return err("not an amount") }
+  let c = round(v * 100)
+  if abs(v * 100 - c) > 0.000001 { return err("more than 2 decimals") }
+  return ok(c)
+}
+
+fn report(text) {
+  let data = match parseJson(text) { ok(j) => j err(e) => { return err("invalid JSON: ${e}") } }
+  if jsonType(data) != "object" { return err("expected a JSON object") }
+  let lj = field(data, "lots")
+  if jsonType(lj) != "array" { return err("missing lots list") }
+  let out = []
+  let counts = {}
+  let revenue = 0
+  let i = 0
+  for lot in jsonList(lj) {
+    i = i + 1
+    if jsonType(lot) != "object" { return err("lot ${i}: expected an object") }
+    let id = match jsonStr(field(lot, "lot")) { ok(v) => v err(e) => { return err("lot ${i}: missing lot id") } }
+    if not has(lot, "reserve") { return err("lot ${i}: missing reserve") }
+    let reserve = match cents(field(lot, "reserve")) { ok(v) => v err(e) => { return err("lot ${i}: bad reserve ${field(lot, "reserve")}") } }
+    let bj = field(lot, "bids")
+    if jsonType(bj) != "array" { return err("lot ${i}: missing bids list") }
+    let bids = jsonList(bj)
+    let lastBidder = ""
+    let last = -1
+    let j = 0
+    for b in bids {
+      j = j + 1
+      if jsonType(b) != "object" { return err("lot ${i} bid ${j}: expected an object") }
+      let bidder = match jsonStr(field(b, "bidder")) { ok(v) => v err(e) => { return err("lot ${i} bid ${j}: missing bidder") } }
+      if bidder == "" { return err("lot ${i} bid ${j}: missing bidder") }
+      if not has(b, "amount") { return err("lot ${i} bid ${j}: missing amount") }
+      let a = match cents(field(b, "amount")) { ok(v) => v err(e) => { return err("lot ${i} bid ${j}: bad amount ${field(b, "amount")}") } }
+      if j > 1 and a <= last { return err("lot ${i} bid ${j}: bid is not higher than the bid before it") }
+      last = a
+      lastBidder = bidder
+      counts[bidder] = match get(counts, bidder) { ok(v) => v err(e) => 0 } + 1
+    }
+    if len(bids) > 0 and last >= reserve {
+      revenue = revenue + last
+      push(out, "${id} ${len(bids)} sold ${lastBidder} ${money(last)}")
+    } else {
+      push(out, "${id} ${len(bids)} unsold")
+    }
+  }
+  if len(keys(counts)) == 0 { return err("no bids, there is no busiest bidder") }
+  push(out, "revenue ${money(revenue)}")
+  let list = []
+  for k in keys(counts) { push(list, Count { bidder: k, n: counts[k] }) }
+  let top = sortBy(sortBy(list, c => c.bidder), c => -c.n)[0]
+  push(out, "busiest ${top.bidder} ${top.n}")
+  return ok(out)
+}
+
+let a = args()
+if len(a) < 1 {
+  print("error: missing argument")
+} else {
+  match report(a[0]) {
+    ok(out) => { for l in out { print(l) } }
+    err(e) => print("error: ${e}")
+  }
+}

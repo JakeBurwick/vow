@@ -339,6 +339,54 @@ Vow tied TypeScript and stayed behind Python. Three of the four Vow agents score
 
 **Across all three sets:** Python is the most reliably loud on bad data nobody mentioned (81%, 74%, 71%), because an unhandled exception ends the program by default. Vow went from 8% (before the fixes) to 52% and 56%, ahead of TypeScript on one set and tied on the other. The claim "Vow fails loudly where other languages stay silent" holds against TypeScript at best, and does not hold against Python.
 
+### Fourth fresh set, with the bad-input probe (2026-11-15)
+
+The probe is the first Vow feature built only for agents. After every test passes, `vow test` (and MCP `vow_test`) takes the inputs the program's own `run(args, stdin)` tests use, corrupts one thing at a time (empty input, header only, a number field reading `12a`, `NaN`, `Infinity` or empty, a missing or null JSON field, a list where an object was, an impossible date, a field too few or too many), reruns the program on each copy and lists every copy that exited 0 with no error line and printed something different from the uncorrupted run; `vow test` then exits 1. A test that expects a normal answer for one of those inputs tells the probe that answer is right. It runs a program on dozens of made-up inputs with no setup, which is safe only because the checker proves the program has no `net`, `fs` or `env` effect; programs with any effect are not probed. Code: `lang/probe.js` (3ebe092). The same commit makes the checker reject a Result dropped by a statement match arm (`ok(d) => summarize(d)`, which silently threw away every error in one bad3 solution).
+
+Before any agent run, on the old sets only: on the nine Vow references (correct on every happy check, loud on every trap) the probe raised 2 flags in about 150 corruptions, both cases the set READMEs list as defensible (header-only input, an order with no items); on the 27 bad/bad2/bad3 Haiku solutions that had `run()` tests, it flagged every one that was silent on hidden traps.
+
+New tickets nobody tuned against (bench/turf/bad4: parcel-postage CSV, playlist-stats JSON, parking-log text; 9 happy checks and 11-12 traps each, built by a separate agent that did not know about the probe). Claude Haiku 5.5 via `claude -p` with no CLAUDE.md, settings or MCP, one fresh run per task, language and round, 4 rounds (12 solutions per condition), the bad2/bad3 prompts unchanged (`bench/turf/probe/run-agents.mjs`). The control is the same commit with the probe switched off and the guide and EXAMPLES.md without it (a separate worktree), so the only difference is the probe. All 48 solutions passed the visible checks on their first submission.
+
+| | happy checks | traps flagged (loud) | silent |
+|---|---|---|---|
+| **Vow, probe on** | 108/108 | **102/136 (75%)** | 34 |
+| Python | 108/108 | 83/136 (61%) | 53 |
+| Vow, probe off (control) | 108/108 | 75/136 (55%) | 61 |
+| TypeScript | 108/108 | 37/136 (27%) | 99 |
+
+Per task, traps flagged:
+
+| | parcel-postage (CSV) | parking-log (text) | playlist-stats (JSON) |
+|---|---|---|---|
+| Vow, probe on | 42/44 (95%) | 28/44 (64%) | 32/48 (67%) |
+| Python | 26/44 (59%) | 21/44 (48%) | 36/48 (75%) |
+| Vow, probe off | 22/44 (50%) | 28/44 (64%) | 25/48 (52%) |
+| TypeScript | 21/44 (48%) | 0/44 (0%) | 16/48 (33%) |
+
+The probe moved Vow from 55% to 75% and put it ahead of Python on a bad-data set for the first time, with no cost on valid input (every solution in every condition kept all 9 hidden happy checks). The gain is uneven: most of it is on the CSV task, the probe changed nothing on the gate log (its misses there are logic traps such as two INs in a row or an OUT before its IN, which no corruption of the input's format reaches), and Python still leads on the JSON task, where Vow's misses are an empty playlist list, negative seconds and `1e999`. One agent answered the probe the intended way, with a test expecting `total 0.00` for empty input, which made that input count as accepted (the hidden suite counts it silent). This is one set of three tasks and 12 solutions per condition.
+
+### Fifth fresh set: does the probe result hold? (2026-11-15)
+
+Same build, probe and protocol as the fourth set, no changes in between. New tickets nobody tuned against (bench/turf/bad5: water-bills CSV, auction-results JSON, league-table text; 9 happy checks and 11-12 traps each, again built by a separate agent that did not know about the probe, this time with more logic traps such as a meter reading below the previous one, a bid lower than the one before it, or a team playing itself). Claude Haiku 5.5, 12 solutions per condition, all 48 passed the visible checks on their first submission.
+
+| | happy checks | traps flagged (loud) | silent |
+|---|---|---|---|
+| **Vow, probe on** | 108/108 | **98/140 (70%)** | 42 |
+| Vow, probe off (control) | 108/108 | 81/140 (58%) | 59 |
+| Python | 108/108 | 71/140 (51%) | 69 |
+| TypeScript | 108/108 | 27/140 (19%) | 113 |
+
+| | water-bills (CSV) | auction-results (JSON) | league-table (text) |
+|---|---|---|---|
+| Vow, probe on | 33/48 (69%) | 36/48 (75%) | 29/44 (66%) |
+| Vow, probe off | 25/48 (52%) | 30/48 (63%) | 26/44 (59%) |
+| Python | 22/48 (46%) | 34/48 (71%) | 15/44 (34%) |
+| TypeScript | 6/48 (13%) | 16/48 (33%) | 5/44 (11%) |
+
+The result held: Vow with the probe led on all three tasks, including the JSON one. On this set Vow without the probe also beat Python (58% to 51%), so part of the margin is Vow itself; the probe added 12 points here and 20 on the fourth set.
+
+**Both probe sets together (6 tasks, 24 solutions per condition, 276 traps):** Vow with the probe 200/276 (72%), Vow without it 156/276 (57%), Python 154/276 (56%), TypeScript 64/276 (23%). Every solution in every condition kept all its hidden happy checks. Without the probe Vow ties Python; with it Vow flags 16 points more bad data than Python.
+
 ## Fresh hard tasks on bigger models (2026-11-05)
 
 Same three fresh hard tasks (mini-lisp, json-schema, spreadsheet), same protocol as 2026-10-13: fresh agent per run, Vow agents get only VOW_GUIDE.md and EXAMPLES.md, rounds 1-2 may check and run code, round 3 type-check only, judged by `bench/run.js`. Each agent worked in an isolated folder with only the specs (and guide for Vow). Claude Sonnet 5.5 and Claude Opus 5.5. Counted from `bench/log/attempts.jsonl` (tags `hd-<model>-<lang>`, `hd3-<model>-<lang>`).

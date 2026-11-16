@@ -1,9 +1,9 @@
-// Runs the bad4 agent rounds headless: one fresh `claude -p` (Haiku) per task, language and run,
-// with the exact prompts in bench/turf/bad4/PROMPT.md. Conditions:
-//   vow    this repo (probe on)          -> bench/scratch/bad4/
-//   vowctl the control worktree (probe off, guide without it) -> its bench/scratch/bad4/
-//   ts, py this repo                     -> bench/scratch/bad4/
-//   node bench/turf/probe/run-agents.mjs --conds vow,vowctl,ts,py --runs 1-4 [--jobs 5]
+// Runs a bad-data set's agent rounds (--set bad4|bad5) headless: one fresh `claude -p` (Haiku) per task, language and run,
+// with the exact prompts in bench/turf/<set>/PROMPT.md. Conditions:
+//   vow    this repo (probe on)          -> bench/scratch/<set>/
+//   vowctl the control worktree (probe off, guide without it) -> its bench/scratch/<set>/
+//   ts, py this repo                     -> bench/scratch/<set>/
+//   node bench/turf/probe/run-agents.mjs --set bad5 --conds vow,vowctl,ts,py --runs 1-4 [--jobs 5]
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { spawn, execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
@@ -16,26 +16,27 @@ const conds = arg('--conds', 'vow,vowctl,ts,py').split(',');
 const [r0, r1] = arg('--runs', '1-4').split('-').map(Number);
 const jobs = Number(arg('--jobs', '5'));
 const model = arg('--model', 'haiku');
+const SET = arg('--set', 'bad4');
 
-const md = readFileSync(join(here, 'bench/turf/bad4/PROMPT.md'), 'utf8');
+const md = readFileSync(join(here, `bench/turf/${SET}/PROMPT.md`), 'utf8');
 const block = (heading) => md.split(`\n## ${heading}\n`)[1].match(/```text\n([\s\S]*?)\n```/)[1];
 const TPL = { vow: block('Vow'), ts: block('TypeScript'), py: block('Python') };
-const { BAD_TASKS } = await import(join(here, 'bench/turf/bad4/tasks.js'));
+const { BAD_TASKS } = await import(join(here, `bench/turf/${SET}/tasks.js`));
 
 const work = [];
 for (let r = r0; r <= (r1 ?? r0); r++) for (const c of conds) for (const t of BAD_TASKS) {
   const lang = c === 'vowctl' ? 'vow' : c;
   const repo = c === 'vowctl' ? CONTROL : here;
   const run = `d${r}`;
-  const spec = execFileSync(process.execPath, ['bench/turf/bad4/run.mjs', t.id, '--spec'], { cwd: repo, encoding: 'utf8' }).trimEnd();
+  const spec = execFileSync(process.execPath, [`bench/turf/${SET}/run.mjs`, t.id, '--spec'], { cwd: repo, encoding: 'utf8' }).trimEnd();
   const prompt = `Work in the repository at ${repo}: every path below is relative to it, so cd there first.\n\n` +
     TPL[lang].replaceAll('{{TASK}}', t.id).replaceAll('{{SPEC}}', spec).replaceAll('{{INPUT}}', t.input)
       .replaceAll('{{RUN}}', run).replaceAll('{{EXT}}', lang);
-  const out = join(repo, `bench/scratch/bad4/${t.id}-${run}${lang}.${lang}`);
-  work.push({ c, lang, repo, run, task: t.id, prompt, out, tag: `bad4-${run}${lang}${c === 'vowctl' ? '-ctl' : ''}` });
+  const out = join(repo, `bench/scratch/${SET}/${t.id}-${run}${lang}.${lang}`);
+  work.push({ c, lang, repo, run, task: t.id, prompt, out, tag: `${SET}-${run}${lang}${c === 'vowctl' ? '-ctl' : ''}` });
 }
 
-const logDir = join(here, 'bench/scratch/bad4/logs');
+const logDir = join(here, `bench/scratch/${SET}/logs`);
 mkdirSync(logDir, { recursive: true });
 const one = (w) => new Promise((resolve) => {
   if (existsSync(w.out)) { console.log(`skip ${w.c} ${w.task} ${w.run} (exists)`); return resolve(); }

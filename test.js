@@ -1122,7 +1122,7 @@ for (const [dir, needles] of moduleDiagTests) {
     ['exit(1) on --interp', cli(['--interp', exitF, '12a']), r => r.status === 1 && r.stdout === 'error: bad qty 12a\n'],
     ['exit(0) ends early with status 0', cli([exitF, '500']), r => r.status === 0 && r.stdout === 'qty 500\n'],
     ['no exit: normal end, status 0', cli([exitF, '5']), r => r.status === 0 && r.stdout === 'qty 5\nsmall\n'],
-    ['exit inside run(...) ends only that run', cli(['test', exitF]), r => r.status === 0 && r.stdout === '✓ bad qty\n✓ big\n2 tests, 2 passed\n'],
+    ['exit inside run(...) ends only that run', cli(['test', exitF]), r => r.status === 0 && r.stdout === '✓ bad qty\n✓ big\n2 tests, 2 passed\nprobe: 1 corrupted copy of the test input, every one rejected ✓\n'],
     ['top-level ? on err: error on stderr, exit 1, output before it kept (compiled)', cli([topF, '12a']), r => r.status === 1 && r.stdout === 'start\n' && r.stderr === 'error: "12a" is not a number\n'],
     ['top-level ? on err on --interp', cli(['--interp', topF, '12a']), r => r.status === 1 && r.stdout === 'start\n' && r.stderr === 'error: "12a" is not a number\n'],
     ['top-level ? on ok continues', cli([topF, '21']), r => r.status === 0 && r.stdout === 'start\ndouble 42\n'],
