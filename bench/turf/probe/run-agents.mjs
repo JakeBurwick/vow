@@ -3,6 +3,7 @@
 //   vow    this repo (probe on)          -> bench/scratch/<set>/
 //   vowctl the control worktree (probe off, guide without it) -> its bench/scratch/<set>/
 //   vowv1  a worktree at the first probe (format corruptions only) -> its bench/scratch/<set>/
+//   vowtxt a worktree with the probe text in the guide but the probe itself off -> its bench/scratch/<set>/
 //   ts, py this repo                     -> bench/scratch/<set>/
 //   node bench/turf/probe/run-agents.mjs --set bad5 --conds vow,vowctl,ts,py --runs 1-4 [--jobs 5]
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
@@ -11,7 +12,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const REPO = { vowctl: join(here, '..', 'vow-lang-control'), vowv1: join(here, '..', 'vow-lang-v1') }; // other worktrees
+const REPO = { vowctl: join(here, '..', 'vow-lang-control'), vowv1: join(here, '..', 'vow-lang-v1'), vowtxt: join(here, '..', 'vow-lang-textonly') }; // other worktrees
 const arg = (n, d) => { const i = process.argv.indexOf(n); return i > 0 ? process.argv[i + 1] : d; };
 const conds = arg('--conds', 'vow,vowctl,ts,py').split(',');
 const [r0, r1] = arg('--runs', '1-4').split('-').map(Number);

@@ -417,3 +417,18 @@ Same three fresh hard tasks (mini-lisp, json-schema, spreadsheet), same protocol
 | Opus 5.5, TypeScript | 9 of 9 | 9 | 0 |
 
 For reference, Haiku 4.5 on the same tasks: Vow 1 failed in 9 runs, TypeScript 0 (2026-10-13); Vow 0 in 9 after the 2026-10-13 night fixes. The one failure here: a json-schema agent compared the spec's type name "boolean" against `jsonType`'s "bool". Bigger models do not open a gap in either direction on this set; it is near the ceiling for all three models.
+
+### Bad-data set 6 on Claude Sonnet 5.5 (2026-11-16)
+
+Same bad6 tickets, prompts, runner and scoring as the Haiku round, model `sonnet` (claude-sonnet-5-5) via `bench/turf/probe/run-agents.mjs --model sonnet`, runs d5-d8, 12 solutions per condition. Probe-off control rebuilt as a worktree at 76f9e46 with the probe defaulting off and its text removed from bench/VOW_GUIDE.md and bench/EXAMPLES.md. Cost $4.55 for 48 runs.
+
+| condition | happy | bad traps loud | format (72) | logic (52) | factory-runs | clinic-day | helpdesk-log |
+|---|---|---|---|---|---|---|---|
+| Vow, probe on | 108/108 | 105/124 (85%) | 62 (86%) | 43 (83%) | 40/40 | 32/40 | 33/44 |
+| Python | 108/108 | 48/124 (39%) | 38 (53%) | 10 (19%) | 12/40 | 20/40 | 16/44 |
+| Vow, probe off | 108/108 | 44/124 (35%) | 34 (47%) | 10 (19%) | 12/40 | 14/40 | 18/44 |
+| TypeScript | 108/108 | 26/124 (21%) | 20 (28%) | 6 (12%) | 6/40 | 16/40 | 4/44 |
+
+Haiku on the same set: probe on 57%, Python 45%, probe off 39%, TS 14%. The gap grows on the bigger model (+46 points over Python vs +12).
+
+**Is it the probe or the guide text?** A fifth condition (worktree `vow-lang-textonly`): the guide and EXAMPLES.md keep the probe paragraph, but `vow test` never runs the probe. Sonnet 5.5, same d5-d8 runs: happy 108/108, loud 43/124 (35%), format 33/72, logic 10/52, per task 13/40, 15/40, 15/44. That is the probe-off number. Reading about the probe does nothing; what moves Sonnet is what `vow test` prints back, including the "no test runs the whole program, so bad input was not tried" line, which several agents answered by checking the ticket's rules even though no corrupted copy was ever run. (A first try at this condition reused the probe-on solutions because the worktree was cut from a commit that contained them; it was discarded and rerun.)

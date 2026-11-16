@@ -102,6 +102,7 @@ Measured October and November 2026 (dates per row). Numbers may be out of date; 
 | Solutions with a silent bug, 3 fresh tasks written after those fixes (JSON config merge, timesheet hours, Unicode word counts) | 2 of 12 | Python 2 of 12, TypeScript 0 of 12 | 2026-10-19 |
 | Bad data the task never mentioned, flagged instead of a normal-looking wrong answer (3 rounds of 3 new tasks; Vow fixes between rounds) | 8%, 52%, 56% | Python 81%, 74%, 71%; TypeScript 29%, 23%, 55% | 2026-10-20 |
 | Same, 4th to 6th sets (9 new tasks, 6th set 42% logic traps), with the bad-input probe in `vow test` (Claude Haiku 5.5, 36 programs each) | 68% (75%, 70%, 57%) | Python 53% (61%, 51%, 45%); Vow with the probe off 51% (55%, 58%, 39%); TypeScript 20% (27%, 19%, 14%) | 2026-11-16 |
+| Same 6th set on Claude Sonnet 5.5 (12 programs each; extra row: probe described in the guide but switched off) | 85% (logic traps 83%) | Python 39% (logic 19%); Vow probe off 35%; guide text only 35%; TypeScript 21% | 2026-11-16 |
 | Recursive fib(32) | 0.09 s | Python 0.14 s | 2026-10-07 |
 | Agent code passing 150 fresh hidden tests per task | 99.5% | TypeScript 99.3% | 2026-10-08 |
 | Failed submissions, 3 new hard tasks (Lisp interpreter, JSON schema validator, spreadsheet), 9 runs | 1 | TypeScript 0 | 2026-10-13 |

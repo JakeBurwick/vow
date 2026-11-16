@@ -692,6 +692,22 @@ let m = {"n": "x", "q": 3}  // ✗ one value type per map;
       </div>
 
       <div class="bench-item">
+        <h3 class="result-h">Bad input probe on Sonnet 5.5</h3>
+        <p class="result-note">On November 16, 2026, we reran the third set with logic problems in the data on Claude Sonnet 5.5, a larger model than Haiku 5.5. The tests used the same three tasks, the same prompts, and 12 programs per row, and every program in every row passed all 108 valid input tests. The table includes an extra row where the guide describes the probe but the probe is switched off, to check whether reading about the probe changes the result.</p>
+        <div class="result-wrap"><table class="result">
+          <thead><tr><th scope="col">language</th><th scope="col">all bad data</th><th scope="col">logic problems</th></tr></thead>
+          <tbody>
+            <tr><td>Vow, probe on</td><td class="best">85%</td><td class="best">83%</td></tr>
+            <tr><td>Python</td><td>39%</td><td>19%</td></tr>
+            <tr><td>Vow, probe off</td><td>35%</td><td>19%</td></tr>
+            <tr><td>Vow, guide text only</td><td>35%</td><td>19%</td></tr>
+            <tr><td>TypeScript</td><td>21%</td><td>12%</td></tr>
+          </tbody>
+        </table></div>
+        <p class="result-note">Vow with the probe flagged 85 percent of bad data, up from 57 percent on Haiku. Python caught 39 percent, Vow with the probe off caught 35 percent, Vow with only the guide text caught 35 percent, and TypeScript caught 21 percent. On logic problems, Vow with the probe caught 83 percent and Python caught 19 percent. Guide text alone changed nothing, because the change comes from what vow test prints back, including its note when no test runs the whole program.</p>
+      </div>
+
+      <div class="bench-item">
         <h3 class="result-h">Speed: recursive fib(32)</h3>
         <p class="result-note">Measured Oct 7, 2026.</p>
         <div class="result-wrap"><table class="result">
