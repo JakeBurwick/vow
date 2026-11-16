@@ -666,7 +666,7 @@ This program carries its own tests: one `test` block per example and per error l
 ✓ cli: stdin mode converts each non-empty line and counts them
 ✓ cli: empty stdin converts nothing
 8 tests, 8 passed
-probe: 3 corrupted copies of the test input, every one rejected ✓
+probe: 4 corrupted copies of the test input, no silent answers ✓
 ```
 
 Verified: `node cli.js temp.vow 100C 50F abcC 7` prints `100C = 212F`, `50F = 10C`, `error: not a number: abcC`, `error: unknown unit: 7`; the test blocks never run then.

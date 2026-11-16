@@ -387,6 +387,24 @@ The result held: Vow with the probe led on all three tasks, including the JSON o
 
 **Both probe sets together (6 tasks, 24 solutions per condition, 276 traps):** Vow with the probe 200/276 (72%), Vow without it 156/276 (57%), Python 154/276 (56%), TypeScript 64/276 (23%). Every solution in every condition kept all its hidden happy checks. Without the probe Vow ties Python; with it Vow flags 16 points more bad data than Python.
 
+### Sixth fresh set: logic traps, and probe v2 (2026-11-16)
+
+Probe v2 (d0a31d1) adds two corruptions aimed at mistakes in the data's logic rather than its format: two lines trading places, and two numbers in one line trading places; a swap that only reorders the output lines is not reported. Five other row-level corruptions were tried and dropped because the correct reference programs of sets 1-5 accept them too: a duplicated row (10 false alarms in 15 references), one name field copied into another (5), a reversed JSON list (2) and two JSON numbers swapped (1). The two kept raise 1 false alarm on those references, a defensible column swap.
+
+New tickets (bench/turf/bad6: factory-runs CSV, clinic-day JSON, helpdesk-log text), built by a separate agent asked for about half logic traps stated in the ticket as facts about the data (a run ends after it starts, a patient is seen after arriving, a ticket is opened once): 18 format traps and 13 logic traps, 9 happy checks per task. The probe raised no false alarms on its references. Claude Haiku 5.5, 12 solutions per condition; Vow ran three ways: probe v2, probe v1 (a worktree at 25269e4), and probe off (control). Four runs hung on a network outage and were rerun.
+
+| | happy checks | all traps flagged | format traps | logic traps |
+|---|---|---|---|---|
+| **Vow, probe v2** | 108/108 | **71/124 (57%)** | 50/72 (69%) | 21/52 (40%) |
+| Vow, probe v1 | 108/108 | 68/124 (55%) | 50/72 (69%) | 18/52 (35%) |
+| Python | 107/108 | 56/124 (45%) | 43/72 (60%) | 13/52 (25%) |
+| Vow, probe off | 108/108 | 48/124 (39%) | 36/72 (50%) | 12/52 (23%) |
+| TypeScript | 108/108 | 17/124 (14%) | 16/72 (22%) | 1/52 (2%) |
+
+Python's one happy miss was a timestamp read in local time across the March DST change. The probe beat Python again, on the set with the most logic traps. Probe v2's own addition is small: 3 more logic traps than v1 (21 against 18), well inside the run-to-run spread of 12 solutions; two of the v1 programs would have been flagged by v2's swaps. Most of the logic gain came from the probe as a whole (23% without it, 35% to 40% with it): agents that had to answer the probe's format questions also checked the data's rules more often.
+
+**Three probe sets together (9 tasks, 36 solutions per condition, 400 traps; probe v1 on sets 4 and 5, v2 on set 6):** Vow with the probe 271/400 (68%), Python 210/400 (53%), Vow without it 204/400 (51%), TypeScript 81/400 (20%).
+
 ## Fresh hard tasks on bigger models (2026-11-05)
 
 Same three fresh hard tasks (mini-lisp, json-schema, spreadsheet), same protocol as 2026-10-13: fresh agent per run, Vow agents get only VOW_GUIDE.md and EXAMPLES.md, rounds 1-2 may check and run code, round 3 type-check only, judged by `bench/run.js`. Each agent worked in an isolated folder with only the specs (and guide for Vow). Claude Sonnet 5.5 and Claude Opus 5.5. Counted from `bench/log/attempts.jsonl` (tags `hd-<model>-<lang>`, `hd3-<model>-<lang>`).

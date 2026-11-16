@@ -2,6 +2,7 @@
 // with the exact prompts in bench/turf/<set>/PROMPT.md. Conditions:
 //   vow    this repo (probe on)          -> bench/scratch/<set>/
 //   vowctl the control worktree (probe off, guide without it) -> its bench/scratch/<set>/
+//   vowv1  a worktree at the first probe (format corruptions only) -> its bench/scratch/<set>/
 //   ts, py this repo                     -> bench/scratch/<set>/
 //   node bench/turf/probe/run-agents.mjs --set bad5 --conds vow,vowctl,ts,py --runs 1-4 [--jobs 5]
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
@@ -10,7 +11,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const CONTROL = join(here, '..', 'vow-lang-control');
+const REPO = { vowctl: join(here, '..', 'vow-lang-control'), vowv1: join(here, '..', 'vow-lang-v1') }; // other worktrees
 const arg = (n, d) => { const i = process.argv.indexOf(n); return i > 0 ? process.argv[i + 1] : d; };
 const conds = arg('--conds', 'vow,vowctl,ts,py').split(',');
 const [r0, r1] = arg('--runs', '1-4').split('-').map(Number);
@@ -25,15 +26,15 @@ const { BAD_TASKS } = await import(join(here, `bench/turf/${SET}/tasks.js`));
 
 const work = [];
 for (let r = r0; r <= (r1 ?? r0); r++) for (const c of conds) for (const t of BAD_TASKS) {
-  const lang = c === 'vowctl' ? 'vow' : c;
-  const repo = c === 'vowctl' ? CONTROL : here;
+  const lang = c.startsWith('vow') ? 'vow' : c;
+  const repo = REPO[c] ?? here;
   const run = `d${r}`;
   const spec = execFileSync(process.execPath, [`bench/turf/${SET}/run.mjs`, t.id, '--spec'], { cwd: repo, encoding: 'utf8' }).trimEnd();
   const prompt = `Work in the repository at ${repo}: every path below is relative to it, so cd there first.\n\n` +
     TPL[lang].replaceAll('{{TASK}}', t.id).replaceAll('{{SPEC}}', spec).replaceAll('{{INPUT}}', t.input)
       .replaceAll('{{RUN}}', run).replaceAll('{{EXT}}', lang);
   const out = join(repo, `bench/scratch/${SET}/${t.id}-${run}${lang}.${lang}`);
-  work.push({ c, lang, repo, run, task: t.id, prompt, out, tag: `${SET}-${run}${lang}${c === 'vowctl' ? '-ctl' : ''}` });
+  work.push({ c, lang, repo, run, task: t.id, prompt, out, tag: `${SET}-${run}${lang}${c === lang ? '' : '-' + c.slice(3)}` });
 }
 
 const logDir = join(here, `bench/scratch/${SET}/logs`);

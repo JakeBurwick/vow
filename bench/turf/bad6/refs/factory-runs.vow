@@ -1,0 +1,85 @@
+// Production runs: runs, minutes and good parts per machine, scrap rate, busiest machine. Fails loudly on any row it cannot read.
+struct Run { mach, day, start, end, made, scr, n }
+struct Machine { name, runs, mins, good }
+
+fn clock(s) {
+  let m = match find(s, `^([01][0-9]|2[0-3]):([0-5][0-9])$`) { ok(v) => v err(e) => { return err("not an HH:MM time") } }
+  return ok(int(m[1])? * 60 + int(m[2])?)
+}
+
+fn count(s) {
+  if not matches(s, `^[0-9]+$`) { return err("not a whole number") }
+  return int(s)
+}
+
+fn report(text) {
+  let ls = split(text, "\n")
+  if len(ls) > 0 and ls[len(ls) - 1] == "" { ls = slice(ls, 0, len(ls) - 1) }
+  if len(ls) == 0 { return err("empty input, no header") }
+  if ls[0] != "machine,day,start,end,made,scrapped" { return err("bad header: ${ls[0]}") }
+  let runs = []
+  let n = 1
+  for line in slice(ls, 1, len(ls)) {
+    n = n + 1
+    let f = split(line, ",")
+    if len(f) != 6 { return err("line ${n}: expected 6 fields, got ${len(f)}") }
+    if f[0] == "" { return err("line ${n}: missing machine") }
+    if not matches(f[1], `^[0-9]{4}-[0-9]{2}-[0-9]{2}$`) { return err("line ${n}: bad day ${f[1]}") }
+    match parseDate(f[1]) {
+      ok(v) => {}
+      err(e) => { return err("line ${n}: impossible day ${f[1]}") }
+    }
+    let start = match clock(f[2]) { ok(v) => v err(e) => { return err("line ${n}: bad start time ${f[2]}") } }
+    let end = match clock(f[3]) { ok(v) => v err(e) => { return err("line ${n}: bad end time ${f[3]}") } }
+    let made = match count(f[4]) { ok(v) => v err(e) => { return err("line ${n}: bad made count ${f[4]}") } }
+    let scr = match count(f[5]) { ok(v) => v err(e) => { return err("line ${n}: bad scrapped count ${f[5]}") } }
+    if end <= start { return err("line ${n}: run ends at ${f[3]}, not after it starts at ${f[2]}") }
+    if scr > made { return err("line ${n}: ${scr} parts scrapped but only ${made} made") }
+    push(runs, Run { mach: f[0], day: f[1], start: start, end: end, made: made, scr: scr, n: n })
+  }
+  if len(runs) == 0 { return err("no runs, there is no busiest machine") }
+  let slots = {}
+  for r in runs {
+    let k = "${r.mach}\n${r.day}"
+    if not has(slots, k) { slots[k] = [] }
+    push(slots[k], r)
+  }
+  for k in keys(slots) {
+    let rs = sortBy(slots[k], r => r.start)
+    for i in range(1, len(rs)) {
+      if rs[i].start < rs[i - 1].end { return err("line ${rs[i].n}: ${rs[i].mach} starts a run on ${rs[i].day} before its run on line ${rs[i - 1].n} ends") }
+    }
+  }
+  let per = {}
+  let tmade = 0
+  let tscr = 0
+  for r in runs {
+    if not has(per, r.mach) { per[r.mach] = Machine { name: r.mach, runs: 0, mins: 0, good: 0 } }
+    let p = per[r.mach]
+    p.runs = p.runs + 1
+    p.mins = p.mins + r.end - r.start
+    p.good = p.good + r.made - r.scr
+    per[r.mach] = p
+    tmade = tmade + r.made
+    tscr = tscr + r.scr
+  }
+  if tmade == 0 { return err("no parts made, the scrap rate is undefined") }
+  let out = []
+  let list = []
+  for k in sort(keys(per)) {
+    let p = per[k]
+    push(list, p)
+    push(out, "${p.name} ${p.runs} ${p.mins} ${p.good}")
+  }
+  let h = floor((2 * tscr * 10000 + tmade) / (2 * tmade))
+  push(out, "scrap ${floor(h / 100)}.${padLeft(str(h % 100), 2, "0")}%")
+  let top = sortBy(list, p => -p.mins)[0]
+  push(out, "busiest ${top.name} ${top.mins}")
+  return ok(out)
+}
+
+let input = match readAll() { ok(t) => t err(e) => "" }
+match report(input) {
+  ok(out) => { for l in out { print(l) } }
+  err(e) => print("error: ${e}")
+}

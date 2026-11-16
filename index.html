@@ -678,17 +678,17 @@ let m = {"n": "x", "q": 3}  // ✗ one value type per map;
 
       <div class="bench-item">
         <h3 class="result-h">Bad input probe</h3>
-        <p class="result-note">On November 15, 2026, we benchmarked Claude Haiku 5.5 on six new tasks across two sets using CSV, JSON, and text log inputs. Each task contained 9 valid input tests and 11 or 12 bad data tests that the task description omitted. Every program in every row passed all valid input tests. The bad-input probe runs automatically inside the <code>vow test</code> command because Vow's checker proves the program cannot access the network, files, or environment. The benchmark ran 24 programs per row across the two sets.</p>
+        <p class="result-note">On November 15 and 16, 2026, we benchmarked Claude Haiku 5.5 on nine new tasks across three sets with CSV, JSON, and text log inputs. Each task had 9 valid input tests and 10 to 12 bad data tests that the task description never mentioned, testing 36 programs per row. The bad-input probe in <code>vow test</code> changes test inputs one item at a time, reruns the program on each copy, and lists every copy where the program still printed a normal looking answer. The probe runs automatically because Vow's checker proves the program cannot reach the network, files, or environment. Every Vow, TypeScript, and Python program passed every valid input test, except one Python program that missed one.</p>
         <div class="result-wrap"><table class="result">
-          <thead><tr><th scope="col">language</th><th scope="col">both sets</th><th scope="col">set 1</th><th scope="col">set 2</th></tr></thead>
+          <thead><tr><th scope="col">language</th><th scope="col">all</th><th scope="col">set 1</th><th scope="col">set 2</th><th scope="col">set 3</th></tr></thead>
           <tbody>
-            <tr><td>Vow, probe on</td><td class="best">72%</td><td class="best">75%</td><td class="best">70%</td></tr>
-            <tr><td>Vow, probe off</td><td>57%</td><td>55%</td><td>58%</td></tr>
-            <tr><td>Python</td><td>56%</td><td>61%</td><td>51%</td></tr>
-            <tr><td>TypeScript</td><td>23%</td><td>27%</td><td>19%</td></tr>
+            <tr><td>Vow, probe on</td><td class="best">68%</td><td class="best">75%</td><td class="best">70%</td><td class="best">57%</td></tr>
+            <tr><td>Python</td><td>53%</td><td>61%</td><td>51%</td><td>45%</td></tr>
+            <tr><td>Vow, probe off</td><td>51%</td><td>55%</td><td>58%</td><td>39%</td></tr>
+            <tr><td>TypeScript</td><td>20%</td><td>27%</td><td>19%</td><td>14%</td></tr>
           </tbody>
         </table></div>
-        <p class="result-note">After a program passes its tests, the probe corrupts the inputs one item at a time, reruns the program on each copy, and lists every copy where the program printed a normal looking answer. Across both sets combined, Vow with the probe flagged 72 percent of bad data, Vow with the probe off flagged 57 percent, Python flagged 56 percent, and TypeScript flagged 23 percent. Vow with the probe led on 5 of the 6 tasks, and Python led on one JSON task in the first set, 75 percent to 67 percent. The probe cannot reach logic mistakes in the data, such as a car entering a garage twice in a row, where it changed nothing.</p>
+        <p class="result-note">Across all three sets, Vow with the probe flagged 68 percent of bad data, Python flagged 53 percent, Vow with the probe off flagged 51 percent, and TypeScript flagged 20 percent. Without the probe, Vow and Python flagged about the same share. The third set contained logic problems in the data, such as a run ending before it starts or a ticket closed twice. On the logic problems in the third set, Vow with the probe flagged 40 percent and Python flagged 25 percent.</p>
       </div>
 
       <div class="bench-item">

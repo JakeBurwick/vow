@@ -1,0 +1,72 @@
+// Clinic day: visits, wait and care minutes per doctor, longest wait, last patient out. Fails loudly on any record it cannot read.
+struct Visit { patient, doctor, arrived, seen, left, i }
+
+fn hm(v, key) {
+  let t = match jsonStr(field(v, key)) { ok(s) => s err(e) => { return err("missing or bad ${key} time ${field(v, key)}") } }
+  let m = match find(t, `^([01][0-9]|2[0-3]):([0-5][0-9])$`) { ok(x) => x err(e) => { return err("bad ${key} time ${t}") } }
+  return ok(int(m[1])? * 60 + int(m[2])?)
+}
+
+fn two(x) { return padLeft(str(x), 2, "0") }
+
+fn report(text) {
+  let data = match parseJson(text) { ok(j) => j err(e) => { return err("invalid JSON: ${e}") } }
+  if jsonType(data) != "object" { return err("expected a JSON object") }
+  let dj = field(data, "doctors")
+  if jsonType(dj) != "array" { return err("missing doctors list") }
+  let doctors = []
+  let byDoc = {}
+  for d in jsonList(dj) {
+    let name = match jsonStr(d) { ok(s) => s err(e) => { return err("bad doctor ${d}") } }
+    if name == "" { return err("empty doctor name") }
+    if has(byDoc, name) { return err("doctor ${name} is listed twice") }
+    push(doctors, name)
+    byDoc[name] = []
+  }
+  let vj = field(data, "visits")
+  if jsonType(vj) != "array" { return err("missing visits list") }
+  let rows = []
+  let i = 0
+  for v in jsonList(vj) {
+    i = i + 1
+    if jsonType(v) != "object" { return err("visit ${i}: expected an object") }
+    let p = match jsonStr(field(v, "patient")) { ok(s) => s err(e) => { return err("visit ${i}: missing patient") } }
+    if p == "" { return err("visit ${i}: missing patient") }
+    let d = match jsonStr(field(v, "doctor")) { ok(s) => s err(e) => { return err("visit ${i}: missing doctor") } }
+    if not has(byDoc, d) { return err("visit ${i}: doctor ${d} is not one of the doctors") }
+    let a = match hm(v, "arrived") { ok(x) => x err(e) => { return err("visit ${i}: ${e}") } }
+    let s = match hm(v, "seen") { ok(x) => x err(e) => { return err("visit ${i}: ${e}") } }
+    let l = match hm(v, "left") { ok(x) => x err(e) => { return err("visit ${i}: ${e}") } }
+    if s < a { return err("visit ${i}: ${p} is seen before arriving") }
+    if l <= s { return err("visit ${i}: ${p} leaves before being seen") }
+    let r = Visit { patient: p, doctor: d, arrived: a, seen: s, left: l, i: i }
+    push(byDoc[d], r)
+    push(rows, r)
+  }
+  if len(rows) == 0 { return err("no visits, there is no longest wait") }
+  let out = []
+  for d in doctors {
+    let vs = sortBy(byDoc[d], r => r.seen)
+    for k in range(1, len(vs)) {
+      if vs[k].seen < vs[k - 1].left { return err("visit ${vs[k].i}: ${d} sees a patient before the patient of visit ${vs[k - 1].i} has left") }
+    }
+    let wait = fold(vs, 0, (t, r) => t + r.seen - r.arrived)
+    let care = fold(vs, 0, (t, r) => t + r.left - r.seen)
+    push(out, "${d} ${len(vs)} ${wait} ${care}")
+  }
+  let top = sortBy(sortBy(rows, r => r.patient), r => -(r.seen - r.arrived))[0]
+  push(out, "longest-wait ${top.patient} ${top.seen - top.arrived}")
+  let last = fold(rows, 0, (m, r) => max(m, r.left))
+  push(out, "last-out ${two(floor(last / 60))}:${two(last % 60)}")
+  return ok(out)
+}
+
+let a = args()
+if len(a) < 1 {
+  print("error: missing argument")
+} else {
+  match report(a[0]) {
+    ok(out) => { for l in out { print(l) } }
+    err(e) => print("error: ${e}")
+  }
+}

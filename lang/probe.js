@@ -21,7 +21,7 @@ import { fileURLToPath } from 'node:url';
 
 const CLI = fileURLToPath(new URL('../cli.js', import.meta.url));
 const LOUD = /error|invalid|bad|malformed|missing|cannot|can't|failed|expected|unexpected|not a number/i;
-const MAX_CORRUPTIONS = 40;
+const MAX_CORRUPTIONS = 60;
 const CONCURRENCY = 6;
 const TIMEOUT_MS = 8000;
 
@@ -105,7 +105,11 @@ function jsonCorruptions(text) {
     }
     if (Array.isArray(v)) {
       if (v.length) {
-        if (!seen.has(shape + '.*elem')) { seen.add(shape + '.*elem'); add(`an element of ${show(path) || 'the list'} is null`, at([...path, 0], null)); }
+        if (!seen.has(shape + '.*elem')) {
+          seen.add(shape + '.*elem');
+          const list = show(path) || 'the list';
+          add(`an element of ${list} is null`, at([...path, 0], null));
+        }
         walk(v[0], [...path, 0]);
       }
     } else if (v && typeof v === 'object') {
@@ -166,6 +170,17 @@ function textCorruptions(text) {
   });
   if (row.length > 1) add(`line ${lineNo} is missing its last field`, withRow(row.slice(0, -1)));
   add(`line ${lineNo} has an extra field`, withRow([...row, row[row.length - 1]]));
+
+  // the data's logic, not its format: two lines trading places (an OUT before its IN), two numbers
+  // in one line trading places (a reading below the previous one). Duplicated lines, repeated names
+  // and reversed JSON lists were tried and dropped: correct reference programs accept them too.
+  const data = lines.map((l, i) => i).filter(i => lines[i].trim() && !(hasHeader && i === first));
+  const swap = (i, j) => { const ls = [...lines]; [ls[i], ls[j]] = [ls[j], ls[i]]; return join(ls); };
+  const reorder = (what, t) => out.push({ what, text: t, reorder: true });
+  if (data.length > 1) reorder(`lines ${data[0] + 1} and ${data[1] + 1} swapped`, swap(data[0], data[1]));
+  if (data.length > 2) reorder(`lines ${data[data.length - 2] + 1} and ${data[data.length - 1] + 1} swapped`, swap(data[data.length - 2], data[data.length - 1]));
+  const nums = row.map((f, i) => i).filter(i => isNum(row[i]));
+  if (nums.length > 1 && row[nums[0]] !== row[nums[1]]) add(`line ${lineNo}: fields ${nums[0] + 1} and ${nums[1] + 1} swapped`, withRow(row.map((x, j) => j === nums[0] ? row[nums[1]] : j === nums[1] ? row[nums[0]] : x)));
   return out;
 }
 
@@ -182,7 +197,7 @@ function corruptionsOf(inp) {
       if (isNum(s.v)) cs.push({ what: `is "12a"`, text: '12a' }, { what: 'is empty', text: '' });
       else if (isDate(s.v)) cs.push({ what: 'is the impossible date 2026-02-30', text: '2026-02-30' });
     }
-    for (const c of cs) out.push({ what: `${s.label}: ${c.what}`, input: s.set(c.text), slot: s.label });
+    for (const c of cs) out.push({ what: `${s.label}: ${c.what}`, input: s.set(c.text), slot: s.label, reorder: !!c.reorder });
   }
   return out;
 }
@@ -201,6 +216,8 @@ function runOnce(file, inp) {
     p.stdin.end(inp.stdin);
   });
 }
+
+const sameLines = (a, b) => a.split('\n').sort().join('\n') === b.split('\n').sort().join('\n');
 
 async function pool(items, n, fn) {
   const out = new Array(items.length);
@@ -257,6 +274,8 @@ export async function probe(file, ast, effects) {
     const r = runs[i];
     if (loud(r, j.base)) return;
     if (r.stdout === j.base.stdout) return; // the corrupted value never mattered
+    // swapped lines that only reorder the output: the program treats each line on its own
+    if (j.reorder && sameLines(r.stdout, j.base.stdout)) return;
     silent.push({ what: j.what, input: j.input, output: r.stdout });
   });
   return { tried: chosen.length, silent };
@@ -274,7 +293,7 @@ export function formatProbe(res) {
   if (res.skipped) return { text: `probe: skipped (${res.skipped})`, code: 0 };
   if (res.noRun) return { text: 'probe: no test runs the whole program, so bad input was not tried. Add a test per ticket example: expectEq(run(["arg"], "stdin text"), "expected output\\n")', code: 0 };
   if (!res.tried) return { text: '', code: 0 }; // the test inputs are empty: nothing to corrupt
-  if (!res.silent.length) return { text: `probe: ${res.tried} corrupted ${res.tried === 1 ? 'copy' : 'copies'} of the test input, every one rejected ✓`, code: 0 };
+  if (!res.silent.length) return { text: `probe: ${res.tried} corrupted ${res.tried === 1 ? 'copy' : 'copies'} of the test input, no silent answers ✓`, code: 0 };
   const n = res.silent.length;
   const lines = [`✗ probe: ${n} of ${res.tried} corrupted copies of the test input still printed a normal answer (exit 0, no error):`];
   for (const s of res.silent.slice(0, 12)) lines.push(`    • ${s.what}\n        printed: ${clip(s.output) || '(nothing)'}`);
